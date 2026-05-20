@@ -1,0 +1,196 @@
+'use client';
+
+import React, { useState } from 'react';
+import { Bus, Plus, Trash2, Edit2, Save, X, Users, Phone } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import type { Trip, Van } from './types';
+
+interface Props {
+  trips: Trip[];
+  vans: Van[];
+  onAddVan: (tripId: string) => Promise<void>;
+  onDeleteVan: (vanId: string) => Promise<void>;
+  onUpdateVan: (vanId: string, data: { plateNumber: string; driverName: string; driverPhone: string }) => Promise<void>;
+  onUpdateStaff: (vanId: string, seatId: string, staffName: string) => Promise<void>;
+}
+
+export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVan, onUpdateStaff }: Props) {
+  const [editingVanId, setEditingVanId] = useState<string | null>(null);
+  const [vanForm, setVanForm] = useState({ plateNumber: '', driverName: '', driverPhone: '' });
+  const [editingStaff, setEditingStaff] = useState<{ vanId: string; seatId: string; staffName: string } | null>(null);
+
+  const startEdit = (van: Van) => {
+    setEditingVanId(van.id);
+    setVanForm({ plateNumber: van.plateNumber, driverName: van.driverName, driverPhone: van.driverPhone });
+  };
+
+  const handleStaffSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingStaff) return;
+    await onUpdateStaff(editingStaff.vanId, editingStaff.seatId, editingStaff.staffName);
+    setEditingStaff(null);
+  };
+
+  return (
+    <div className="space-y-6">
+      {trips.length === 0 && (
+        <div className="text-center py-16 text-slate-400 border border-dashed border-slate-200 rounded-xl">
+          <Bus className="w-10 h-10 mx-auto mb-2 text-slate-200" />
+          <p className="text-sm font-semibold">ยังไม่มีทริปในระบบ กรุณาสร้างทริปก่อน</p>
+        </div>
+      )}
+
+      {trips.map(trip => {
+        const tripVans = vans.filter(v => v.tripId === trip.id);
+
+        return (
+          <Card key={trip.id} className="border-slate-200 shadow-sm">
+            <CardHeader className="border-b border-slate-100 pb-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-[9px] text-violet-600 font-black uppercase tracking-widest block">TRIP</span>
+                  <CardTitle className="text-sm">{trip.name}</CardTitle>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onAddVan(trip.id)}
+                  className="h-8 text-xs border-violet-200 text-violet-700 hover:bg-violet-50 gap-1"
+                >
+                  <Plus className="w-3.5 h-3.5" /> เพิ่มรถตู้
+                </Button>
+              </div>
+            </CardHeader>
+
+            <CardContent className="p-4 space-y-3">
+              {tripVans.length === 0 ? (
+                <p className="text-xs text-slate-400 italic text-center py-4">
+                  ยังไม่มีรถตู้ กด "เพิ่มรถตู้" ด้านบน
+                </p>
+              ) : tripVans.map(van => {
+                const isEditing = editingVanId === van.id;
+                const staffSeat = van.seats.find(s => s.type === 'staff');
+                const customerSeats = van.seats.filter(s => s.type === 'customer');
+                const availableCount = customerSeats.filter(s => s.status === 'available').length;
+
+                return (
+                  <div key={van.id} className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3 hover:border-violet-100 transition">
+
+                    {/* Van Header */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-9 h-9 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
+                          <Bus className="w-4.5 h-4.5 text-violet-600" />
+                        </div>
+                        <div>
+                          <div className="font-bold text-slate-800 text-sm">รถตู้คันที่ {van.vanNumber}</div>
+                          <div className="text-[10px] text-slate-500">{van.plateNumber}</div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <Badge variant="secondary" className="text-[10px]">
+                          ว่าง {availableCount}/{customerSeats.length}
+                        </Badge>
+                        {isEditing ? (
+                          <>
+                            <button
+                              onClick={() => { onUpdateVan(van.id, vanForm); setEditingVanId(null); }}
+                              className="w-7 h-7 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center transition"
+                            >
+                              <Save className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => setEditingVanId(null)}
+                              className="w-7 h-7 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-slate-700 flex items-center justify-center transition"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => startEdit(van)}
+                              className="w-7 h-7 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-violet-600 hover:border-violet-200 flex items-center justify-center transition"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => onDeleteVan(van.id)}
+                              className="w-7 h-7 rounded-lg border border-rose-200 bg-rose-50 text-rose-500 hover:bg-rose-100 flex items-center justify-center transition"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Edit Form */}
+                    {isEditing ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-slate-200">
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-500 block mb-1">ป้ายทะเบียน</label>
+                          <Input value={vanForm.plateNumber} onChange={e => setVanForm({ ...vanForm, plateNumber: e.target.value })} className="h-7 text-xs" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-500 block mb-1">ชื่อคนขับ</label>
+                          <Input value={vanForm.driverName} onChange={e => setVanForm({ ...vanForm, driverName: e.target.value })} className="h-7 text-xs" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-500 block mb-1">เบอร์คนขับ</label>
+                          <Input value={vanForm.driverPhone} onChange={e => setVanForm({ ...vanForm, driverPhone: e.target.value })} className="h-7 text-xs" />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap gap-4 text-[10px] text-slate-500 pt-1 border-t border-slate-100">
+                        <span className="flex items-center gap-1">
+                          <Users className="w-3 h-3" />คนขับ: <strong className="text-slate-700">{van.driverName || '-'}</strong>
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Phone className="w-3 h-3" />{van.driverPhone || 'ไม่ระบุเบอร์'}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Staff Seat */}
+                    {staffSeat && (
+                      <div className="border-t border-slate-200 pt-3">
+                        <p className="text-[10px] font-bold text-violet-700 mb-1.5">สตาฟประจำคัน (เบาะ 1)</p>
+                        {editingStaff?.vanId === van.id && editingStaff?.seatId === staffSeat.id ? (
+                          <form onSubmit={handleStaffSubmit} className="flex gap-2">
+                            <Input
+                              autoFocus
+                              value={editingStaff.staffName}
+                              onChange={e => setEditingStaff({ ...editingStaff, staffName: e.target.value })}
+                              className="h-7 text-xs flex-1"
+                              placeholder="ชื่อสตาฟ"
+                            />
+                            <button type="submit" className="px-3 h-7 bg-violet-600 text-white text-[10px] rounded-lg font-bold hover:bg-violet-700 transition">บันทึก</button>
+                            <button type="button" onClick={() => setEditingStaff(null)} className="px-3 h-7 border border-slate-200 text-[10px] rounded-lg text-slate-500 hover:bg-slate-100 transition">ยกเลิก</button>
+                          </form>
+                        ) : (
+                          <button
+                            onClick={() => setEditingStaff({ vanId: van.id, seatId: staffSeat.id, staffName: staffSeat.staffName || '' })}
+                            className="flex items-center gap-2 text-[10px] text-slate-600 hover:text-violet-600 bg-violet-50 px-3 py-1.5 rounded-lg border border-violet-100 transition group"
+                          >
+                            <div className="w-5 h-5 rounded bg-violet-200 flex items-center justify-center text-violet-700 font-black text-[10px]">1</div>
+                            <span className="font-semibold">{staffSeat.staffName || 'ยังไม่ระบุชื่อสตาฟ'}</span>
+                            <Edit2 className="w-2.5 h-2.5 ml-auto opacity-0 group-hover:opacity-100 transition" />
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        );
+      })}
+    </div>
+  );
+}

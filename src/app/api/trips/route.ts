@@ -1,0 +1,75 @@
+import { NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
+import { supabase } from '@/lib/supabase';
+import { generateSeatsForVan, Trip, Van } from '@/lib/db';
+
+export async function GET() {
+  try {
+    const { data: trips, error: tripsError } = await supabase.from('trips').select('*').order('created_at', { ascending: false });
+    if (tripsError) throw tripsError;
+
+    const { data: vans, error: vansError } = await supabase.from('vans').select('*');
+    if (vansError) throw vansError;
+    
+    const enrichedTrips = (trips || []).map(trip => {
+      const tripVans = (vans || []).filter(v => v.tripId === trip.id);
+      let totalAvailable = 0;
+      tripVans.forEach(van => {
+        totalAvailable += (van.seats || []).filter((s: any) => s.type === 'customer' && s.status === 'available').length;
+      });
+      return { ...trip, availableSeats: totalAvailable };
+    });
+
+    return NextResponse.json({ success: true, trips: enrichedTrips });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const { name, departureDate, durationDays, cost, pickupPoint, departureTime, tripPeriod, plateNumber, driverName, driverPhone, image } = body;
+
+    if (!name || !departureDate || !durationDays || !cost || !pickupPoint || !departureTime) {
+      return NextResponse.json({ success: false, error: 'Please provide all required trip fields' }, { status: 400 });
+    }
+
+    const newTripId = `trip-${Date.now()}`;
+
+    const newTrip = {
+      id: newTripId,
+      name,
+      departureDate,
+      durationDays: Number(durationDays),
+      cost: Number(cost),
+      pickupPoint,
+      departureTime,
+      tripPeriod,
+      image,
+      status: 'active',
+    };
+
+    const { error: tripError } = await supabase.from('trips').insert([newTrip]);
+    if (tripError) throw tripError;
+
+    // Auto-create Van 1 for this trip
+    const newVanId = `van-${newTripId}-1`;
+    const newVan = {
+      id: newVanId,
+      tripId: newTripId,
+      vanNumber: 1,
+      plateNumber: plateNumber || 'ยังไม่ได้ระบุ',
+      driverName: driverName || 'ยังไม่ได้ระบุ',
+      driverPhone: driverPhone || 'ยังไม่ได้ระบุ',
+      seats: generateSeatsForVan(newVanId),
+    };
+
+    const { error: vanError } = await supabase.from('vans').insert([newVan]);
+    if (vanError) throw vanError;
+
+    return NextResponse.json({ success: true, trip: newTrip });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}

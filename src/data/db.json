@@ -1,0 +1,995 @@
+{
+  "trips": [
+    {
+      "id": "trip-1",
+      "name": "ทริปเชียงใหม่ ปาย แม่ฮ่องสอน - สัมผัสทะเลหมอก",
+      "departureDate": "2026-11-20",
+      "durationDays": 4,
+      "cost": 4500,
+      "pickupPoint": "ปั๊ม ปตท. ดินแดง",
+      "departureTime": "05:30",
+      "status": "active"
+    },
+    {
+      "id": "trip-2",
+      "name": "ทริปกาญจนบุรี - ล่องแพเปียก นอนแพหรูริมแม่น้ำแควน้อย",
+      "departureDate": "2026-12-05",
+      "durationDays": 2,
+      "cost": 2200,
+      "pickupPoint": "ปั๊ม ปตท. วิภาวดี (ตรงข้าม ม.หอการค้า)",
+      "departureTime": "07:00",
+      "status": "active"
+    },
+    {
+      "id": "trip-new-may69",
+      "name": "ทริปใหม่ พ.ค. 2569",
+      "departureDate": "20 พ.ค. 69",
+      "durationDays": 4,
+      "cost": 0,
+      "pickupPoint": "จุดนัดพบ ปั๊ม ปตท.",
+      "departureTime": "06:00",
+      "status": "active",
+      "image": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=400&auto=format&fit=crop&q=80",
+      "tripPeriod": "20-23 พ.ค. 2569"
+    }
+  ],
+  "vans": [
+    {
+      "id": "van-trip-1-1",
+      "tripId": "trip-1",
+      "vanNumber": 1,
+      "plateNumber": "ฮข 5566 กรุงเทพฯ",
+      "driverName": "ลุงสมชาย ใจเย็น",
+      "driverPhone": "081-234-5678",
+      "seats": [
+        {
+          "id": "van-trip-1-1-seat-driver",
+          "label": "คนขับ",
+          "type": "driver",
+          "status": "booked",
+          "row": 1,
+          "col": 3
+        },
+        {
+          "id": "van-trip-1-1-seat-staff",
+          "label": "สตาฟ",
+          "type": "staff",
+          "status": "available",
+          "staffName": "สตาฟประจำทริป",
+          "row": 1,
+          "col": 1
+        },
+        {
+          "id": "van-trip-1-1-seat-a1",
+          "label": "A1",
+          "type": "customer",
+          "status": "available",
+          "row": 2,
+          "col": 1
+        },
+        {
+          "id": "van-trip-1-1-seat-a2",
+          "label": "A2",
+          "type": "customer",
+          "status": "available",
+          "row": 2,
+          "col": 2
+        },
+        {
+          "id": "van-trip-1-1-seat-a3",
+          "label": "A3",
+          "type": "customer",
+          "status": "pending",
+          "row": 2,
+          "col": 3,
+          "bookingId": "booking-1779265460504"
+        },
+        {
+          "id": "van-trip-1-1-seat-b1",
+          "label": "B1",
+          "type": "customer",
+          "status": "available",
+          "row": 3,
+          "col": 1
+        },
+        {
+          "id": "van-trip-1-1-seat-b2",
+          "label": "B2",
+          "type": "customer",
+          "status": "available",
+          "row": 3,
+          "col": 2
+        },
+        {
+          "id": "van-trip-1-1-seat-b3",
+          "label": "B3",
+          "type": "customer",
+          "status": "available",
+          "row": 3,
+          "col": 3
+        },
+        {
+          "id": "van-trip-1-1-seat-c1",
+          "label": "C1",
+          "type": "customer",
+          "status": "available",
+          "row": 4,
+          "col": 1
+        },
+        {
+          "id": "van-trip-1-1-seat-c2",
+          "label": "C2",
+          "type": "customer",
+          "status": "available",
+          "row": 4,
+          "col": 2
+        },
+        {
+          "id": "van-trip-1-1-seat-c3",
+          "label": "C3",
+          "type": "customer",
+          "status": "available",
+          "row": 4,
+          "col": 3
+        },
+        {
+          "id": "van-trip-1-1-seat-c4",
+          "label": "C4",
+          "type": "customer",
+          "status": "available",
+          "row": 4,
+          "col": 4
+        }
+      ]
+    },
+    {
+      "id": "van-trip-1-2",
+      "tripId": "trip-1",
+      "vanNumber": 2,
+      "plateNumber": "นข 7788 เชียงใหม่",
+      "driverName": "พี่แจ็ค ซิ่งสายฟ้า",
+      "driverPhone": "089-876-5432",
+      "seats": [
+        {
+          "id": "van-trip-1-2-seat-driver",
+          "label": "คนขับ",
+          "type": "driver",
+          "status": "booked",
+          "row": 1,
+          "col": 3
+        },
+        {
+          "id": "van-trip-1-2-seat-staff",
+          "label": "สตาฟ",
+          "type": "staff",
+          "status": "available",
+          "staffName": "สตาฟประจำทริป",
+          "row": 1,
+          "col": 1
+        },
+        {
+          "id": "van-trip-1-2-seat-a1",
+          "label": "A1",
+          "type": "customer",
+          "status": "available",
+          "row": 2,
+          "col": 1
+        },
+        {
+          "id": "van-trip-1-2-seat-a2",
+          "label": "A2",
+          "type": "customer",
+          "status": "available",
+          "row": 2,
+          "col": 2
+        },
+        {
+          "id": "van-trip-1-2-seat-a3",
+          "label": "A3",
+          "type": "customer",
+          "status": "available",
+          "row": 2,
+          "col": 3
+        },
+        {
+          "id": "van-trip-1-2-seat-b1",
+          "label": "B1",
+          "type": "customer",
+          "status": "available",
+          "row": 3,
+          "col": 1
+        },
+        {
+          "id": "van-trip-1-2-seat-b2",
+          "label": "B2",
+          "type": "customer",
+          "status": "available",
+          "row": 3,
+          "col": 2
+        },
+        {
+          "id": "van-trip-1-2-seat-b3",
+          "label": "B3",
+          "type": "customer",
+          "status": "available",
+          "row": 3,
+          "col": 3
+        },
+        {
+          "id": "van-trip-1-2-seat-c1",
+          "label": "C1",
+          "type": "customer",
+          "status": "available",
+          "row": 4,
+          "col": 1
+        },
+        {
+          "id": "van-trip-1-2-seat-c2",
+          "label": "C2",
+          "type": "customer",
+          "status": "available",
+          "row": 4,
+          "col": 2
+        },
+        {
+          "id": "van-trip-1-2-seat-c3",
+          "label": "C3",
+          "type": "customer",
+          "status": "available",
+          "row": 4,
+          "col": 3
+        },
+        {
+          "id": "van-trip-1-2-seat-c4",
+          "label": "C4",
+          "type": "customer",
+          "status": "available",
+          "row": 4,
+          "col": 4
+        }
+      ]
+    },
+    {
+      "id": "van-trip-2-1",
+      "tripId": "trip-2",
+      "vanNumber": 1,
+      "plateNumber": "มค 9900 กาญจนบุรี",
+      "driverName": "น้าเดช บริการเยี่ยม",
+      "driverPhone": "085-555-4433",
+      "seats": [
+        {
+          "id": "van-trip-2-1-seat-driver",
+          "label": "คนขับ",
+          "type": "driver",
+          "status": "booked",
+          "row": 1,
+          "col": 3
+        },
+        {
+          "id": "van-trip-2-1-seat-staff",
+          "label": "สตาฟ",
+          "type": "staff",
+          "status": "available",
+          "staffName": "สตาฟประจำทริป",
+          "row": 1,
+          "col": 1
+        },
+        {
+          "id": "van-trip-2-1-seat-a1",
+          "label": "A1",
+          "type": "customer",
+          "status": "available",
+          "row": 2,
+          "col": 1
+        },
+        {
+          "id": "van-trip-2-1-seat-a2",
+          "label": "A2",
+          "type": "customer",
+          "status": "available",
+          "row": 2,
+          "col": 2
+        },
+        {
+          "id": "van-trip-2-1-seat-a3",
+          "label": "A3",
+          "type": "customer",
+          "status": "pending",
+          "row": 2,
+          "col": 3,
+          "bookingId": "booking-1779265863443"
+        },
+        {
+          "id": "van-trip-2-1-seat-b1",
+          "label": "B1",
+          "type": "customer",
+          "status": "available",
+          "row": 3,
+          "col": 1
+        },
+        {
+          "id": "van-trip-2-1-seat-b2",
+          "label": "B2",
+          "type": "customer",
+          "status": "available",
+          "row": 3,
+          "col": 2
+        },
+        {
+          "id": "van-trip-2-1-seat-b3",
+          "label": "B3",
+          "type": "customer",
+          "status": "available",
+          "row": 3,
+          "col": 3
+        },
+        {
+          "id": "van-trip-2-1-seat-c1",
+          "label": "C1",
+          "type": "customer",
+          "status": "available",
+          "row": 4,
+          "col": 1
+        },
+        {
+          "id": "van-trip-2-1-seat-c2",
+          "label": "C2",
+          "type": "customer",
+          "status": "available",
+          "row": 4,
+          "col": 2
+        },
+        {
+          "id": "van-trip-2-1-seat-c3",
+          "label": "C3",
+          "type": "customer",
+          "status": "available",
+          "row": 4,
+          "col": 3
+        },
+        {
+          "id": "van-trip-2-1-seat-c4",
+          "label": "C4",
+          "type": "customer",
+          "status": "available",
+          "row": 4,
+          "col": 4
+        }
+      ]
+    },
+    {
+      "id": "van-trip-1-3-1779266832906",
+      "tripId": "trip-1",
+      "vanNumber": 3,
+      "plateNumber": "ป้ายทะเบียนใหม่ คันที่ 3",
+      "driverName": "คนขับ คันที่ 3",
+      "driverPhone": "",
+      "seats": [
+        {
+          "id": "van-trip-1-3-1779266832906-seat-driver",
+          "label": "D",
+          "type": "driver",
+          "status": "booked",
+          "row": 1,
+          "col": 3
+        },
+        {
+          "id": "van-trip-1-3-1779266832906-seat-staff",
+          "label": "1",
+          "type": "staff",
+          "status": "available",
+          "staffName": "สตาฟ",
+          "row": 1,
+          "col": 1
+        },
+        {
+          "id": "van-trip-1-3-1779266832906-seat-2",
+          "label": "2",
+          "type": "customer",
+          "status": "available",
+          "row": 2,
+          "col": 3
+        },
+        {
+          "id": "van-trip-1-3-1779266832906-seat-3",
+          "label": "3",
+          "type": "customer",
+          "status": "available",
+          "row": 2,
+          "col": 2
+        },
+        {
+          "id": "van-trip-1-3-1779266832906-seat-4",
+          "label": "4",
+          "type": "customer",
+          "status": "available",
+          "row": 2,
+          "col": 1
+        },
+        {
+          "id": "van-trip-1-3-1779266832906-seat-5",
+          "label": "5",
+          "type": "customer",
+          "status": "available",
+          "row": 3,
+          "col": 3
+        },
+        {
+          "id": "van-trip-1-3-1779266832906-seat-6",
+          "label": "6",
+          "type": "customer",
+          "status": "available",
+          "row": 3,
+          "col": 2
+        },
+        {
+          "id": "van-trip-1-3-1779266832906-seat-7",
+          "label": "7",
+          "type": "customer",
+          "status": "available",
+          "row": 3,
+          "col": 1
+        },
+        {
+          "id": "van-trip-1-3-1779266832906-seat-8",
+          "label": "8",
+          "type": "customer",
+          "status": "available",
+          "row": 4,
+          "col": 3
+        },
+        {
+          "id": "van-trip-1-3-1779266832906-seat-9",
+          "label": "9",
+          "type": "customer",
+          "status": "available",
+          "row": 4,
+          "col": 2
+        },
+        {
+          "id": "van-trip-1-3-1779266832906-seat-10",
+          "label": "10",
+          "type": "customer",
+          "status": "available",
+          "row": 4,
+          "col": 1
+        }
+      ]
+    },
+    {
+      "id": "van-trip-new-may69-1",
+      "tripId": "trip-new-may69",
+      "vanNumber": 1,
+      "plateNumber": "รถตู้คันที่ 1 (11 ที่นั่ง)",
+      "driverName": "ชื่อคนขับ",
+      "driverPhone": "",
+      "seats": [
+        {
+          "id": "van-trip-new-may69-1-seat-driver",
+          "label": "D",
+          "type": "driver",
+          "status": "booked",
+          "row": 1,
+          "col": 3
+        },
+        {
+          "id": "van-trip-new-may69-1-seat-staff",
+          "label": "1",
+          "type": "staff",
+          "status": "available",
+          "staffName": "สตาฟ",
+          "row": 1,
+          "col": 1
+        },
+        {
+          "id": "van-trip-new-may69-1-seat-2",
+          "label": "2",
+          "type": "customer",
+          "status": "available",
+          "row": 2,
+          "col": 3
+        },
+        {
+          "id": "van-trip-new-may69-1-seat-3",
+          "label": "3",
+          "type": "customer",
+          "status": "available",
+          "row": 2,
+          "col": 2
+        },
+        {
+          "id": "van-trip-new-may69-1-seat-4",
+          "label": "4",
+          "type": "customer",
+          "status": "available",
+          "row": 2,
+          "col": 1
+        },
+        {
+          "id": "van-trip-new-may69-1-seat-5",
+          "label": "5",
+          "type": "customer",
+          "status": "available",
+          "row": 3,
+          "col": 3
+        },
+        {
+          "id": "van-trip-new-may69-1-seat-6",
+          "label": "6",
+          "type": "customer",
+          "status": "available",
+          "row": 3,
+          "col": 2
+        },
+        {
+          "id": "van-trip-new-may69-1-seat-7",
+          "label": "7",
+          "type": "customer",
+          "status": "available",
+          "row": 3,
+          "col": 1
+        },
+        {
+          "id": "van-trip-new-may69-1-seat-8",
+          "label": "8",
+          "type": "customer",
+          "status": "available",
+          "row": 4,
+          "col": 3
+        },
+        {
+          "id": "van-trip-new-may69-1-seat-9",
+          "label": "9",
+          "type": "customer",
+          "status": "available",
+          "row": 4,
+          "col": 2
+        },
+        {
+          "id": "van-trip-new-may69-1-seat-10",
+          "label": "10",
+          "type": "customer",
+          "status": "available",
+          "row": 4,
+          "col": 1
+        }
+      ]
+    },
+    {
+      "id": "van-trip-1-4-1779278595239",
+      "tripId": "trip-1",
+      "vanNumber": 4,
+      "plateNumber": "ป้ายทะเบียนใหม่ คันที่ 4",
+      "driverName": "คนขับ คันที่ 4",
+      "driverPhone": "",
+      "seats": [
+        {
+          "id": "van-trip-1-4-1779278595239-seat-driver",
+          "label": "D",
+          "type": "driver",
+          "status": "booked",
+          "row": 1,
+          "col": 3
+        },
+        {
+          "id": "van-trip-1-4-1779278595239-seat-staff",
+          "label": "1",
+          "type": "staff",
+          "status": "available",
+          "staffName": "สตาฟ",
+          "row": 1,
+          "col": 1
+        },
+        {
+          "id": "van-trip-1-4-1779278595239-seat-2",
+          "label": "2",
+          "type": "customer",
+          "status": "available",
+          "row": 2,
+          "col": 3
+        },
+        {
+          "id": "van-trip-1-4-1779278595239-seat-3",
+          "label": "3",
+          "type": "customer",
+          "status": "available",
+          "row": 2,
+          "col": 2
+        },
+        {
+          "id": "van-trip-1-4-1779278595239-seat-4",
+          "label": "4",
+          "type": "customer",
+          "status": "available",
+          "row": 2,
+          "col": 1
+        },
+        {
+          "id": "van-trip-1-4-1779278595239-seat-5",
+          "label": "5",
+          "type": "customer",
+          "status": "available",
+          "row": 3,
+          "col": 3
+        },
+        {
+          "id": "van-trip-1-4-1779278595239-seat-6",
+          "label": "6",
+          "type": "customer",
+          "status": "available",
+          "row": 3,
+          "col": 2
+        },
+        {
+          "id": "van-trip-1-4-1779278595239-seat-7",
+          "label": "7",
+          "type": "customer",
+          "status": "available",
+          "row": 3,
+          "col": 1
+        },
+        {
+          "id": "van-trip-1-4-1779278595239-seat-8",
+          "label": "8",
+          "type": "customer",
+          "status": "available",
+          "row": 4,
+          "col": 3
+        },
+        {
+          "id": "van-trip-1-4-1779278595239-seat-9",
+          "label": "9",
+          "type": "customer",
+          "status": "available",
+          "row": 4,
+          "col": 2
+        },
+        {
+          "id": "van-trip-1-4-1779278595239-seat-10",
+          "label": "10",
+          "type": "customer",
+          "status": "available",
+          "row": 4,
+          "col": 1
+        }
+      ]
+    },
+    {
+      "id": "van-trip-1-5-1779278599483",
+      "tripId": "trip-1",
+      "vanNumber": 5,
+      "plateNumber": "ป้ายทะเบียนใหม่ คันที่ 5",
+      "driverName": "คนขับ คันที่ 5",
+      "driverPhone": "",
+      "seats": [
+        {
+          "id": "van-trip-1-5-1779278599483-seat-driver",
+          "label": "D",
+          "type": "driver",
+          "status": "booked",
+          "row": 1,
+          "col": 3
+        },
+        {
+          "id": "van-trip-1-5-1779278599483-seat-staff",
+          "label": "1",
+          "type": "staff",
+          "status": "available",
+          "staffName": "สตาฟ",
+          "row": 1,
+          "col": 1
+        },
+        {
+          "id": "van-trip-1-5-1779278599483-seat-2",
+          "label": "2",
+          "type": "customer",
+          "status": "available",
+          "row": 2,
+          "col": 3
+        },
+        {
+          "id": "van-trip-1-5-1779278599483-seat-3",
+          "label": "3",
+          "type": "customer",
+          "status": "available",
+          "row": 2,
+          "col": 2
+        },
+        {
+          "id": "van-trip-1-5-1779278599483-seat-4",
+          "label": "4",
+          "type": "customer",
+          "status": "available",
+          "row": 2,
+          "col": 1
+        },
+        {
+          "id": "van-trip-1-5-1779278599483-seat-5",
+          "label": "5",
+          "type": "customer",
+          "status": "available",
+          "row": 3,
+          "col": 3
+        },
+        {
+          "id": "van-trip-1-5-1779278599483-seat-6",
+          "label": "6",
+          "type": "customer",
+          "status": "available",
+          "row": 3,
+          "col": 2
+        },
+        {
+          "id": "van-trip-1-5-1779278599483-seat-7",
+          "label": "7",
+          "type": "customer",
+          "status": "available",
+          "row": 3,
+          "col": 1
+        },
+        {
+          "id": "van-trip-1-5-1779278599483-seat-8",
+          "label": "8",
+          "type": "customer",
+          "status": "available",
+          "row": 4,
+          "col": 3
+        },
+        {
+          "id": "van-trip-1-5-1779278599483-seat-9",
+          "label": "9",
+          "type": "customer",
+          "status": "available",
+          "row": 4,
+          "col": 2
+        },
+        {
+          "id": "van-trip-1-5-1779278599483-seat-10",
+          "label": "10",
+          "type": "customer",
+          "status": "available",
+          "row": 4,
+          "col": 1
+        }
+      ]
+    },
+    {
+      "id": "van-trip-1-6-1779278600188",
+      "tripId": "trip-1",
+      "vanNumber": 6,
+      "plateNumber": "ป้ายทะเบียนใหม่ คันที่ 6",
+      "driverName": "คนขับ คันที่ 6",
+      "driverPhone": "",
+      "seats": [
+        {
+          "id": "van-trip-1-6-1779278600188-seat-driver",
+          "label": "D",
+          "type": "driver",
+          "status": "booked",
+          "row": 1,
+          "col": 3
+        },
+        {
+          "id": "van-trip-1-6-1779278600188-seat-staff",
+          "label": "1",
+          "type": "staff",
+          "status": "available",
+          "staffName": "สตาฟ",
+          "row": 1,
+          "col": 1
+        },
+        {
+          "id": "van-trip-1-6-1779278600188-seat-2",
+          "label": "2",
+          "type": "customer",
+          "status": "available",
+          "row": 2,
+          "col": 3
+        },
+        {
+          "id": "van-trip-1-6-1779278600188-seat-3",
+          "label": "3",
+          "type": "customer",
+          "status": "available",
+          "row": 2,
+          "col": 2
+        },
+        {
+          "id": "van-trip-1-6-1779278600188-seat-4",
+          "label": "4",
+          "type": "customer",
+          "status": "available",
+          "row": 2,
+          "col": 1
+        },
+        {
+          "id": "van-trip-1-6-1779278600188-seat-5",
+          "label": "5",
+          "type": "customer",
+          "status": "available",
+          "row": 3,
+          "col": 3
+        },
+        {
+          "id": "van-trip-1-6-1779278600188-seat-6",
+          "label": "6",
+          "type": "customer",
+          "status": "available",
+          "row": 3,
+          "col": 2
+        },
+        {
+          "id": "van-trip-1-6-1779278600188-seat-7",
+          "label": "7",
+          "type": "customer",
+          "status": "available",
+          "row": 3,
+          "col": 1
+        },
+        {
+          "id": "van-trip-1-6-1779278600188-seat-8",
+          "label": "8",
+          "type": "customer",
+          "status": "available",
+          "row": 4,
+          "col": 3
+        },
+        {
+          "id": "van-trip-1-6-1779278600188-seat-9",
+          "label": "9",
+          "type": "customer",
+          "status": "available",
+          "row": 4,
+          "col": 2
+        },
+        {
+          "id": "van-trip-1-6-1779278600188-seat-10",
+          "label": "10",
+          "type": "customer",
+          "status": "available",
+          "row": 4,
+          "col": 1
+        }
+      ]
+    },
+    {
+      "id": "van-trip-1-7-1779288770865",
+      "tripId": "trip-1",
+      "vanNumber": 7,
+      "plateNumber": "ป้ายทะเบียนใหม่ คันที่ 7",
+      "driverName": "คนขับ คันที่ 7",
+      "driverPhone": "",
+      "seats": [
+        {
+          "id": "van-trip-1-7-1779288770865-seat-driver",
+          "label": "D",
+          "type": "driver",
+          "status": "booked",
+          "row": 1,
+          "col": 3
+        },
+        {
+          "id": "van-trip-1-7-1779288770865-seat-staff",
+          "label": "1",
+          "type": "staff",
+          "status": "available",
+          "staffName": "สตาฟ",
+          "row": 1,
+          "col": 1
+        },
+        {
+          "id": "van-trip-1-7-1779288770865-seat-2",
+          "label": "2",
+          "type": "customer",
+          "status": "available",
+          "row": 2,
+          "col": 3
+        },
+        {
+          "id": "van-trip-1-7-1779288770865-seat-3",
+          "label": "3",
+          "type": "customer",
+          "status": "available",
+          "row": 2,
+          "col": 2
+        },
+        {
+          "id": "van-trip-1-7-1779288770865-seat-4",
+          "label": "4",
+          "type": "customer",
+          "status": "available",
+          "row": 2,
+          "col": 1
+        },
+        {
+          "id": "van-trip-1-7-1779288770865-seat-5",
+          "label": "5",
+          "type": "customer",
+          "status": "available",
+          "row": 3,
+          "col": 3
+        },
+        {
+          "id": "van-trip-1-7-1779288770865-seat-6",
+          "label": "6",
+          "type": "customer",
+          "status": "available",
+          "row": 3,
+          "col": 2
+        },
+        {
+          "id": "van-trip-1-7-1779288770865-seat-7",
+          "label": "7",
+          "type": "customer",
+          "status": "available",
+          "row": 3,
+          "col": 1
+        },
+        {
+          "id": "van-trip-1-7-1779288770865-seat-8",
+          "label": "8",
+          "type": "customer",
+          "status": "available",
+          "row": 4,
+          "col": 3
+        },
+        {
+          "id": "van-trip-1-7-1779288770865-seat-9",
+          "label": "9",
+          "type": "customer",
+          "status": "available",
+          "row": 4,
+          "col": 2
+        },
+        {
+          "id": "van-trip-1-7-1779288770865-seat-10",
+          "label": "10",
+          "type": "customer",
+          "status": "available",
+          "row": 4,
+          "col": 1
+        }
+      ]
+    }
+  ],
+  "bookings": [
+    {
+      "id": "booking-1779265460504",
+      "tripId": "trip-1",
+      "vanId": "van-trip-1-1",
+      "seatId": "van-trip-1-1-seat-a3",
+      "seatLabel": "A3",
+      "nickname": "Devjuu",
+      "fullName": "ทศพล วัฒนะแสงโรยศรี",
+      "phone": "0838346686",
+      "lineUserId": "line-user-3",
+      "lineUserName": "บิ๊ก แบ็คแพ็ค",
+      "lineUserProfilePic": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
+      "status": "pending",
+      "createdAt": "2026-05-20T08:24:20.504Z",
+      "checkedIn": false,
+      "checkedInAt": null,
+      "replacesBookingId": null,
+      "note": "หดฟหด"
+    },
+    {
+      "id": "booking-1779265863443",
+      "tripId": "trip-2",
+      "vanId": "van-trip-2-1",
+      "seatId": "van-trip-2-1-seat-a3",
+      "seatLabel": "A3",
+      "nickname": "Devjuu",
+      "fullName": "ทศพล วัฒนะแสงโรยศรี",
+      "phone": "0838346686",
+      "lineUserId": "line-user-3",
+      "lineUserName": "บิ๊ก แบ็คแพ็ค",
+      "lineUserProfilePic": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
+      "status": "pending",
+      "createdAt": "2026-05-20T08:31:03.443Z",
+      "checkedIn": false,
+      "checkedInAt": null,
+      "replacesBookingId": null,
+      "note": "หดฟหด"
+    }
+  ]
+}
