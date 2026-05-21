@@ -1061,8 +1061,30 @@ export default function CustomerPage() {
           </div>
         </div>
       ) : (
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-grow grid grid-cols-1 lg:grid-cols-12 gap-8 pb-20 lg:pb-8">
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full flex-grow flex flex-col gap-6 pb-24 lg:pb-10">
         
+        {/* Back Navigation — show on step 2+ */}
+        {currentStep > 1 && !userBooking && (
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                if (currentStep === 2) { setSelectedTrip(null); setSelectedVan(null); setSelectedSeat(null); }
+                if (currentStep === 3) { setSelectedVan(null); setSelectedSeat(null); }
+                if (currentStep === 4) { setSelectedSeat(null); }
+              }}
+              className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-[#4c1d95] transition px-3 py-1.5 rounded-lg hover:bg-purple-50 border border-slate-200 bg-white shadow-sm"
+            >
+              <ChevronRight className="w-3.5 h-3.5 rotate-180" />
+              <span>ย้อนกลับ</span>
+            </button>
+            <span className="text-[11px] text-slate-400 font-semibold">
+              {currentStep === 2 && selectedTrip && `ทริป: ${selectedTrip.name}`}
+              {currentStep === 3 && selectedVan && `รถตู้คันที่ ${selectedVan.vanNumber}`}
+              {currentStep === 4 && selectedSeat && `เบาะที่ ${selectedSeat.label}`}
+            </span>
+          </div>
+        )}
+
         {/* On mobile, if active tab is profile, show the profile screen */}
         {mobileTab === 'profile' && lineUser && (
           <div className="lg:hidden col-span-1 flex flex-col gap-6 bg-white rounded-3xl p-5 border border-slate-200 shadow-sm animate-in fade-in duration-200">
@@ -1155,9 +1177,10 @@ export default function CustomerPage() {
         {/* ========================================================================= */}
         {/* COLUMN 1: LEFT SIDE (3 columns on lg) - SELECT TRIP & VAN */}
         {/* ========================================================================= */}
-        <section className={`lg:col-span-3 flex flex-col gap-6 ${mobileTab !== 'explore' ? 'hidden lg:flex' : 'flex'}`}>
+        <section className={`flex flex-col gap-6 ${userBooking ? 'hidden' : (currentStep === 1 ? 'flex' : (currentStep === 2 ? 'flex' : 'hidden'))}`}>
           
-          {/* 1.1 เลือกทริป */}
+          {/* 1.1 เลือกทริป — Show only on step 1 */}
+          <div className={currentStep === 2 ? 'hidden' : 'block'}>
           <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
             <h2 className="text-sm sm:text-base font-bold text-slate-800 mb-4 flex items-center gap-1.5 uppercase tracking-wide">
               <Compass className="w-4 h-4 text-[#4c1d95]" />
@@ -1267,9 +1290,9 @@ export default function CustomerPage() {
               </div>
             )}
           </div>
-
-          {/* 1.2 เลือกรถตู้ */}
-          {selectedTrip && (
+          </div> {/* end trip section wrapper */}
+          {/* 1.2 เลือกรถตู้ — show only on step 2 */}
+          <div className={currentStep === 1 ? 'hidden' : 'block'}>
             <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm animate-in fade-in duration-200">
               <h2 className="text-sm sm:text-base font-bold text-slate-800 mb-4 flex items-center gap-1.5 uppercase tracking-wide">
                 <Armchair className="w-4 h-4 text-[#4c1d95]" />
@@ -1330,14 +1353,14 @@ export default function CustomerPage() {
                 </div>
               )}
             </div>
-          )}
+          </div> {/* end van section wrapper */}
 
         </section>
 
         {/* ========================================================================= */}
         {/* COLUMN 2: MIDDLE (5 columns on lg) - DETAILED VAN & SEAT MAP */}
         {/* ========================================================================= */}
-        <section className={`lg:col-span-5 flex flex-col gap-6 ${mobileTab !== 'explore' ? 'hidden lg:flex' : 'flex'}`}>
+        <section className={`flex flex-col gap-6 ${userBooking ? 'hidden' : (currentStep === 3 ? 'flex' : 'hidden')}`}>
           
           {selectedVan ? (
             <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex-1 flex flex-col justify-between">
@@ -1564,7 +1587,7 @@ export default function CustomerPage() {
         {/* ========================================================================= */}
         {/* COLUMN 3: RIGHT SIDE (4 columns on lg) - BOOKING FORM / DIGITAL TICKET */}
         {/* ========================================================================= */}
-        <section className={`lg:col-span-4 flex flex-col gap-6 ${mobileTab !== 'tickets' ? 'hidden lg:flex' : 'flex'}`}>
+        <section className={`flex flex-col gap-6 ${(currentStep === 4 || currentStep === 5 || !!userBooking) ? 'flex' : 'hidden'}`}>
           
           {/* Active Digital Ticket display if user has a booking */}
           {lineUser && userBooking && (
