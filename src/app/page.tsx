@@ -820,10 +820,7 @@ export default function CustomerPage() {
 
           {/* Left Column: Premium Value Proposition Presentation */}
           <div className="flex-1 text-left space-y-6 lg:max-w-[540px]">
-            <div className="inline-flex items-center gap-1.5 bg-[#4c1d95]/8 border border-[#4c1d95]/20 text-[#4c1d95] rounded-full px-4 py-1.5 text-[10.5px] font-bold tracking-wide uppercase select-none">
-              <span className="w-1.5 h-1.5 bg-[#4c1d95] rounded-full animate-ping shrink-0" />
-              <span>✨ ระบบจองตั๋วรถตู้ออนไลน์ดีไซน์ใหม่</span>
-            </div>
+
 
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-800 tracking-tight leading-[1.15]">
               ก้าวสู่การเดินทางที่ง่ายดายกับทริป <span className="bg-gradient-to-r from-[#4c1d95] via-[#6d28d9] to-indigo-600 bg-clip-text text-transparent">“ด่าไป เดินไป”</span>
