@@ -978,6 +978,14 @@ export default function CustomerPage() {
                               <span className="text-[10px] text-slate-500 font-semibold">{trip.departureTime} น.</span>
                             </div>
                           </div>
+                          {/* Cost / Price row */}
+                          <div className="flex items-center gap-1 pt-0.5">
+                            <span className="text-[10px] font-bold text-[#4c1d95]">ราคาทริป:</span>
+                            <span className="text-xs font-black text-[#4c1d95] font-mono">
+                              ฿{trip.cost?.toLocaleString('th-TH') || '0'}
+                            </span>
+                            <span className="text-[9px] text-slate-400 font-semibold">/ ท่าน</span>
+                          </div>
                         </div>
 
                         {/* Selected check */}
@@ -1785,17 +1793,31 @@ export default function CustomerPage() {
                 <span>ข้อมูลผู้จอง</span>
               </h2>
 
-              {/* Selected seat indicator box */}
-              <div className="mb-4">
-                <span className="text-xs font-bold text-slate-500 block mb-1">เบาะที่เลือก</span>
-                <div className="bg-purple-50 border border-purple-100 rounded-xl py-3 text-center text-slate-700 font-extrabold text-lg tracking-wide">
-                  {selectedSeat ? (
-                    <span className="text-[#4c1d95] font-extrabold font-mono text-xl">
-                      เบาะ {selectedSeat.label}
-                    </span>
-                  ) : (
-                    <span className="text-slate-400 font-bold">-</span>
-                  )}
+              {/* Selected seat & Trip cost indicators */}
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div>
+                  <span className="text-xs font-bold text-slate-500 block mb-1">เบาะที่เลือก</span>
+                  <div className="bg-purple-50 border border-purple-100 rounded-xl py-3 text-center text-slate-700 font-extrabold text-lg tracking-wide h-[54px] flex items-center justify-center">
+                    {selectedSeat ? (
+                      <span className="text-[#4c1d95] font-extrabold font-mono text-base">
+                        เบาะ {selectedSeat.label}
+                      </span>
+                    ) : (
+                      <span className="text-slate-400 font-bold text-base">-</span>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-slate-500 block mb-1">ราคาทริป</span>
+                  <div className="bg-purple-50/50 border border-[#4c1d95]/10 rounded-xl py-3 text-center text-[#4c1d95] font-extrabold tracking-wide h-[54px] flex items-center justify-center">
+                    {selectedTrip ? (
+                      <span className="font-extrabold text-base font-mono">
+                        ฿{selectedTrip.cost?.toLocaleString('th-TH') || '0'}
+                      </span>
+                    ) : (
+                      <span className="text-slate-400 font-bold text-base">-</span>
+                    )}
+                  </div>
                 </div>
               </div>
 
