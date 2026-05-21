@@ -240,9 +240,14 @@ export default function CustomerPage() {
       const data = await res.json();
       if (data.success && data.vans.length > 0) {
         setVans(data.vans);
-        const currentSelectedId = selectedVan?.id;
-        const matchedVan = data.vans.find((v: Van) => v.id === currentSelectedId);
-        setSelectedVan(matchedVan || data.vans[0]);
+        if (selectedVan) {
+          const matchedVan = data.vans.find((v: Van) => v.id === selectedVan.id);
+          if (matchedVan) {
+            setSelectedVan(matchedVan);
+          } else {
+            setSelectedVan(null);
+          }
+        }
       }
     } catch (err) {
       console.error(err);
@@ -687,6 +692,7 @@ export default function CustomerPage() {
         <LandingPage 
           onLoginClick={handleLoginClick} 
           showHelpCenter={() => setShowHelpCenterModal(true)} 
+          trips={trips}
         />
       </div>
     );
@@ -844,14 +850,14 @@ export default function CustomerPage() {
 
       {/* Steps horizontal timeline matching screenshot */}
       {lineUser && hasProfile && (
-      <section className="bg-white border-b border-slate-200 py-4 px-4">
+      <section className="bg-white border-b border-slate-200 pt-4 pb-8 md:py-4 px-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between text-xs sm:text-sm font-bold text-slate-500">
 
           {/* Step 1 — always clickable to go back to start */}
           <button
             onClick={() => { if (!userBooking && currentStep > 1) { setSelectedTrip(null); setSelectedVan(null); setSelectedSeat(null); } }}
             disabled={currentStep === 1 || !!userBooking}
-            className={`flex items-center space-x-2 shrink-0 group transition ${!userBooking && currentStep > 1 ? 'cursor-pointer' : 'cursor-default'}`}
+            className={`relative flex items-center md:space-x-2 shrink-0 group transition ${!userBooking && currentStep > 1 ? 'cursor-pointer' : 'cursor-default'}`}
           >
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white transition
               ${currentStep === 1 ? 'bg-[#4c1d95] ring-4 ring-purple-100' : 'bg-[#4c1d95]'}
@@ -859,7 +865,7 @@ export default function CustomerPage() {
             `}>
               {currentStep > 1 ? <Check className="w-4 h-4" /> : '1'}
             </div>
-            <span className={`hidden md:inline transition ${currentStep >= 1 ? 'text-[#4c1d95]' : ''} ${!userBooking && currentStep > 1 ? 'group-hover:underline' : ''}`}>เลือกทริป</span>
+            <span className={`absolute top-10 left-0 md:static md:top-auto text-[10px] md:text-sm whitespace-nowrap transition ${currentStep >= 1 ? 'text-[#4c1d95]' : ''} ${!userBooking && currentStep > 1 ? 'group-hover:underline' : ''}`}>เลือกทริป</span>
           </button>
           <div className={`flex-1 h-0.5 mx-2 min-w-[10px] ${currentStep > 1 ? 'bg-[#4c1d95]' : 'bg-slate-200'}`} />
 
@@ -867,7 +873,7 @@ export default function CustomerPage() {
           <button
             onClick={() => { if (!userBooking && currentStep > 2) { setSelectedVan(null); setSelectedSeat(null); } }}
             disabled={currentStep <= 2 || !!userBooking}
-            className={`flex items-center space-x-2 shrink-0 group transition ${!userBooking && currentStep > 2 ? 'cursor-pointer' : 'cursor-default'}`}
+            className={`relative flex items-center md:space-x-2 shrink-0 group transition ${!userBooking && currentStep > 2 ? 'cursor-pointer' : 'cursor-default'}`}
           >
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white transition
               ${currentStep > 2 ? 'bg-[#4c1d95]' : currentStep === 2 ? 'bg-[#4c1d95] ring-4 ring-purple-100' : 'bg-slate-200'}
@@ -875,7 +881,7 @@ export default function CustomerPage() {
             `}>
               {currentStep > 2 ? <Check className="w-4 h-4" /> : '2'}
             </div>
-            <span className={`hidden md:inline transition ${currentStep >= 2 ? 'text-[#4c1d95]' : ''} ${!userBooking && currentStep > 2 ? 'group-hover:underline' : ''}`}>เลือกรถตู้</span>
+            <span className={`absolute top-10 left-1/2 -translate-x-1/2 md:static md:translate-x-0 md:top-auto text-[10px] md:text-sm whitespace-nowrap transition ${currentStep >= 2 ? 'text-[#4c1d95]' : ''} ${!userBooking && currentStep > 2 ? 'group-hover:underline' : ''}`}>เลือกรถตู้</span>
           </button>
           <div className={`flex-1 h-0.5 mx-2 min-w-[10px] ${currentStep > 2 ? 'bg-[#4c1d95]' : 'bg-slate-200'}`} />
 
@@ -883,7 +889,7 @@ export default function CustomerPage() {
           <button
             onClick={() => { if (!userBooking && currentStep > 3) { setSelectedSeat(null); } }}
             disabled={currentStep <= 3 || !!userBooking}
-            className={`flex items-center space-x-2 shrink-0 group transition ${!userBooking && currentStep > 3 ? 'cursor-pointer' : 'cursor-default'}`}
+            className={`relative flex items-center md:space-x-2 shrink-0 group transition ${!userBooking && currentStep > 3 ? 'cursor-pointer' : 'cursor-default'}`}
           >
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white transition
               ${currentStep === 3 ? 'bg-[#4c1d95] ring-4 ring-purple-100' : currentStep > 3 ? 'bg-[#4c1d95]' : 'bg-slate-200'}
@@ -891,25 +897,25 @@ export default function CustomerPage() {
             `}>
               {currentStep > 3 ? <Check className="w-4 h-4" /> : '3'}
             </div>
-            <span className={`hidden md:inline transition ${currentStep >= 3 ? 'text-[#4c1d95]' : ''} ${!userBooking && currentStep > 3 ? 'group-hover:underline' : ''}`}>เลือกที่นั่ง</span>
+            <span className={`absolute top-10 left-1/2 -translate-x-1/2 md:static md:translate-x-0 md:top-auto text-[10px] md:text-sm whitespace-nowrap transition ${currentStep >= 3 ? 'text-[#4c1d95]' : ''} ${!userBooking && currentStep > 3 ? 'group-hover:underline' : ''}`}>เลือกที่นั่ง</span>
           </button>
           <div className={`flex-1 h-0.5 mx-2 min-w-[10px] ${currentStep > 3 ? 'bg-[#4c1d95]' : 'bg-slate-200'}`} />
 
           {/* Step 4 — not clickable (form step) */}
-          <div className="flex items-center space-x-2 shrink-0">
+          <div className="relative flex items-center md:space-x-2 shrink-0">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${currentStep === 4 ? 'bg-[#4c1d95] ring-4 ring-purple-100' : currentStep > 4 ? 'bg-[#4c1d95]' : 'bg-slate-200'}`}>
               {currentStep > 4 ? <Check className="w-4 h-4" /> : '4'}
             </div>
-            <span className={`hidden md:inline ${currentStep >= 4 ? 'text-[#4c1d95]' : ''}`}>กรอกข้อมูล</span>
+            <span className={`absolute top-10 left-1/2 -translate-x-1/2 md:static md:translate-x-0 md:top-auto text-[10px] md:text-sm whitespace-nowrap transition ${currentStep >= 4 ? 'text-[#4c1d95]' : ''}`}>กรอกข้อมูล</span>
           </div>
           <div className={`flex-1 h-0.5 mx-2 min-w-[10px] ${currentStep > 4 ? 'bg-[#4c1d95]' : 'bg-slate-200'}`} />
 
           {/* Step 5 */}
-          <div className="flex items-center space-x-2 shrink-0">
+          <div className="relative flex items-center md:space-x-2 shrink-0">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${currentStep === 5 ? 'bg-[#4c1d95] ring-4 ring-purple-100' : 'bg-slate-200'}`}>
               {currentStep > 5 ? <Check className="w-4 h-4" /> : '5'}
             </div>
-            <span className={`hidden md:inline ${currentStep === 5 ? 'text-[#4c1d95]' : ''}`}>ยืนยันการจอง</span>
+            <span className={`absolute top-10 right-0 md:static md:top-auto text-[10px] md:text-sm whitespace-nowrap transition ${currentStep === 5 ? 'text-[#4c1d95]' : ''}`}>ยืนยันการจอง</span>
           </div>
 
         </div>
@@ -1143,10 +1149,10 @@ export default function CustomerPage() {
         {/* ========================================================================= */}
         {/* COLUMN 1: LEFT SIDE (3 columns on lg) - SELECT TRIP & VAN */}
         {/* ========================================================================= */}
-        <section className={`flex flex-col gap-6 ${userBooking ? 'hidden' : (currentStep === 1 ? 'flex' : (currentStep === 2 ? 'flex' : 'hidden'))}`}>
+        <section className={`flex flex-col gap-6 ${(userBooking && !isRequestingTransfer) ? 'hidden' : (currentStep === 1 || currentStep === 2 || isRequestingTransfer ? 'flex' : 'hidden')}`}>
           
           {/* 1.1 เลือกทริป — Show only on step 1 */}
-          <div className={currentStep === 2 ? 'hidden' : 'block'}>
+          <div className={currentStep === 2 || (userBooking && isRequestingTransfer) ? 'hidden' : 'block'}>
           <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
             <h2 className="text-sm sm:text-base font-bold text-slate-800 mb-4 flex items-center gap-1.5 uppercase tracking-wide">
               <Compass className="w-4 h-4 text-[#4c1d95]" />
@@ -1258,7 +1264,7 @@ export default function CustomerPage() {
           </div>
           </div> {/* end trip section wrapper */}
           {/* 1.2 เลือกรถตู้ — show only on step 2 */}
-          <div className={currentStep === 1 ? 'hidden' : 'block'}>
+          <div className={currentStep === 1 && !(userBooking && isRequestingTransfer) ? 'hidden' : 'block'}>
             <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm animate-in fade-in duration-200">
               <h2 className="text-sm sm:text-base font-bold text-slate-800 mb-4 flex items-center gap-1.5 uppercase tracking-wide">
                 <Armchair className="w-4 h-4 text-[#4c1d95]" />
@@ -1326,7 +1332,7 @@ export default function CustomerPage() {
         {/* ========================================================================= */}
         {/* COLUMN 2: MIDDLE (5 columns on lg) - DETAILED VAN & SEAT MAP */}
         {/* ========================================================================= */}
-        <section className={`flex flex-col gap-6 ${userBooking ? 'hidden' : (currentStep === 3 ? 'flex' : 'hidden')}`}>
+        <section className={`flex flex-col gap-6 ${(userBooking && !isRequestingTransfer) ? 'hidden' : (currentStep === 3 || isRequestingTransfer ? 'flex' : 'hidden')}`}>
           
           {selectedVan ? (
             <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex-1 flex flex-col justify-between">
@@ -1941,6 +1947,10 @@ export default function CustomerPage() {
                           onClick={() => {
                             setIsRequestingTransfer(true);
                             setSelectedSeat(null);
+                            if (vans.length > 0) {
+                              const currentVan = vans.find(v => v.vanNumber === userBooking.vanNumber);
+                              if (currentVan) setSelectedVan(currentVan);
+                            }
                             setMessage({
                               type: 'success',
                               text: 'กรุณาเลือกที่นั่งใหม่ที่ว่าง (สีเขียว) บนผังรถตู้เพื่อส่งคำขอย้ายที่นั่ง'
