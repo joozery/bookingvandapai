@@ -23,7 +23,8 @@ import {
   HelpCircle,
   MessageSquare,
   Lock,
-  Download
+  Download,
+  X
 } from 'lucide-react';
 
 interface Seat {
@@ -119,6 +120,7 @@ export default function CustomerPage() {
 
   // Interaction States
   const [selectedSeat, setSelectedSeat] = useState<Seat | null>(null);
+  const [isRequestingTransfer, setIsRequestingTransfer] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -331,12 +333,19 @@ export default function CustomerPage() {
       const res = await fetch(`/api/bookings?lineUserId=${lineUser.userId}&tripId=${selectedTrip.id}`);
       const data = await res.json();
       if (data.success && data.bookings.length > 0) {
-        const activeBooking = data.bookings.find((b: Booking) => b.status === 'approved' || b.status === 'pending');
+        const approvedBooking = data.bookings.find((b: Booking) => b.status === 'approved');
+        const pendingBooking = data.bookings.find((b: Booking) => b.status === 'pending');
+        const activeBooking = approvedBooking || pendingBooking;
+
         if (activeBooking) {
           const ticketRes = await fetch(`/api/bookings/${activeBooking.id}`);
           const ticketData = await ticketRes.json();
           if (ticketData.success) {
-            setUserBooking(ticketData.booking);
+            const bookingToSet = { ...ticketData.booking };
+            if (approvedBooking && pendingBooking && pendingBooking.replacesBookingId === approvedBooking.id) {
+              bookingToSet.pendingTransfer = pendingBooking;
+            }
+            setUserBooking(bookingToSet);
             setNickname(ticketData.booking.nickname);
             setFullName(ticketData.booking.fullName);
             setPhone(ticketData.booking.phone);
@@ -359,12 +368,19 @@ export default function CustomerPage() {
       const res = await fetch(`/api/bookings?lineUserId=${lineUser.userId}&tripId=${selectedTrip.id}`);
       const data = await res.json();
       if (data.success) {
-        const activeBooking = data.bookings.find((b: Booking) => b.status === 'approved' || b.status === 'pending');
+        const approvedBooking = data.bookings.find((b: Booking) => b.status === 'approved');
+        const pendingBooking = data.bookings.find((b: Booking) => b.status === 'pending');
+        const activeBooking = approvedBooking || pendingBooking;
+
         if (activeBooking) {
           const ticketRes = await fetch(`/api/bookings/${activeBooking.id}`);
           const ticketData = await ticketRes.json();
           if (ticketData.success) {
-            setUserBooking(ticketData.booking);
+            const bookingToSet = { ...ticketData.booking };
+            if (approvedBooking && pendingBooking && pendingBooking.replacesBookingId === approvedBooking.id) {
+              bookingToSet.pendingTransfer = pendingBooking;
+            }
+            setUserBooking(bookingToSet);
           }
         } else {
           setUserBooking(null);
@@ -426,6 +442,23 @@ export default function CustomerPage() {
       return;
     }
 
+    // If requesting transfer, just pick new target seat (don't block due to existing booking)
+    if (isRequestingTransfer) {
+      if (selectedSeat?.id === seat.id) {
+        setSelectedSeat(null);
+      } else {
+        setSelectedSeat(seat);
+      }
+      return;
+    }
+
+    // Normal flow: block if already booked (and not in transfer mode)
+    if (userBooking && userBooking.status === 'approved') {
+      setMessage({ type: 'error', text: 'คุณมีการจองอยู่แล้ว หากต้องการย้ายที่นั่ง กรุณากดปุ่ม "ขอย้ายที่นั่ง" ก่อน' });
+      setTimeout(() => setMessage(null), 4000);
+      return;
+    }
+
     // Toggle seat selection
     if (selectedSeat?.id === seat.id) {
       setSelectedSeat(null);
@@ -468,6 +501,7 @@ export default function CustomerPage() {
         setMessage({ type: 'success', text: data.message });
         setSelectedSeat(null);
         setNote('');
+        setIsRequestingTransfer(false);
         fetchUserBooking();
         fetchVans(selectedTrip.id);
       } else {
@@ -1524,6 +1558,27 @@ export default function CustomerPage() {
                 </div>
               </div>
 
+              {/* Pending Transfer Banner */}
+              {(userBooking as any).pendingTransfer && (
+                <div className="bg-amber-50 border border-amber-300 rounded-xl p-3 flex items-start gap-2.5 animate-in fade-in duration-300">
+                  <div className="w-6 h-6 rounded-full bg-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <RefreshCw className="w-3.5 h-3.5 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-black text-amber-800 leading-tight">
+                      ขอย้ายที่นั่งไปที่ เบาะ {(userBooking as any).pendingTransfer.seatLabel} — รออนุมัติจากแอดมิน
+                    </p>
+                    <p className="text-[10px] text-amber-600 mt-0.5">คำขอจะถูกอนุมัติหรือปฏิเสธโดยแอดมิน</p>
+                  </div>
+                  <button
+                    onClick={() => handleCancelBooking((userBooking as any).pendingTransfer.id)}
+                    className="shrink-0 text-[10px] font-bold text-amber-700 hover:text-rose-600 underline transition"
+                  >
+                    ยกเลิก
+                  </button>
+                </div>
+              )}
+
               {/* Action buttons */}
               <div className="flex flex-col gap-2">
                 <button
@@ -1540,14 +1595,14 @@ export default function CustomerPage() {
                   >
                     ยกเลิกการจอง
                   </button>
-                  {userBooking.status === 'approved' && (
+                  {userBooking.status === 'approved' && !(userBooking as any).pendingTransfer && (
                     <button
                       onClick={() => {
-                        setUserBooking(null);
+                        setIsRequestingTransfer(true);
                         setSelectedSeat(null);
                         setMessage({
                           type: 'success',
-                          text: 'กรุณาเลือกที่นั่งใหม่ที่ว่าง (สีเขียว) บนผังตู้รถตู้เพื่อดำเนินการย้ายที่นั่ง'
+                          text: 'กรุณาเลือกที่นั่งใหม่ที่ว่าง (สีเขียว) บนผังรถตู้เพื่อส่งคำขอย้ายที่นั่ง'
                         });
                         setTimeout(() => setMessage(null), 5000);
                       }}
@@ -1562,8 +1617,98 @@ export default function CustomerPage() {
             </div>
           )}
 
+          {/* Transfer Request Form — shown when isRequestingTransfer is active */}
+          {lineUser && userBooking && isRequestingTransfer && (
+            <div className="bg-white border border-amber-200 rounded-2xl p-5 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-300">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-4 border-b border-amber-100 pb-3">
+                <h2 className="text-sm font-bold text-amber-800 flex items-center gap-1.5 uppercase tracking-wide">
+                  <RefreshCw className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>ขอย้ายที่นั่ง</span>
+                </h2>
+                <button
+                  onClick={() => { setIsRequestingTransfer(false); setSelectedSeat(null); }}
+                  className="text-slate-400 hover:text-slate-600 transition"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* From → To seat display */}
+              <div className="flex items-center gap-2 mb-4 bg-amber-50 border border-amber-100 rounded-xl p-3">
+                <div className="text-center">
+                  <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">ที่นั่งปัจจุบัน</p>
+                  <span className="text-lg font-black text-[#4c1d95] font-mono">{userBooking.seatLabel}</span>
+                </div>
+                <div className="flex-1 flex items-center justify-center">
+                  <ChevronRight className="w-5 h-5 text-amber-400" />
+                  <ChevronRight className="w-5 h-5 text-amber-500 -ml-3" />
+                </div>
+                <div className="text-center">
+                  <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">ที่นั่งที่ต้องการ</p>
+                  {selectedSeat ? (
+                    <span className="text-lg font-black text-emerald-600 font-mono">{selectedSeat.label}</span>
+                  ) : (
+                    <span className="text-sm font-bold text-slate-300">เลือกที่นั่ง</span>
+                  )}
+                </div>
+              </div>
+
+              {!selectedSeat && (
+                <div className="mb-4 bg-purple-50 border border-purple-100 rounded-xl p-3 text-center">
+                  <Armchair className="w-6 h-6 mx-auto mb-1 text-purple-300" />
+                  <p className="text-[11px] text-purple-700 font-semibold">กรุณาคลิกเลือกที่นั่งว่าง (สีเขียว) ในผังรถตู้ด้านซ้าย</p>
+                </div>
+              )}
+
+              {selectedSeat && (
+                <form onSubmit={handleBookingSubmit} className="space-y-3">
+                  <p className="text-[10px] text-slate-500 font-semibold">ข้อมูลของคุณจะถูกใช้ในการส่งคำขอ:</p>
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-slate-500 font-semibold">ชื่อ-สกุล</span>
+                      <span className="font-bold text-slate-800">{fullName}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-slate-500 font-semibold">เบอร์โทร</span>
+                      <span className="font-bold text-slate-800">{phone}</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-500 mb-1">หมายเหตุ (ถ้ามี)</label>
+                    <textarea
+                      value={note}
+                      onChange={(e) => setNote(e.target.value)}
+                      placeholder="เช่น ต้องการนั่งใกล้หน้าต่าง"
+                      rows={2}
+                      className="w-full bg-slate-50 border border-slate-200 focus:border-amber-400 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-amber-200 transition duration-200 resize-none"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold py-2.5 rounded-xl transition duration-200 shadow-sm flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSubmitting ? (
+                      <><RefreshCw className="w-3.5 h-3.5 animate-spin" /><span>กำลังส่ง...</span></>
+                    ) : (
+                      <><RefreshCw className="w-3.5 h-3.5" /><span>ส่งคำขอย้ายที่นั่ง เบาะ {userBooking.seatLabel} → {selectedSeat.label} (รอแอดมินอนุมัติ)</span></>
+                    )}
+                  </button>
+
+                  <p className="text-center text-[10px] text-slate-400 font-semibold flex items-center justify-center gap-1">
+                    <Lock className="w-3 h-3" />
+                    คำขอจะได้รับการตรวจสอบและอนุมัติโดยแอดมิน
+                  </p>
+                </form>
+              )}
+            </div>
+          )}
+
           {/* Booking Info Form Column exactly matching screenshot */}
-          {(!lineUser || (!userBooking && selectedSeat)) && (
+          {(!lineUser || (!userBooking && !isRequestingTransfer && selectedSeat)) && (
             <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-300">
               <h2 className="text-sm sm:text-base font-bold text-slate-800 mb-4 border-b border-slate-100 pb-3 flex items-center gap-1.5 uppercase tracking-wide">
                 <User className="w-4.5 h-4.5 text-[#4c1d95]" />

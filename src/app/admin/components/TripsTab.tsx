@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Compass, Plus, FileText, Trash2, Calendar, Clock, MapPin, Info, Link2, Check, ArrowLeft, Image as ImageIcon, Pencil } from 'lucide-react';
+import { Compass, Plus, FileText, Trash2, Calendar, Clock, MapPin, Info, Link2, Check, ArrowLeft, Image as ImageIcon, Pencil, Search } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
   const [isCreating, setIsCreating] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
 
   // Edit States
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
@@ -309,9 +310,18 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
     );
   }
 
+  const filteredTrips = React.useMemo(() => {
+    return trips.filter(trip => 
+      trip.name.toLowerCase().includes(search.toLowerCase()) ||
+      trip.pickupPoint.toLowerCase().includes(search.toLowerCase()) ||
+      (trip.tripPeriod && trip.tripPeriod.toLowerCase().includes(search.toLowerCase())) ||
+      trip.departureDate.includes(search)
+    );
+  }, [trips, search]);
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white border border-slate-200 rounded-xl shadow-sm p-4">
         <div>
           <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
             <Compass className="w-4 h-4 text-violet-600" />
@@ -319,9 +329,22 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">จัดการทริป, ดูยอดจอง และแชร์ลิ้งก์รับสมัคร</p>
         </div>
-        <Button onClick={() => setIsCreating(true)} className="bg-violet-600 hover:bg-violet-700 text-white h-9 shadow-sm gap-1.5 text-xs font-bold">
-          <Plus className="w-4 h-4" /> สร้างทริปใหม่
-        </Button>
+        
+        <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto shrink-0">
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 animate-pulse" />
+            <Input
+              type="text"
+              placeholder="ค้นหาชื่อทริป, วันที่, จุดขึ้นรถ..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full pl-9 pr-3 h-9 bg-slate-50 border-slate-200 text-xs rounded-lg"
+            />
+          </div>
+          <Button onClick={() => setIsCreating(true)} className="w-full sm:w-auto bg-violet-600 hover:bg-violet-700 text-white h-9 shadow-sm gap-1.5 text-xs font-bold rounded-lg">
+            <Plus className="w-4 h-4" /> สร้างทริปใหม่
+          </Button>
+        </div>
       </div>
 
       {trips.length === 0 ? (
@@ -335,9 +358,14 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
             สร้างทริปใหม่ตอนนี้
           </Button>
         </div>
+      ) : filteredTrips.length === 0 ? (
+        <div className="text-center py-20 bg-white border border-slate-200 rounded-2xl shadow-sm flex flex-col items-center justify-center text-slate-400 gap-2">
+          <Search className="w-10 h-10 opacity-20" />
+          <p className="font-semibold text-sm">ไม่พบทริปเดินทางที่คุณค้นหา</p>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4">
-          {trips.map(trip => {
+          {filteredTrips.map(trip => {
             const tripVans = vans.filter(v => v.tripId === trip.id);
             let total = 0, occupied = 0;
             tripVans.forEach(van => van.seats.forEach(s => {

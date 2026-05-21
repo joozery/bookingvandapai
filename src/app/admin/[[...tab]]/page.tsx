@@ -5,11 +5,12 @@ import {
   Shield, LayoutDashboard, Compass, Bus, Users, QrCode, Settings,
   ChevronDown, ChevronRight, RefreshCw, Check, AlertCircle,
   Activity, UserCheck, Bell, Menu, X, Headphones,
-  FileText, Lock, TrendingUp
+  FileText, Lock, TrendingUp, Key, User, LogOut
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useParams, useRouter } from 'next/navigation';
+import { useSession, signIn, signOut } from 'next-auth/react';
 
 import { supabase } from '@/lib/supabase';
 
@@ -18,6 +19,9 @@ import TripsTab from '../components/TripsTab';
 import VansTab from '../components/VansTab';
 import CheckinTab from '../components/CheckinTab';
 import DashboardOverview from '../components/DashboardOverview';
+import UsersTab, { type UserRecord } from '../components/UsersTab';
+import AdminsTab from '../components/AdminsTab';
+import InsuranceTab from '../components/InsuranceTab';
 import type { Trip, Van, Booking } from '../components/types';
 
 // ── Nav structure ─────────────────────────────────────────────────────────────
@@ -32,6 +36,7 @@ const NAV = [
       { id: 'pending',   label: 'รออนุมัติเปลี่ยนที่นั่ง' },
     ]
   },
+  { id: 'users',   label: 'จัดการสมาชิก', icon: UserCheck },
   { id: 'checkin', label: 'Check-in QR', icon: QrCode },
   { id: 'staff',   label: 'ทีมงาน / สตาฟ', icon: Shield },
   { id: 'insurance', label: 'ประกันการเดินทาง', icon: Lock },
@@ -42,14 +47,38 @@ const NAV = [
   { id: 'settings', label: 'ตั้งค่า', icon: Settings },
 ] as const;
 
-type TabId = 'dashboard' | 'bookings' | 'trips' | 'vans' | 'checkin' | 'pending';
+type TabId = 'dashboard' | 'bookings' | 'trips' | 'vans' | 'checkin' | 'pending' | 'users' | 'staff' | 'insurance';
 
 export default function AdminPage() {
+  const { data: session, status } = useSession();
   const params = useParams();
   const router = useRouter();
   
   const tabPath = params.tab?.[0] as TabId | undefined;
   const [activeTab, setActiveTab] = useState<TabId>(tabPath || 'dashboard');
+  
+  // Login form states
+  const [loginUsername, setLoginUsername] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError('');
+    setIsLoggingIn(true);
+    
+    const res = await signIn('credentials', {
+      username: loginUsername,
+      password: loginPassword,
+      redirect: false
+    });
+    
+    setIsLoggingIn(false);
+    if (res?.error) {
+      setLoginError('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง หรือบัญชีถูกระงับ');
+    }
+  };
 
   useEffect(() => {
     if (tabPath && tabPath !== activeTab) {
@@ -70,6 +99,7 @@ export default function AdminPage() {
   const [trips, setTrips]     = useState<Trip[]>([]);
   const [vans, setVans]       = useState<Van[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [users, setUsers]     = useState<UserRecord[]>([]);
   const [loading, setLoading]  = useState(true);
   const [toast, setToast]      = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -89,13 +119,14 @@ export default function AdminPage() {
   const fetchAll = async (silent = false) => {
     try {
       if (!silent) setLoading(true);
-      const [tr, vr, br] = await Promise.all([fetch('/api/trips'), fetch('/api/vans'), fetch('/api/bookings')]);
-      const [td, vd, bd] = await Promise.all([tr.json(), vr.json(), br.json()]);
+      const [tr, vr, br, ur] = await Promise.all([fetch('/api/trips'), fetch('/api/vans'), fetch('/api/bookings'), fetch('/api/users')]);
+      const [td, vd, bd, ud] = await Promise.all([tr.json(), vr.json(), br.json(), ur.json()]);
       const t = td.success ? td.trips : trips;
       const v = vd.success ? vd.vans  : vans;
       if (td.success) setTrips(t);
       if (vd.success) setVans(v);
       if (bd.success) setBookings(buildEnriched(bd.bookings, t, v));
+      if (ud.success) setUsers(ud.users);
     } catch { if (!silent) showToast('error', 'โหลดข้อมูลไม่สำเร็จ'); }
     finally   { if (!silent) setLoading(false); }
   };
@@ -104,7 +135,81 @@ export default function AdminPage() {
     fetchAll();
     const id = setInterval(() => fetchAll(true), 2500);
     return () => clearInterval(id);
-  }, []);
+  }, [session, status]);
+
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <RefreshCw className="w-8 h-8 text-violet-600 animate-spin" />
+      </div>
+    );
+  }
+
+  if (status === 'unauthenticated' || (session?.user as any)?.role !== 'admin') {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 font-sans">
+        <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
+          <div className="p-6 bg-gradient-to-br from-violet-600 to-purple-700 text-white text-center">
+            <Shield className="w-12 h-12 mx-auto mb-3 opacity-90" />
+            <h1 className="text-xl font-black">Admin Panel</h1>
+            <p className="text-violet-200 text-xs mt-1">ระบบจัดการหลังบ้าน</p>
+          </div>
+          
+          <form onSubmit={handleLogin} className="p-6 space-y-4">
+            {loginError && (
+              <div className="p-3 bg-rose-50 text-rose-600 text-xs font-bold rounded-lg flex items-center gap-2 border border-rose-100 animate-in fade-in zoom-in-95 duration-200">
+                <AlertCircle className="w-4 h-4 shrink-0" /> {loginError}
+              </div>
+            )}
+            
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-600">Username</label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  required
+                  value={loginUsername}
+                  onChange={e => setLoginUsername(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-violet-500 focus:bg-white transition-colors"
+                  placeholder="admin_username"
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-600">Password</label>
+              <div className="relative">
+                <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="password"
+                  required
+                  value={loginPassword}
+                  onChange={e => setLoginPassword(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-violet-500 focus:bg-white transition-colors"
+                  placeholder="••••••••"
+                />
+              </div>
+            </div>
+            
+            <button
+              type="submit"
+              disabled={isLoggingIn}
+              className="w-full py-2.5 bg-violet-600 text-white text-sm font-bold rounded-lg shadow-sm hover:bg-violet-700 transition flex items-center justify-center gap-2 disabled:opacity-70 mt-2"
+            >
+              {isLoggingIn ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'เข้าสู่ระบบ'}
+            </button>
+            
+            <div className="text-center pt-3 border-t border-slate-100 mt-2">
+              <a href="/" className="text-[11px] font-semibold text-slate-400 hover:text-slate-600 transition">
+                &larr; กลับไปหน้าแรก (สำหรับลูกค้า)
+              </a>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   const api = async (fn: () => Promise<Response>, ok: string, err = 'เกิดข้อผิดพลาด') => {
     try {
@@ -226,6 +331,12 @@ export default function AdminPage() {
       {/* Navigation Section */}
       <nav className="flex-1 py-4 px-3 space-y-1.5 overflow-y-auto scrollbar-thin">
         {NAV.map(item => {
+          // Verify Permissions
+          const isAdmin = (session?.user as any)?.role === 'admin';
+          const isSuperAdmin = (session?.user as any)?.username === 'admin';
+          const perms = (session?.user as any)?.permissions || [];
+          if (isAdmin && !isSuperAdmin && !perms.includes(item.id)) return null;
+
           const Icon    = item.icon;
           const hasChildren = 'children' in item && item.children;
           const expanded    = expandedNav.includes(item.id);
@@ -419,18 +530,38 @@ export default function AdminPage() {
 
             {/* User avatar */}
             <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
-              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-purple-700 flex items-center justify-center text-white text-[10px] font-black">A</div>
-              <div className="hidden sm:block">
-                <div className="text-[11px] font-bold text-slate-800 leading-none">แอดมิน</div>
-                <div className="text-[9px] text-slate-400 font-semibold">Super Admin</div>
+              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-purple-700 flex items-center justify-center text-white text-[10px] font-black">
+                {session?.user?.name ? session.user.name.charAt(0).toUpperCase() : 'A'}
               </div>
-              <ChevronDown className="w-3 h-3 text-slate-400 hidden sm:block" />
+              <div className="hidden sm:block">
+                <div className="text-[11px] font-bold text-slate-800 leading-none">{session?.user?.name || 'แอดมิน'}</div>
+                <div className="text-[9px] text-slate-400 font-semibold">{(session?.user as any)?.role === 'admin' ? 'Admin' : 'System'}</div>
+              </div>
+              <button 
+                onClick={() => signOut({ callbackUrl: '/' })} 
+                className="ml-2 w-7 h-7 rounded flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition" 
+                title="ออกจากระบบ"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </header>
 
         {/* ── Main Content ─────────────────────────────────────────────────── */}
         <main className="flex-1 overflow-y-auto p-5 space-y-5">
+          {/* Permission Check for Content */}
+          {(session?.user as any)?.role === 'admin' && 
+           (session?.user as any)?.username !== 'admin' && 
+           !(activeTab === 'pending' 
+             ? (session?.user as any)?.permissions?.includes('bookings') || (session?.user as any)?.permissions?.includes('pending')
+             : (session?.user as any)?.permissions?.includes(activeTab)) ? (
+             <div className="flex flex-col items-center justify-center h-full text-slate-400 space-y-3">
+               <Lock className="w-12 h-12 opacity-20" />
+               <p className="font-bold">คุณไม่มีสิทธิเข้าถึงหน้านี้</p>
+             </div>
+          ) : (
+            <>
 
           {/* Page title + date */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -440,11 +571,17 @@ export default function AdminPage() {
                  activeTab === 'bookings'  ? 'การจองและผู้โดยสาร' :
                  activeTab === 'pending'   ? 'รออนุมัติเปลี่ยนที่นั่ง' :
                  activeTab === 'trips'     ? 'จัดการทริป' :
-                 activeTab === 'vans'      ? 'จัดการรถตู้' : 'QR Check-in'}
+                 activeTab === 'vans'      ? 'จัดการรถตู้' :
+                 activeTab === 'users'     ? 'จัดการสมาชิก' : 
+                 activeTab === 'staff'     ? 'ทีมงาน / สตาฟ' : 
+                 activeTab === 'insurance' ? 'ประกันการเดินทาง' : 'QR Check-in'}
               </h1>
               <p className="text-xs text-slate-400 mt-0.5">
                 {activeTab === 'dashboard' ? 'ภาพรวมการจองและการเดินทาง' :
-                 activeTab === 'bookings'  ? 'จัดการคำขอจองและอนุมัติที่นั่ง' : ''}
+                 activeTab === 'bookings'  ? 'จัดการคำขอจองและอนุมัติที่นั่ง' :
+                 activeTab === 'users'     ? 'ดูและจัดการข้อมูลสมาชิกทั้งหมด' : 
+                 activeTab === 'insurance' ? 'จัดการข้อมูลและประวัติประกันการเดินทางของผู้โดยสาร' : 
+                 activeTab === 'staff'     ? 'จัดการสิทธิแอดมิน, สตาฟ และกำหนดการบล็อก' : ''}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -531,11 +668,22 @@ export default function AdminPage() {
                   onUpdateVan={handleUpdateVan} onUpdateStaff={handleUpdateStaff}
                 />
               )}
+              {activeTab === 'users' && (
+                <UsersTab users={users} onRefresh={() => fetchAll(true)} />
+              )}
+              {activeTab === 'staff' && (
+                <AdminsTab />
+              )}
+              {activeTab === 'insurance' && (
+                <InsuranceTab trips={trips} bookings={bookings} onRefresh={() => fetchAll(true)} />
+              )}
               {activeTab === 'checkin' && (
                 <CheckinTab trips={trips} bookings={bookings} onCheckIn={handleCheckIn} />
               )}
             </>
           )}
+          </>
+        )}
         </main>
       </div>
 

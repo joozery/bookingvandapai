@@ -7,7 +7,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
   try {
     const { id } = await params;
     const body = await request.json();
-    const { status, checkedIn } = body;
+    const { status, checkedIn, nationalId, birthDate } = body;
 
     const { data: booking, error: bookingError } = await supabase.from('bookings').select('*').eq('id', id).single();
     if (bookingError || !booking) {
@@ -30,21 +30,25 @@ export async function PUT(request: Request, { params }: RouteParams) {
     // Case 2: Status Update (Approve / Reject)
     if (status) {
       if (status === 'approved') {
-        // Update booking status
-        const { error: updateError } = await supabase.from('bookings').update({ status: 'approved' }).eq('id', id);
-        if (updateError) throw updateError;
-        booking.status = 'approved';
-
-        // Update the current seat status to 'booked' (red)
+        // Check and update the current seat status to 'booked' (red)
         const { data: van, error: vanError } = await supabase.from('vans').select('*').eq('id', booking.vanId).single();
         if (van && !vanError) {
           const seats = [...(van.seats || [])];
           const seatIndex = seats.findIndex((s: any) => s.id === booking.seatId);
           if (seatIndex !== -1) {
+            if (seats[seatIndex].status === 'booked') {
+              return NextResponse.json({ success: false, error: 'ที่นั่งเป้าหมายถูกจองโดยผู้โดยสารท่านอื่นแล้ว ไม่สามารถอนุมัติได้' }, { status: 400 });
+            }
             seats[seatIndex].status = 'booked';
+            seats[seatIndex].bookingId = id;
             await supabase.from('vans').update({ seats }).eq('id', booking.vanId);
           }
         }
+
+        // Update booking status
+        const { error: updateError } = await supabase.from('bookings').update({ status: 'approved' }).eq('id', id);
+        if (updateError) throw updateError;
+        booking.status = 'approved';
 
         // Handle seat change request replacement if exists
         if (booking.replacesBookingId) {
@@ -90,6 +94,30 @@ export async function PUT(request: Request, { params }: RouteParams) {
       }
 
       return NextResponse.json({ success: true, booking });
+    }
+
+    // Case 3: Update Insurance Data
+    if (nationalId !== undefined || birthDate !== undefined) {
+      const updates: any = {};
+      if (nationalId !== undefined) updates.nationalId = nationalId;
+      if (birthDate !== undefined) updates.birthDate = birthDate;
+      
+      const { error: updateError } = await supabase.from('bookings').update(updates).eq('id', id);
+      if (updateError) throw updateError;
+
+      // Sync to profiles table so the user's profile is updated permanently
+      if (booking.lineUserId) {
+        const profileUpdates: any = {};
+        if (nationalId !== undefined) profileUpdates.nationalId = nationalId;
+        if (birthDate !== undefined) profileUpdates.birthDate = birthDate;
+        
+        await supabase
+          .from('profiles')
+          .update(profileUpdates)
+          .eq('lineUserId', booking.lineUserId);
+      }
+      
+      return NextResponse.json({ success: true, booking: { ...booking, ...updates } });
     }
 
     return NextResponse.json({ success: false, error: 'No update parameters provided' }, { status: 400 });

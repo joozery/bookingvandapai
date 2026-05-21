@@ -99,28 +99,10 @@ export async function POST(request: Request) {
       }
     }
 
-    // 3. Handle seat replacement immediately if replacesBookingId exists
-    if (replacesBookingId) {
-      const { data: oldBooking } = await supabase.from('bookings').select('*').eq('id', replacesBookingId).single();
-      if (oldBooking) {
-        // Free the old seat in the database
-        const { data: oldVan } = await supabase.from('vans').select('*').eq('id', oldBooking.vanId).single();
-        if (oldVan) {
-          const oldSeats = [...(oldVan.seats || [])];
-          const oldSeatIndex = oldSeats.findIndex((s: any) => s.id === oldBooking.seatId);
-          if (oldSeatIndex !== -1) {
-            oldSeats[oldSeatIndex].status = 'available';
-            oldSeats[oldSeatIndex].bookingId = null;
-            await supabase.from('vans').update({ seats: oldSeats }).eq('id', oldBooking.vanId);
-          }
-        }
-        // Delete the old booking record
-        await supabase.from('bookings').delete().eq('id', replacesBookingId);
-      }
-    }
-
-    // 4. Create new booking as already APPROVED
+    // 3. Create and insert the booking
     const newBookingId = `booking-${Date.now()}`;
+    const isTransfer = !!replacesBookingId;
+
     const newBooking = {
       id: newBookingId,
       tripId,
@@ -133,32 +115,34 @@ export async function POST(request: Request) {
       lineUserId,
       lineUserName,
       lineUserProfilePic,
-      status: 'approved', // Auto-approved!
+      status: isTransfer ? 'pending' : 'approved',
       createdAt: new Date().toISOString(),
       checkedIn: false,
-      replacesBookingId: null, // Seat change completed immediately
+      replacesBookingId: replacesBookingId || null,
       note: note || '',
     };
 
     const { error: insertError } = await supabase.from('bookings').insert([newBooking]);
     if (insertError) throw insertError;
 
-    // 5. Update the seat status in Van directly to 'booked' (auto-approved)
-    seats[seatIndex].status = 'booked';
-    seats[seatIndex].bookingId = newBookingId;
+    // 4. Update the seat status in Van directly if it's a normal booking (auto-approved)
+    if (!isTransfer) {
+      seats[seatIndex].status = 'booked';
+      seats[seatIndex].bookingId = newBookingId;
 
-    const { error: updateVanError } = await supabase.from('vans').update({ seats }).eq('id', vanId);
-    if (updateVanError) {
-       // Rollback booking if van update fails
-       await supabase.from('bookings').delete().eq('id', newBookingId);
-       throw updateVanError;
+      const { error: updateVanError } = await supabase.from('vans').update({ seats }).eq('id', vanId);
+      if (updateVanError) {
+         // Rollback booking if van update fails
+         await supabase.from('bookings').delete().eq('id', newBookingId);
+         throw updateVanError;
+      }
     }
 
     return NextResponse.json({
       success: true,
       booking: newBooking,
-      message: replacesBookingId 
-        ? 'เปลี่ยนที่นั่งสำเร็จเรียบร้อยแล้ว!' 
+      message: isTransfer 
+        ? 'ส่งคำขอย้ายที่นั่งเรียบร้อยแล้ว! กรุณารอแอดมินอนุมัติ' 
         : 'จองที่นั่งสำเร็จและได้รับการอนุมัติทันที!'
     });
   } catch (error: any) {

@@ -5,7 +5,8 @@ import {
   LayoutDashboard, Compass, Bus, Users, QrCode, Settings,
   ChevronDown, ChevronRight, RefreshCw, Shield, FileText,
   TrendingUp, Download, Check, X, Search, Filter,
-  Phone, Edit2, Trash2, MoreHorizontal, BadgeCheck, Clock
+  Phone, Edit2, Trash2, MoreHorizontal, BadgeCheck, Clock,
+  AlertTriangle, ArrowRight
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -166,6 +167,20 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
                 </td></tr>
               ) : filtered.map(b => {
                 const isChange = !!(b as any).replacesBookingId;
+
+                // Find the original booking (the one being replaced)
+                const originalBooking = isChange
+                  ? bookings.find(x => x.id === (b as any).replacesBookingId)
+                  : null;
+
+                // Check if the target seat (b.seatId) is already 'booked' by another approved booking
+                const targetSeatAlreadyBooked = isChange && vans.some(v =>
+                  v.seats.some(s => s.id === b.seatId && s.status === 'booked' &&
+                    // Make sure it's not booked by this pending request itself
+                    bookings.some(bk => bk.id !== b.id && bk.seatId === s.id && bk.status === 'approved')
+                  )
+                );
+
                 return (
                   <tr key={b.id} className="hover:bg-slate-50/60 transition-colors group">
                     {/* Passenger */}
@@ -176,7 +191,12 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
                           <div className="font-bold text-slate-800 truncate max-w-[140px]">{b.fullName}</div>
                           <div className="text-[10px] text-slate-400 flex items-center gap-1">
                             <span className="truncate max-w-[100px]">ชื่อเล่น: {b.nickname}</span>
-                            {isChange && <span className="text-violet-500 font-bold shrink-0">ขย้ายที่</span>}
+                            {isChange && (
+                              <span className="inline-flex items-center gap-0.5 text-[9px] font-black px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200 shrink-0">
+                                <RefreshCw className="w-2.5 h-2.5" />
+                                ย้ายที่นั่ง
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -188,14 +208,35 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
                     </td>
                     {/* Van / Seat */}
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="flex items-center gap-1.5">
-                        <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
-                          <Bus className="w-2.5 h-2.5" /> คันที่ {b.vanNumber}
-                        </span>
-                        <span className="inline-flex items-center text-[10px] font-black px-2 py-0.5 rounded bg-violet-100 text-violet-700 font-mono">
-                          A{b.seatLabel}
-                        </span>
-                      </div>
+                      {isChange && originalBooking ? (
+                        <div className="space-y-1">
+                          {/* From seat (original) */}
+                          <div className="flex items-center gap-1">
+                            <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
+                              <Bus className="w-2.5 h-2.5" /> คันที่ {b.vanNumber}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[9px] font-bold text-slate-400">จาก</span>
+                            <span className="inline-flex items-center text-[10px] font-black px-2 py-0.5 rounded bg-slate-100 text-slate-500 font-mono line-through">
+                              A{originalBooking.seatLabel}
+                            </span>
+                            <ArrowRight className="w-3 h-3 text-amber-400" />
+                            <span className="inline-flex items-center text-[10px] font-black px-2 py-0.5 rounded bg-amber-100 text-amber-700 font-mono">
+                              A{b.seatLabel}
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
+                            <Bus className="w-2.5 h-2.5" /> คันที่ {b.vanNumber}
+                          </span>
+                          <span className="inline-flex items-center text-[10px] font-black px-2 py-0.5 rounded bg-violet-100 text-violet-700 font-mono">
+                            A{b.seatLabel}
+                          </span>
+                        </div>
+                      )}
                     </td>
                     {/* Phone */}
                     <td className="px-4 py-3 whitespace-nowrap">
@@ -233,27 +274,40 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
                     </td>
                     {/* Actions */}
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-1">
-                        {b.status === 'pending' && (
-                          <button onClick={() => onApprove(b.id)} title="อนุมัติ"
-                            className="w-7 h-7 rounded-lg bg-violet-600 hover:bg-violet-700 text-white flex items-center justify-center transition shadow-sm">
-                            <Check className="w-3.5 h-3.5" />
-                          </button>
+                      <div className="flex flex-col gap-1">
+                        {/* Warning when target seat is already booked */}
+                        {isChange && targetSeatAlreadyBooked && (
+                          <div className="flex items-start gap-1 bg-rose-50 border border-rose-200 rounded-lg px-2 py-1.5 mb-1">
+                            <AlertTriangle className="w-3 h-3 text-rose-500 shrink-0 mt-0.5" />
+                            <p className="text-[9px] font-bold text-rose-700 leading-tight">ที่นั่งเป้าหมายถูกจองแล้ว ไม่สามารถอนุมัติได้</p>
+                          </div>
                         )}
-                        {b.status === 'pending' && (
-                          <button onClick={() => onReject(b.id)} title="ปฏิเสธ"
-                            className="w-7 h-7 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-600 flex items-center justify-center transition">
-                            <X className="w-3.5 h-3.5" />
+                        <div className="flex items-center gap-1">
+                          {b.status === 'pending' && (
+                            <button
+                              onClick={() => onApprove(b.id)}
+                              title="อนุมัติ"
+                              disabled={isChange && targetSeatAlreadyBooked}
+                              className="w-7 h-7 rounded-lg bg-violet-600 hover:bg-violet-700 text-white flex items-center justify-center transition shadow-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-slate-300"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {b.status === 'pending' && (
+                            <button onClick={() => onReject(b.id)} title="ปฏิเสธ"
+                              className="w-7 h-7 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-600 flex items-center justify-center transition">
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          <button title="แก้ไข"
+                            className="w-7 h-7 rounded-lg border border-slate-200 bg-white hover:bg-violet-50 hover:border-violet-200 text-slate-400 hover:text-violet-600 flex items-center justify-center transition">
+                            <Edit2 className="w-3.5 h-3.5" />
                           </button>
-                        )}
-                        <button title="แก้ไข"
-                          className="w-7 h-7 rounded-lg border border-slate-200 bg-white hover:bg-violet-50 hover:border-violet-200 text-slate-400 hover:text-violet-600 flex items-center justify-center transition">
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button onClick={() => onDelete(b.id)} title="ลบ"
-                          className="w-7 h-7 rounded-lg border border-slate-200 bg-white hover:bg-rose-50 hover:border-rose-200 text-slate-400 hover:text-rose-500 flex items-center justify-center transition">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                          <button onClick={() => onDelete(b.id)} title="ลบ"
+                            className="w-7 h-7 rounded-lg border border-slate-200 bg-white hover:bg-rose-50 hover:border-rose-200 text-slate-400 hover:text-rose-500 flex items-center justify-center transition">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
                     </td>
                   </tr>

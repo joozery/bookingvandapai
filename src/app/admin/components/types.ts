@@ -52,6 +52,9 @@ export interface Booking {
   checkedInAt: string | null;
   replacesBookingId?: string | null;
   note?: string;
+  nationalId?: string | null;
+  birthDate?: string | null;
+  profile?: any;
   // Joined fields
   tripName?: string;
   plateNumber?: string;
