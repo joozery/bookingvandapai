@@ -695,7 +695,10 @@ export default function CustomerPage() {
               <HelpCircle className="w-4 h-4 text-slate-400" />
               <span>วิธีการใช้งาน</span>
             </button>
-            <button className="hidden sm:flex items-center space-x-1 hover:text-[#4c1d95] transition px-2.5 py-1.5 rounded-lg hover:bg-slate-100">
+            <button
+              onClick={() => setShowHelpCenterModal(true)}
+              className="hidden sm:flex items-center space-x-1 hover:text-[#4c1d95] transition px-2.5 py-1.5 rounded-lg hover:bg-slate-100"
+            >
               <MessageSquare className="w-4 h-4 text-slate-400" />
               <span>ติดต่อแอดมิน</span>
             </button>
@@ -705,13 +708,25 @@ export default function CustomerPage() {
             </a>
 
             {lineUser && (
-              <button
-                onClick={() => setShowProfileModal(true)}
-                className="flex items-center space-x-1 text-slate-700 hover:text-purple-950 hover:bg-purple-50 transition px-2.5 py-1.5 rounded-lg border border-slate-200 mr-1 shadow-sm bg-white shrink-0"
-              >
-                <Shield className="w-3.5 h-3.5 text-[#4c1d95]" />
-                <span className="font-bold text-[10.5px]">ข้อมูลประกัน / โปรไฟล์</span>
-              </button>
+              <>
+                <button
+                  onClick={() => {
+                    fetchAllUserBookings();
+                    setShowBookingHistoryModal(true);
+                  }}
+                  className="flex items-center space-x-1 text-slate-700 hover:text-purple-950 hover:bg-purple-50 transition px-2.5 py-1.5 rounded-lg border border-slate-200 mr-1 shadow-sm bg-white shrink-0"
+                >
+                  <Clock className="w-3.5 h-3.5 text-[#4c1d95]" />
+                  <span className="font-bold text-[10.5px]">ประวัติการจอง</span>
+                </button>
+                <button
+                  onClick={() => setShowProfileModal(true)}
+                  className="flex items-center space-x-1 text-slate-700 hover:text-purple-950 hover:bg-purple-50 transition px-2.5 py-1.5 rounded-lg border border-slate-200 mr-1 shadow-sm bg-white shrink-0"
+                >
+                  <Shield className="w-3.5 h-3.5 text-[#4c1d95]" />
+                  <span className="font-bold text-[10.5px]">ข้อมูลประกัน / โปรไฟล์</span>
+                </button>
+              </>
             )}
             
             {/* User Profile & Logout */}
