@@ -27,6 +27,7 @@ import {
   Download,
   X
 } from 'lucide-react';
+import LandingPage from '../components/LandingPage';
 
 interface Seat {
   id: string;
@@ -660,6 +661,37 @@ export default function CustomerPage() {
     }
   }, [currentStep, lineUser, hasProfile]);
 
+  if (!lineUser) {
+    return (
+      <div className="flex-1 flex flex-col bg-[#f8fafc] text-slate-800 min-h-screen">
+        {/* Global alert messages banner */}
+        {message && (
+          <div className="fixed top-24 right-4 z-50 animate-bounce max-w-sm">
+            <div
+              className={`p-4 rounded-xl shadow-2xl flex items-start gap-3 backdrop-blur-xl border ${
+                message.type === 'success'
+                  ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
+                  : 'bg-rose-50 border-rose-300 text-rose-800'
+              }`}
+            >
+              {message.type === 'success' ? (
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+              ) : (
+                <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+              )}
+              <p className="text-xs font-semibold">{message.text}</p>
+            </div>
+          </div>
+        )}
+        
+        <LandingPage 
+          onLoginClick={handleLoginClick} 
+          showHelpCenter={() => setShowHelpCenterModal(true)} 
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 flex flex-col bg-[#f8fafc] text-slate-800 min-h-screen">
       {/* Global alert messages banner */}
@@ -884,100 +916,7 @@ export default function CustomerPage() {
       </section>
       )}
 
-      {!lineUser ? (
-        <div className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10 lg:py-20 flex flex-col lg:flex-row items-center justify-between gap-12 lg:gap-16 animate-in fade-in duration-500 relative overflow-hidden">
-          {/* Decorative glowing gradient blobs */}
-          <div className="absolute top-10 left-1/4 w-72 h-72 bg-[#4c1d95]/15 rounded-full filter blur-[80px] -z-10 animate-pulse duration-[6000ms]" />
-          <div className="absolute bottom-10 right-1/4 w-80 h-80 bg-[#06C755]/5 rounded-full filter blur-[100px] -z-10 animate-pulse duration-[8000ms]" />
-
-          {/* Left Column: Premium Value Proposition Presentation */}
-          <div className="flex-1 text-left space-y-6 lg:max-w-[540px]">
-
-
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-800 tracking-tight leading-[1.15]">
-              ก้าวสู่การเดินทางที่ง่ายดายกับทริป <span className="bg-gradient-to-r from-[#4c1d95] via-[#6d28d9] to-indigo-600 bg-clip-text text-transparent">“ด่าไป เดินไป”</span>
-            </h2>
-
-            <p className="text-xs sm:text-sm text-slate-500 leading-relaxed font-semibold">
-              สัมผัสประสบการณ์จองที่นั่งรถตู้รูปแบบใหม่ ค้นหาทริปยอดฮิต ตรวจสอบแผนผังที่นั่งว่างแบบเรียลไทม์ และเตรียมข้อมูลทำประกันเดินทางได้อย่างครบครันในที่เดียว
-            </p>
-
-            {/* Feature Highlights Grid */}
-            <div className="space-y-4 pt-2">
-              {/* Feature 1 */}
-              <div className="flex gap-4">
-                <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center text-[#4c1d95] shrink-0 shadow-sm shadow-purple-100">
-                  <Compass className="w-5 h-5" />
-                </div>
-                <div className="space-y-0.5">
-                  <h4 className="text-xs sm:text-sm font-extrabold text-slate-800">เลือกทริปและที่นั่งอย่างรวดเร็ว</h4>
-                  <p className="text-[11px] text-slate-400 font-medium">ค้นหาทริปเดินป่า ยอดเขา ดูตารางการเดินทาง และจุดขึ้นรถได้ทันที</p>
-                </div>
-              </div>
-
-              {/* Feature 2 */}
-              <div className="flex gap-4">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shrink-0 shadow-sm shadow-emerald-100">
-                  <Armchair className="w-5 h-5" />
-                </div>
-                <div className="space-y-0.5">
-                  <h4 className="text-xs sm:text-sm font-extrabold text-slate-800">แผนผังรถตู้ซิงค์เรียลไทม์ 100%</h4>
-                  <p className="text-[11px] text-slate-400 font-medium">แสดงสถานะเบาะนั่งจริงทันที ป้องกันปัญหาจองซ้อน ให้คุณอุ่นใจทุกที่นั่ง</p>
-                </div>
-              </div>
-
-              {/* Feature 3 */}
-              <div className="flex gap-4">
-                <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0 shadow-sm shadow-indigo-100">
-                  <Shield className="w-5 h-5" />
-                </div>
-                <div className="space-y-0.5">
-                  <h4 className="text-xs sm:text-sm font-extrabold text-slate-800">ระบบประกันการเดินทางครบครัน</h4>
-                  <p className="text-[11px] text-slate-400 font-medium">กรอกข้อมูลส่วนบุคคลและข้อมูลติดต่อฉุกเฉินครั้งเดียว นำไปใช้ในทริปถัดไปได้ทันที</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column: Floating Glassmorphic Login Card */}
-          <div className="w-full lg:max-w-[400px] shrink-0 relative">
-            {/* Card glow backdrop */}
-            <div className="absolute inset-0 bg-gradient-to-tr from-[#4c1d95]/20 to-emerald-500/10 rounded-[32px] blur-xl -z-10" />
-
-            <div className="bg-white/80 backdrop-blur-md border border-slate-200/80 rounded-[32px] p-8 shadow-2xl flex flex-col items-center text-center">
-              {/* App / Brand Icon */}
-              <div className="w-16 h-16 bg-gradient-to-tr from-[#56368C] to-[#250A4E] rounded-3xl flex items-center justify-center text-white shadow-xl shadow-purple-900/20 mb-6 relative">
-                <Compass className="w-8 h-8 animate-spin duration-[20s]" />
-                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-emerald-500 rounded-full border border-white flex items-center justify-center" />
-              </div>
-
-              <h3 className="text-lg font-black text-slate-800">เริ่มต้นจองที่นั่ง</h3>
-              <p className="text-xs text-slate-400 font-medium mt-1 mb-8 max-w-[260px] leading-normal">
-                ล็อกอินด้วยบัญชี LINE เพื่อบันทึกข้อมูลตั๋วและโปรไฟล์ของคุณอย่างปลอดภัย
-              </p>
-
-              {/* Premium LINE Login Button */}
-              <button
-                onClick={handleLoginClick}
-                className="w-full bg-[#06C755] hover:bg-[#05b34c] text-white py-3.5 px-6 rounded-2xl font-black text-sm transition-all duration-300 shadow-lg shadow-[#06C755]/25 flex items-center justify-center gap-2.5 active:scale-98 relative overflow-hidden group"
-              >
-                {/* Shiny hover overlay effect */}
-                <span className="absolute inset-0 w-full h-full bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-out" />
-                <svg viewBox="0 0 24 24" className="w-5.5 h-5.5 fill-current shrink-0">
-                  <path d="M24 10.3c0-4.7-4.8-8.5-10.7-8.5S2.7 5.6 2.7 10.3c0 4.2 3.8 7.7 8.9 8.4.3.1.8.2.9.5.1.2 0 .6-.1.8l-.4 2.6c0 .3-.2 1.1 1 0l7.2-7.2h.1c2.7-1.1 3.9-3.1 3.9-5.1z" />
-                </svg>
-                <span>เข้าสู่ระบบด้วย LINE</span>
-              </button>
-
-              {/* Security Badge */}
-              <div className="mt-8 pt-6 border-t border-slate-100 w-full flex items-center justify-center gap-2 text-slate-400 font-bold text-[9.5px]">
-                <Lock className="w-3.5 h-3.5 text-slate-300" />
-                <span>ข้อมูลของคุณปลอดภัยและใช้เพื่อการทำประกันเท่านั้น</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : (!hasProfile || showProfileModal) ? (
+      {(!hasProfile || showProfileModal) ? (
         <div className="flex-1 flex flex-col items-center justify-center p-4 py-8 animate-in fade-in zoom-in-95 duration-500 mt-4">
           <div className="bg-white max-w-md w-full rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
              <div className="bg-[#4c1d95] p-6 text-center">
