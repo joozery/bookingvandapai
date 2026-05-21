@@ -684,6 +684,16 @@ export default function CustomerPage() {
               <User className="w-4 h-4 text-purple-700" />
               <span>แอดมิน</span>
             </a>
+
+            {lineUser && (
+              <button
+                onClick={() => setShowProfileModal(true)}
+                className="flex items-center space-x-1 text-slate-700 hover:text-purple-950 hover:bg-purple-50 transition px-2.5 py-1.5 rounded-lg border border-slate-200 mr-1 shadow-sm bg-white shrink-0"
+              >
+                <Shield className="w-3.5 h-3.5 text-[#4c1d95]" />
+                <span className="font-bold text-[10.5px]">ข้อมูลประกัน / โปรไฟล์</span>
+              </button>
+            )}
             
             {/* User Profile & Logout */}
             {lineUser && (
@@ -1923,6 +1933,32 @@ export default function CustomerPage() {
               <p className="text-[10px] text-slate-500 mt-1 leading-normal">
                 คุณยังไม่ได้ทำการเลือกเบาะ กรุณาคลิกเลือกเบาะว่างสีเขียวในรถตู้ทางด้านซ้ายเพื่อเปิดกรอกฟอร์มผู้จองครับ
               </p>
+            </div>
+          )}
+
+          {/* Profile & Insurance Information Card for easy access */}
+          {lineUser && (
+            <div className="bg-gradient-to-br from-[#4c1d95]/5 to-purple-50/50 border border-purple-100 rounded-2xl p-5 shadow-sm flex flex-col gap-3 animate-in slide-in-from-bottom-4 duration-300">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-[#4c1d95]/10 border border-[#4c1d95]/20 flex items-center justify-center text-[#4c1d95] shrink-0">
+                  <Shield className="w-4.5 h-4.5" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-extrabold text-slate-800">จัดการข้อมูลผู้จอง & ประกันภัย</h3>
+                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">โปรไฟล์สำหรับทริปนี้และครั้งถัดไป</p>
+                </div>
+              </div>
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                ท่านสามารถตรวจสอบหรือแก้ไขข้อมูลส่วนบุคคลสำหรับการทำประกันการเดินทาง (เช่น เลขบัตรประชาชน วันเกิด โรคประจำตัว ผู้ติดต่อฉุกเฉิน) เพื่อประหยัดเวลาและไม่ต้องกรอกข้อมูลใหม่ในทริปถัดไป
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowProfileModal(true)}
+                className="w-full bg-[#4c1d95] hover:bg-[#3b1774] text-white text-xs font-bold py-2.5 rounded-xl transition duration-200 shadow-md flex items-center justify-center gap-1.5"
+              >
+                <User className="w-3.5 h-3.5" />
+                <span>ดูข้อมูล / แก้ไขข้อมูลประกันภัย</span>
+              </button>
             </div>
           )}
 
