@@ -36,7 +36,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
           const seats = [...(van.seats || [])];
           const seatIndex = seats.findIndex((s: any) => s.id === booking.seatId);
           if (seatIndex !== -1) {
-            if (seats[seatIndex].status === 'booked') {
+            if (seats[seatIndex].status === 'booked' && seats[seatIndex].bookingId !== id) {
               return NextResponse.json({ success: false, error: 'ที่นั่งเป้าหมายถูกจองโดยผู้โดยสารท่านอื่นแล้ว ไม่สามารถอนุมัติได้' }, { status: 400 });
             }
             seats[seatIndex].status = 'booked';
@@ -91,6 +91,10 @@ export async function PUT(request: Request, { params }: RouteParams) {
             await supabase.from('vans').update({ seats }).eq('id', booking.vanId);
           }
         }
+      } else if (status === 'cancel_pending') {
+        const { error: updateError } = await supabase.from('bookings').update({ status: 'cancel_pending' }).eq('id', id);
+        if (updateError) throw updateError;
+        booking.status = 'cancel_pending';
       }
 
       return NextResponse.json({ success: true, booking });

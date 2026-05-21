@@ -58,7 +58,8 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
   const statusBadge = (status: string) => {
     if (status === 'approved') return <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />ยืนยันแล้ว</span>;
     if (status === 'pending')  return <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />รออนุมัติ</span>;
-    return <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200"><span className="w-1.5 h-1.5 rounded-full bg-rose-500 inline-block" />ยกเลิก</span>;
+    if (status === 'cancel_pending') return <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200"><span className="w-1.5 h-1.5 rounded-full bg-rose-500 inline-block animate-pulse" />ขอยกเลิก</span>;
+    return <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-50 text-slate-700 border border-slate-200"><span className="w-1.5 h-1.5 rounded-full bg-slate-500 inline-block" />ยกเลิก</span>;
   };
 
   return (
@@ -141,6 +142,7 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
           <option value="all">สถานะทั้งหมด</option>
           <option value="approved">ยืนยันแล้ว</option>
           <option value="pending">รออนุมัติ</option>
+          <option value="cancel_pending">ขอยกเลิก</option>
           <option value="rejected">ยกเลิก</option>
         </select>
         <button className="h-8 border border-slate-200 bg-white px-3 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-50 flex items-center gap-1.5 transition">
@@ -282,7 +284,25 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
                             <p className="text-[9px] font-bold text-rose-700 leading-tight">ที่นั่งเป้าหมายถูกจองแล้ว ไม่สามารถอนุมัติได้</p>
                           </div>
                         )}
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 flex-wrap">
+                          {b.status === 'cancel_pending' && (
+                            <>
+                              <button
+                                onClick={() => onDelete(b.id)}
+                                title="อนุมัติการยกเลิก"
+                                className="w-auto px-2 h-7 rounded-lg bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center transition shadow-sm font-bold text-[9px]"
+                              >
+                                <Check className="w-3.5 h-3.5 mr-1" /> ยืนยันยกเลิก
+                              </button>
+                              <button
+                                onClick={() => onApprove(b.id)}
+                                title="ไม่อนุมัติการยกเลิก (กลับเป็นจองปกติ)"
+                                className="w-auto px-2 h-7 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-500 flex items-center justify-center transition font-bold text-[9px]"
+                              >
+                                <X className="w-3.5 h-3.5 mr-1" /> ปฏิเสธ
+                              </button>
+                            </>
+                          )}
                           {b.status === 'pending' && (
                             <button
                               onClick={() => onApprove(b.id)}
@@ -303,10 +323,12 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
                             className="w-7 h-7 rounded-lg border border-slate-200 bg-white hover:bg-violet-50 hover:border-violet-200 text-slate-400 hover:text-violet-600 flex items-center justify-center transition">
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
-                          <button onClick={() => onDelete(b.id)} title="ลบ"
-                            className="w-7 h-7 rounded-lg border border-slate-200 bg-white hover:bg-rose-50 hover:border-rose-200 text-slate-400 hover:text-rose-500 flex items-center justify-center transition">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          {b.status !== 'cancel_pending' && (
+                            <button onClick={() => onDelete(b.id)} title="ลบ"
+                              className="w-7 h-7 rounded-lg border border-slate-200 bg-white hover:bg-rose-50 hover:border-rose-200 text-slate-400 hover:text-rose-500 flex items-center justify-center transition">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       </div>
                     </td>

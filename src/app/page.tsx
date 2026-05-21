@@ -75,7 +75,7 @@ interface Booking {
   lineUserId: string;
   lineUserName: string;
   lineUserProfilePic: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'cancel_pending';
   createdAt: string;
   checkedIn: boolean;
   checkedInAt: string | null;
@@ -349,7 +349,7 @@ export default function CustomerPage() {
       const res = await fetch(`/api/bookings?lineUserId=${lineUser.userId}&tripId=${selectedTrip.id}`);
       const data = await res.json();
       if (data.success && data.bookings.length > 0) {
-        const approvedBooking = data.bookings.find((b: Booking) => b.status === 'approved');
+        const approvedBooking = data.bookings.find((b: Booking) => b.status === 'approved' || b.status === 'cancel_pending');
         const pendingBooking = data.bookings.find((b: Booking) => b.status === 'pending');
         const activeBooking = approvedBooking || pendingBooking;
 
@@ -384,7 +384,7 @@ export default function CustomerPage() {
       const res = await fetch(`/api/bookings?lineUserId=${lineUser.userId}&tripId=${selectedTrip.id}`);
       const data = await res.json();
       if (data.success) {
-        const approvedBooking = data.bookings.find((b: Booking) => b.status === 'approved');
+        const approvedBooking = data.bookings.find((b: Booking) => b.status === 'approved' || b.status === 'cancel_pending');
         const pendingBooking = data.bookings.find((b: Booking) => b.status === 'pending');
         const activeBooking = approvedBooking || pendingBooking;
 
@@ -548,18 +548,18 @@ export default function CustomerPage() {
   };
 
   const handleCancelBooking = async (bookingId: string) => {
-    if (!confirm('คุณต้องการยกเลิกการจอง/การส่งคำขอนี้ใช่หรือไม่?')) return;
+    if (!confirm('คุณต้องการยกเลิกการจอง/การส่งคำขอนี้ใช่หรือไม่? (รอแอดมินอนุมัติ)')) return;
     try {
       const res = await fetch(`/api/bookings/${bookingId}`, {
-        method: 'DELETE',
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'cancel_pending' }),
       });
       const data = await res.json();
       if (data.success) {
-        setMessage({ type: 'success', text: 'ยกเลิกคำขอจองสำเร็จแล้ว' });
-        setUserBooking(null);
-        if (selectedTrip) {
-          fetchVans(selectedTrip.id);
-        }
+        setMessage({ type: 'success', text: 'ส่งคำขอยกเลิกสำเร็จ รอแอดมินอนุมัติ' });
+        // Refresh booking state
+        fetchUserBooking();
       } else {
         setMessage({ type: 'error', text: data.error });
       }
@@ -1934,28 +1934,37 @@ export default function CustomerPage() {
                   )}
                 </button>
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => handleCancelBooking(userBooking.id)}
-                    className="flex-1 py-2 rounded-xl border border-rose-200 hover:bg-rose-50 text-rose-600 text-[11px] font-bold transition duration-200"
-                  >
-                    ยกเลิกการจอง
-                  </button>
-                  {userBooking.status === 'approved' && !(userBooking as any).pendingTransfer && (
-                    <button
-                      onClick={() => {
-                        setIsRequestingTransfer(true);
-                        setSelectedSeat(null);
-                        setMessage({
-                          type: 'success',
-                          text: 'กรุณาเลือกที่นั่งใหม่ที่ว่าง (สีเขียว) บนผังรถตู้เพื่อส่งคำขอย้ายที่นั่ง'
-                        });
-                        setTimeout(() => setMessage(null), 5000);
-                      }}
-                      className="flex-1 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-[#4c1d95] text-[11px] font-bold border border-purple-200 transition duration-200 flex items-center justify-center gap-1"
-                    >
-                      <RefreshCw className="w-3.5 h-3.5" />
-                      <span>ขอย้ายที่นั่ง</span>
-                    </button>
+                  {userBooking.status === 'cancel_pending' ? (
+                    <div className="flex-1 py-2 rounded-xl bg-rose-50 text-rose-600 text-[11px] font-bold border border-rose-200 flex items-center justify-center gap-1.5 cursor-not-allowed opacity-80">
+                      <Clock className="w-3.5 h-3.5" />
+                      <span>รอแอดมินอนุมัติการยกเลิก</span>
+                    </div>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => handleCancelBooking(userBooking.id)}
+                        className="flex-1 py-2 rounded-xl border border-rose-200 hover:bg-rose-50 text-rose-600 text-[11px] font-bold transition duration-200"
+                      >
+                        ยกเลิกการจอง
+                      </button>
+                      {userBooking.status === 'approved' && !(userBooking as any).pendingTransfer && (
+                        <button
+                          onClick={() => {
+                            setIsRequestingTransfer(true);
+                            setSelectedSeat(null);
+                            setMessage({
+                              type: 'success',
+                              text: 'กรุณาเลือกที่นั่งใหม่ที่ว่าง (สีเขียว) บนผังรถตู้เพื่อส่งคำขอย้ายที่นั่ง'
+                            });
+                            setTimeout(() => setMessage(null), 5000);
+                          }}
+                          className="flex-1 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-[#4c1d95] text-[11px] font-bold border border-purple-200 transition duration-200 flex items-center justify-center gap-1"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5" />
+                          <span>ขอย้ายที่นั่ง</span>
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -2348,9 +2357,11 @@ export default function CustomerPage() {
                           ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
                           : b.status === 'pending'
                             ? 'bg-amber-50 text-amber-600 border-amber-200'
-                            : 'bg-slate-100 text-slate-500 border-slate-200'
+                            : b.status === 'cancel_pending'
+                              ? 'bg-rose-50 text-rose-600 border-rose-200'
+                              : 'bg-slate-100 text-slate-500 border-slate-200'
                       }`}>
-                        {b.status === 'approved' ? 'อนุมัติแล้ว' : b.status === 'pending' ? 'รออนุมัติ' : 'ยกเลิก'}
+                        {b.status === 'approved' ? 'อนุมัติแล้ว' : b.status === 'cancel_pending' ? 'รออนุมัติยกเลิก' : b.status === 'pending' ? 'รออนุมัติ' : 'ยกเลิก'}
                       </span>
                     </div>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-slate-500 font-semibold">

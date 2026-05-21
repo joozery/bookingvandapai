@@ -46,7 +46,7 @@ export interface Booking {
   lineUserId: string;
   lineUserName: string;
   lineUserProfilePic: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'cancel_pending';
   createdAt: string;
   checkedIn: boolean;
   checkedInAt: string | null;
