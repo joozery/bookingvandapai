@@ -18,7 +18,32 @@ export async function GET(request: Request) {
     const { data: bookings, error } = await query;
     if (error) throw error;
 
-    return NextResponse.json({ success: true, bookings: bookings || [] });
+    // Fetch profiles to merge
+    const { data: profiles } = await supabase.from('profiles').select('*');
+    const profileMap = new Map();
+    if (profiles) {
+      profiles.forEach((p: any) => {
+        if (p.lineUserId) {
+          profileMap.set(p.lineUserId, p);
+        }
+      });
+    }
+
+    const merged = (bookings || []).map((booking: any) => {
+      const profile = profileMap.get(booking.lineUserId);
+      return {
+        ...booking,
+        nationalId: booking.nationalId || profile?.nationalId || null,
+        birthDate: booking.birthDate || profile?.birthDate || null,
+        emergencyName: booking.emergencyName || profile?.emergencyName || null,
+        emergencyPhone: booking.emergencyPhone || profile?.emergencyPhone || null,
+        allergies: booking.allergies || profile?.allergies || null,
+        medicalConditions: booking.medicalConditions || profile?.medicalConditions || null,
+        profile: profile || null
+      };
+    });
+
+    return NextResponse.json({ success: true, bookings: merged });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
@@ -103,6 +128,13 @@ export async function POST(request: Request) {
     const newBookingId = `booking-${Date.now()}`;
     const isTransfer = !!replacesBookingId;
 
+    // Fetch user profile to copy insurance info
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('lineUserId', lineUserId)
+      .single();
+
     const newBooking = {
       id: newBookingId,
       tripId,
@@ -120,6 +152,12 @@ export async function POST(request: Request) {
       checkedIn: false,
       replacesBookingId: replacesBookingId || null,
       note: note || '',
+      nationalId: profile?.nationalId || null,
+      birthDate: profile?.birthDate || null,
+      emergencyName: profile?.emergencyName || null,
+      emergencyPhone: profile?.emergencyPhone || null,
+      allergies: profile?.allergies || null,
+      medicalConditions: profile?.medicalConditions || null,
     };
 
     const { error: insertError } = await supabase.from('bookings').insert([newBooking]);

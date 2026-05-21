@@ -170,6 +170,13 @@ export async function GET(request: Request, { params }: RouteParams) {
     const { data: trip } = await supabase.from('trips').select('*').eq('id', booking.tripId).single();
     const { data: van } = await supabase.from('vans').select('*').eq('id', booking.vanId).single();
 
+    // Fetch user profile to merge insurance details
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('lineUserId', booking.lineUserId)
+      .single();
+
     return NextResponse.json({
       success: true,
       booking: {
@@ -184,6 +191,13 @@ export async function GET(request: Request, { params }: RouteParams) {
         driverName: van?.driverName || '',
         driverPhone: van?.driverPhone || '',
         vanNumber: van?.vanNumber || 1,
+        nationalId: booking.nationalId || profile?.nationalId || null,
+        birthDate: booking.birthDate || profile?.birthDate || null,
+        emergencyName: booking.emergencyName || profile?.emergencyName || null,
+        emergencyPhone: booking.emergencyPhone || profile?.emergencyPhone || null,
+        allergies: booking.allergies || profile?.allergies || null,
+        medicalConditions: booking.medicalConditions || profile?.medicalConditions || null,
+        profile: profile || null
       },
     });
   } catch (error: any) {

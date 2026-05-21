@@ -144,6 +144,7 @@ export default function CustomerPage() {
   const [emergencyPhone, setEmergencyPhone] = useState('');
   const [allergies, setAllergies] = useState('');
   const [medicalConditions, setMedicalConditions] = useState('');
+  const [consentInsurance, setConsentInsurance] = useState(false);
 
   // 1. Fetch Trips initially
   useEffect(() => {
@@ -274,9 +275,11 @@ export default function CustomerPage() {
         setEmergencyPhone(data.profile.emergencyPhone || '');
         setAllergies(data.profile.allergies || '');
         setMedicalConditions(data.profile.medicalConditions || '');
+        setConsentInsurance(true);
         setShowProfileModal(false);
       } else {
         setHasProfile(false);
+        setConsentInsurance(false);
         setShowProfileModal(true);
       }
     } catch (err) {
@@ -289,6 +292,12 @@ export default function CustomerPage() {
     if (!lineUser) return;
     if (!fullName.trim() || !nickname.trim() || !phone.trim() || !nationalId.trim() || !birthDate.trim() || !emergencyName.trim() || !emergencyPhone.trim()) {
       setMessage({ type: 'error', text: 'กรุณากรอกข้อมูลบังคับให้ครบถ้วนทุกช่อง' });
+      setTimeout(() => setMessage(null), 3000);
+      return;
+    }
+
+    if (!consentInsurance) {
+      setMessage({ type: 'error', text: 'กรุณากดยินยอมเพื่อให้ใช้ข้อมูลในการทำประกัน' });
       setTimeout(() => setMessage(null), 3000);
       return;
     }
@@ -836,6 +845,24 @@ export default function CustomerPage() {
                 <div>
                   <label htmlFor="medicalConditions" className="block text-[11px] font-bold text-slate-500 mb-1">โรคประจำตัว (ถ้ามี)</label>
                   <input type="text" id="medicalConditions" value={medicalConditions} onChange={(e) => setMedicalConditions(e.target.value)} placeholder="เช่น หอบหืด, เบาหวาน" className="w-full bg-slate-50 border border-slate-200 focus:border-[#4c1d95] rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200" />
+                </div>
+
+                <div className="flex items-start gap-2.5 bg-purple-50/50 border border-purple-100 rounded-xl p-3 mt-2">
+                  <input
+                    type="checkbox"
+                    id="consentInsurance"
+                    required
+                    checked={consentInsurance}
+                    onChange={(e) => setConsentInsurance(e.target.checked)}
+                    className="mt-0.5 w-3.5 h-3.5 rounded border-slate-300 text-[#4c1d95] focus:ring-[#4c1d95] accent-[#4c1d95] cursor-pointer"
+                  />
+                  <label htmlFor="consentInsurance" className="text-[10.5px] leading-relaxed text-slate-600 font-semibold cursor-pointer select-none">
+                    ข้าพเจ้ายินยอมให้ผู้จัดทริป “ด่าไป เดินไป” เก็บ ใช้ และเปิดเผยข้อมูลส่วนบุคคลของข้าพเจ้า ได้แก่ ชื่อ-นามสกุล เบอร์โทรศัพท์ เลขบัตรประชาชน วันเดือนปีเกิด ข้อมูลผู้ติดต่อฉุกเฉิน รวมถึงข้อมูลสุขภาพ เช่น โรคประจำตัว และอาการแพ้อาหาร เพื่อใช้ในการ:
+                    <ul className="list-disc pl-4 mt-1 space-y-0.5 text-slate-500 font-medium">
+                      <li>ทำประกันการเดินทาง</li>
+                      <li>ติดต่อประสานงาน และดูแลความปลอดภัยในทริปนี้</li>
+                    </ul>
+                  </label>
                 </div>
 
                 <div className="flex gap-2 mt-4">

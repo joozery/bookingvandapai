@@ -66,6 +66,22 @@ export async function POST(request: Request) {
 
     if (error) throw error;
 
+    // Proactively sync the updated profile fields to all bookings of this user
+    await supabase
+      .from('bookings')
+      .update({
+        fullName,
+        nickname,
+        phone,
+        nationalId,
+        birthDate,
+        emergencyName,
+        emergencyPhone,
+        allergies: allergies || '',
+        medicalConditions: medicalConditions || ''
+      })
+      .eq('lineUserId', lineUserId);
+
     return NextResponse.json({ success: true, profile: profileData });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
