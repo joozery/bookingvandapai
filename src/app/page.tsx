@@ -676,18 +676,36 @@ export default function CustomerPage() {
             </div>
             <div>
               <h1 className="text-xl sm:text-2xl font-extrabold text-slate-800 tracking-tight leading-none">
-                จองที่นั่งรถตู้ 11 ที่นั่ง
+                จองรถตู้ทริป “ด่าไป เดินไป”
               </h1>
-              <div className="text-[11px] sm:text-xs text-slate-400 font-semibold mt-1 flex flex-wrap items-center gap-1.5">
-                <span>เลือกทริป</span>
-                <ChevronRight className="w-3 h-3 text-slate-300" />
-                <span>เลือกรถตู้</span>
-                <ChevronRight className="w-3 h-3 text-slate-300" />
-                <span className="text-[#4c1d95] font-bold">เลือกที่นั่ง</span>
-                <ChevronRight className="w-3 h-3 text-slate-300" />
-                <span>กรอกข้อมูล</span>
-                <ChevronRight className="w-3 h-3 text-slate-300" />
-                <span>ยืนยันการจอง</span>
+              <div className="text-[11px] sm:text-xs text-slate-400 font-semibold mt-2 flex flex-wrap items-center gap-1.5">
+                {[
+                  { id: 1, name: 'เลือกทริป' },
+                  { id: 2, name: 'เลือกรถตู้' },
+                  { id: 3, name: 'เลือกที่นั่ง' },
+                  { id: 4, name: 'กรอกข้อมูล' },
+                  { id: 5, name: 'ยืนยันการจอง' },
+                ].map((step, idx) => {
+                  const isActive = step.id === currentStep;
+                  const isPassed = step.id < currentStep;
+
+                  return (
+                    <React.Fragment key={step.id}>
+                      {idx > 0 && <ChevronRight className="w-3 h-3 text-slate-300 shrink-0" />}
+                      <span
+                        className={`transition-all duration-300 px-2 py-0.5 rounded-full ${
+                          isActive
+                            ? 'bg-purple-50 border border-purple-100 text-[#4c1d95] font-black shadow-sm scale-105'
+                            : isPassed
+                            ? 'text-slate-700 font-bold'
+                            : 'text-slate-400 font-medium'
+                        }`}
+                      >
+                        {step.name}
+                      </span>
+                    </React.Fragment>
+                  );
+                })}
               </div>
             </div>
           </div>
