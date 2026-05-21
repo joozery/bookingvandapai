@@ -123,6 +123,7 @@ export default function CustomerPage() {
   const [isRequestingTransfer, setIsRequestingTransfer] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const ticketRef = useRef<HTMLDivElement>(null);
 
@@ -554,20 +555,50 @@ export default function CustomerPage() {
 
   const handleDownloadTicket = async () => {
     if (!ticketRef.current) return;
+    
+    setIsDownloading(true);
     try {
-      const image = await toPng(ticketRef.current, {
+      const dataUrl = await toPng(ticketRef.current, {
         cacheBust: true,
         backgroundColor: '#ffffff',
         pixelRatio: 4 // Increased from 2 to 4 for ultra-crisp high-definition (HD) ticket image
       });
+      
+      const filename = `BookingTicket-Seat${userBooking?.seatLabel || 'X'}.png`;
+
+      // Try Web Share API for mobile (allows saving to gallery easily)
+      if (navigator.share) {
+        try {
+          const res = await fetch(dataUrl);
+          const blob = await res.blob();
+          const file = new File([blob], filename, { type: 'image/png' });
+          
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: 'บัตรโดยสาร Booking Van',
+            });
+            setIsDownloading(false);
+            return; // Success!
+          }
+        } catch (shareErr) {
+          console.error("Share failed", shareErr);
+          // Fall back to standard download if share is aborted or fails
+        }
+      }
+
+      // Fallback: standard download link (works on desktop and some browsers)
       const link = document.createElement("a");
-      link.href = image;
-      link.download = `BookingTicket-Seat${userBooking?.seatLabel || 'X'}.png`;
+      link.href = dataUrl;
+      link.download = filename;
       link.click();
+      
     } catch (err) {
       console.error("Error capturing ticket", err);
       setMessage({ type: 'error', text: 'เกิดข้อผิดพลาดในการบันทึกรูปบัตรโดยสาร' });
       setTimeout(() => setMessage(null), 3000);
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -1583,10 +1614,20 @@ export default function CustomerPage() {
               <div className="flex flex-col gap-2">
                 <button
                   onClick={handleDownloadTicket}
-                  className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition duration-200 flex items-center justify-center gap-1.5 shadow-sm"
+                  disabled={isDownloading}
+                  className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition duration-200 flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-70 disabled:cursor-not-allowed"
                 >
-                  <Download className="w-4 h-4" />
-                  <span>บันทึกรูปบัตรโดยสาร</span>
+                  {isDownloading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>กำลังเตรียมรูปภาพ...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4" />
+                      <span>บันทึกรูปบัตรโดยสาร</span>
+                    </>
+                  )}
                 </button>
                 <div className="flex gap-2">
                   <button

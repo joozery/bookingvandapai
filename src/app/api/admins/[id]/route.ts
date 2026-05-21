@@ -3,9 +3,11 @@ export const dynamic = 'force-dynamic';
 import { supabase } from '@/lib/supabase';
 import bcrypt from 'bcryptjs';
 
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+type RouteParams = { params: Promise<{ id: string }> };
+
+export async function PUT(request: Request, props: RouteParams) {
   try {
-    const id = params.id;
+    const { id } = await props.params;
     const body = await request.json();
     
     const updates: any = {};
@@ -32,12 +34,13 @@ export async function PUT(request: Request, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, props: RouteParams) {
   try {
+    const { id } = await props.params;
     const { error } = await supabase
       .from('admins')
       .delete()
-      .eq('id', params.id);
+      .eq('id', id);
 
     if (error) throw error;
 

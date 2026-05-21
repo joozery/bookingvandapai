@@ -2,9 +2,11 @@ import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 import { supabase } from '@/lib/supabase';
 
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+type RouteParams = { params: Promise<{ id: string }> };
+
+export async function PUT(request: Request, props: RouteParams) {
   try {
-    const id = params.id;
+    const { id } = await props.params;
     const body = await request.json();
     
     // Only allow updating specific fields
@@ -28,12 +30,13 @@ export async function PUT(request: Request, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, props: RouteParams) {
   try {
+    const { id } = await props.params;
     const { error } = await supabase
       .from('admin_users')
       .delete()
-      .eq('id', params.id);
+      .eq('id', id);
 
     if (error) throw error;
 

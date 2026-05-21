@@ -7,7 +7,7 @@ import bcrypt from "bcryptjs"
 // a double-nested default export. We normalise it here.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const _LineProviderModule = require("next-auth/providers/line")
-const LineProvider: (options: { clientId: string; clientSecret: string }) => object =
+const LineProvider: (options: { clientId: string; clientSecret: string }) => any =
   _LineProviderModule?.default?.default ?? _LineProviderModule?.default ?? _LineProviderModule
 
 const authOptions = {
