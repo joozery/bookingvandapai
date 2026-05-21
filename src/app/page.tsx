@@ -137,6 +137,12 @@ export default function CustomerPage() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [hasProfile, setHasProfile] = useState(false);
   const [isSubmittingProfile, setIsSubmittingProfile] = useState(false);
+
+  // Mobile Tab & Modals States
+  const [mobileTab, setMobileTab] = useState<'explore' | 'tickets' | 'profile'>('explore');
+  const [showBookingHistoryModal, setShowBookingHistoryModal] = useState(false);
+  const [allUserBookings, setAllUserBookings] = useState<any[]>([]);
+  const [showHelpCenterModal, setShowHelpCenterModal] = useState(false);
   
   const [nationalId, setNationalId] = useState('');
   const [birthDate, setBirthDate] = useState('');
@@ -398,6 +404,19 @@ export default function CustomerPage() {
       }
     } catch (err) {
       // Silent error
+    }
+  };
+
+  const fetchAllUserBookings = async () => {
+    if (!lineUser) return;
+    try {
+      const res = await fetch(`/api/bookings?lineUserId=${lineUser.userId}`);
+      const data = await res.json();
+      if (data.success) {
+        setAllUserBookings(data.bookings);
+      }
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -896,12 +915,101 @@ export default function CustomerPage() {
           </div>
         </div>
       ) : (
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-grow grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-grow grid grid-cols-1 lg:grid-cols-12 gap-8 pb-20 lg:pb-8">
         
+        {/* On mobile, if active tab is profile, show the profile screen */}
+        {mobileTab === 'profile' && lineUser && (
+          <div className="lg:hidden col-span-1 flex flex-col gap-6 bg-white rounded-3xl p-5 border border-slate-200 shadow-sm animate-in fade-in duration-200">
+            {/* Profile Header */}
+            <div className="border-b border-slate-100 pb-4 text-center">
+              <h2 className="text-base font-bold text-slate-800">โปรไฟล์</h2>
+            </div>
+
+            {/* Profile Card Section */}
+            <div className="flex flex-col items-center py-6 bg-slate-50 rounded-2xl border border-slate-100/50">
+              <div className="w-20 h-20 bg-slate-200 rounded-full overflow-hidden border-4 border-white shadow-md relative">
+                <img
+                  src={lineUser.pictureUrl}
+                  alt={lineUser.displayName}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <h3 className="text-sm font-extrabold text-slate-800 mt-3">
+                {fullName || lineUser.displayName}
+              </h3>
+              <p className="text-[11px] text-slate-400 font-semibold mt-1 font-mono">
+                {phone || 'ยังไม่ได้ระบุเบอร์โทรศัพท์'}
+              </p>
+            </div>
+
+            {/* Menu List matching screenshot */}
+            <div className="flex flex-col gap-1 mt-2">
+              {/* Menu Item 1: ข้อมูลส่วนตัว */}
+              <button
+                onClick={() => setShowProfileModal(true)}
+                className="w-full flex items-center justify-between py-3.5 px-3 hover:bg-slate-50 rounded-2xl transition duration-200 text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-[#4c1d95]/10 flex items-center justify-center text-[#4c1d95]">
+                    <User className="w-4.5 h-4.5" />
+                  </div>
+                  <span className="text-xs font-bold text-slate-700">ข้อมูลส่วนตัว & ประกันภัย</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400" />
+              </button>
+
+              {/* Menu Item 2: ประวัติการจอง */}
+              <button
+                onClick={() => {
+                  fetchAllUserBookings();
+                  setShowBookingHistoryModal(true);
+                }}
+                className="w-full flex items-center justify-between py-3.5 px-3 hover:bg-slate-50 rounded-2xl transition duration-200 text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-[#4c1d95]/10 flex items-center justify-center text-[#4c1d95]">
+                    <Clock className="w-4.5 h-4.5" />
+                  </div>
+                  <span className="text-xs font-bold text-slate-700">ประวัติการจองทริป</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400" />
+              </button>
+
+              {/* Menu Item 3: ติดต่อแอดมิน */}
+              <button
+                onClick={() => setShowHelpCenterModal(true)}
+                className="w-full flex items-center justify-between py-3.5 px-3 hover:bg-slate-50 rounded-2xl transition duration-200 text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-[#4c1d95]/10 flex items-center justify-center text-[#4c1d95]">
+                    <MessageSquare className="w-4.5 h-4.5" />
+                  </div>
+                  <span className="text-xs font-bold text-slate-700">ศูนย์ช่วยเหลือ & ติดต่อแอดมิน</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400" />
+              </button>
+
+              {/* Logout Button */}
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center justify-between py-3.5 px-3 hover:bg-rose-50 rounded-2xl transition duration-200 text-left mt-6"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center text-rose-500">
+                    <LogOut className="w-4.5 h-4.5" />
+                  </div>
+                  <span className="text-xs font-bold text-rose-600">ออกจากระบบ (LINE Logout)</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-rose-400" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* ========================================================================= */}
         {/* COLUMN 1: LEFT SIDE (3 columns on lg) - SELECT TRIP & VAN */}
         {/* ========================================================================= */}
-        <section className="lg:col-span-3 flex flex-col gap-6">
+        <section className={`lg:col-span-3 flex flex-col gap-6 ${mobileTab !== 'explore' ? 'hidden lg:flex' : 'flex'}`}>
           
           {/* 1.1 เลือกทริป */}
           <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
@@ -1083,7 +1191,7 @@ export default function CustomerPage() {
         {/* ========================================================================= */}
         {/* COLUMN 2: MIDDLE (5 columns on lg) - DETAILED VAN & SEAT MAP */}
         {/* ========================================================================= */}
-        <section className="lg:col-span-5 flex flex-col gap-6">
+        <section className={`lg:col-span-5 flex flex-col gap-6 ${mobileTab !== 'explore' ? 'hidden lg:flex' : 'flex'}`}>
           
           {selectedVan ? (
             <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex-1 flex flex-col justify-between">
@@ -1307,7 +1415,7 @@ export default function CustomerPage() {
         {/* ========================================================================= */}
         {/* COLUMN 3: RIGHT SIDE (4 columns on lg) - BOOKING FORM / DIGITAL TICKET */}
         {/* ========================================================================= */}
-        <section className="lg:col-span-4 flex flex-col gap-6">
+        <section className={`lg:col-span-4 flex flex-col gap-6 ${mobileTab !== 'tickets' ? 'hidden lg:flex' : 'flex'}`}>
           
           {/* Active Digital Ticket display if user has a booking */}
           {lineUser && userBooking && (
@@ -2077,6 +2185,179 @@ export default function CustomerPage() {
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Booking History Modal */}
+      {showBookingHistoryModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white border border-slate-200 rounded-3xl max-w-md w-full p-6 relative overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 text-slate-800">
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-[#4c1d95]" />
+            
+            <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+              <h3 className="text-sm sm:text-base font-bold text-slate-800 flex items-center gap-2">
+                <Clock className="w-4.5 h-4.5 text-[#4c1d95]" />
+                <span>ประวัติการจองทริปทั้งหมด</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowBookingHistoryModal(false)}
+                className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1.5 rounded-full transition"
+              >
+                <X className="w-4.5 h-4.5" />
+              </button>
+            </div>
+
+            {/* Bookings list container */}
+            <div className="max-h-[360px] overflow-y-auto pr-1 space-y-3.5 scrollbar-thin">
+              {allUserBookings.length === 0 ? (
+                <p className="text-xs text-slate-400 text-center py-6">ยังไม่เคยมีประวัติการจองทริป</p>
+              ) : (
+                allUserBookings.map((b) => (
+                  <div key={b.id} className="bg-slate-50 border border-slate-100 rounded-xl p-3.5 flex flex-col gap-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-xs font-bold text-slate-800 leading-tight">
+                        ทริปที่จอง: {b.tripName || 'ไม่ระบุชื่อทริป'}
+                      </span>
+                      <span className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-bold border ${
+                        b.status === 'approved'
+                          ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                          : b.status === 'pending'
+                            ? 'bg-amber-50 text-amber-600 border-amber-200'
+                            : 'bg-slate-100 text-slate-500 border-slate-200'
+                      }`}>
+                        {b.status === 'approved' ? 'อนุมัติแล้ว' : b.status === 'pending' ? 'รออนุมัติ' : 'ยกเลิก'}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-slate-500 font-semibold">
+                      <span>เบาะ: {b.seatLabel || b.seatId}</span>
+                      <span>ออก: {b.departureDate || ''} เวลา {b.departureTime || ''} น.</span>
+                    </div>
+                    <div className="border-t border-slate-200/50 pt-2 flex items-center justify-between text-[10px] font-black text-[#4c1d95]">
+                      <span>ราคาทริป</span>
+                      <span>฿{b.cost?.toLocaleString('th-TH') || '0'}</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="mt-5 border-t border-slate-100 pt-3 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowBookingHistoryModal(false)}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold px-4 py-2.5 rounded-xl transition duration-200"
+              >
+                ปิดหน้าต่าง
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Help Center & Contact Modal */}
+      {showHelpCenterModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white border border-slate-200 rounded-3xl max-w-md w-full p-6 relative overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 text-slate-800">
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-[#4c1d95]" />
+            
+            <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+              <h3 className="text-sm sm:text-base font-bold text-slate-800 flex items-center gap-2">
+                <MessageSquare className="w-4.5 h-4.5 text-[#4c1d95]" />
+                <span>ศูนย์ช่วยเหลือ & ติดต่อแอดมิน</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowHelpCenterModal(false)}
+                className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1.5 rounded-full transition"
+              >
+                <X className="w-4.5 h-4.5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs leading-relaxed text-slate-600">
+              <div className="bg-purple-50/50 border border-purple-100 rounded-xl p-3">
+                <h4 className="font-bold text-[#4c1d95] mb-1">ต้องการยกเลิกหรือขอเปลี่ยนเบาะที่นั่ง?</h4>
+                <p className="text-[11px] text-slate-500 leading-normal">
+                  ลูกทริปสามารถส่งคำขอย้ายเบาะที่นั่งได้โดยตรงบนแผนผังรถตู้ โดยการคลิกเบาะเดิมของตนเองแล้วเลือกเบาะใหม่ จากนั้นระบบจะส่งเรื่องให้แอดมินทำการอนุมัติทันที
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-bold text-slate-700">ช่องทางการติดต่อแอดมิน</h4>
+                <p className="text-[11px]">
+                  หากมีข้อสงสัยเกี่ยวกับรายละเอียดของทริป การทำประกันเดินทาง หรือต้องการความช่วยเหลือเพิ่มเติม สามารถติดต่อผ่านช่องทาง Line Official Account หรือเบอร์โทรติดต่อได้ตลอดเวลาครับ
+                </p>
+                <div className="flex flex-col gap-2 pt-1">
+                  <a
+                    href="https://line.me"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-[#06C755] hover:bg-[#05b34c] text-white py-2.5 px-4 rounded-xl font-bold flex items-center justify-center gap-2 transition"
+                  >
+                    <MessageSquare className="w-4.5 h-4.5" />
+                    <span>ติดต่อแอดมินผ่าน LINE Official</span>
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 border-t border-slate-100 pt-3 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowHelpCenterModal(false)}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold px-4 py-2.5 rounded-xl transition duration-200"
+              >
+                ปิดหน้าต่าง
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Bottom Navigation Bar matching screenshot style */}
+      {lineUser && hasProfile && !showProfileModal && (
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 py-2 px-6 flex justify-around items-center shadow-lg">
+          {/* Tab 1: สำรวจ */}
+          <button
+            onClick={() => setMobileTab('explore')}
+            className={`flex flex-col items-center gap-0.5 transition-colors duration-200 ${
+              mobileTab === 'explore' ? 'text-[#4c1d95]' : 'text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            <Compass className="w-5 h-5" />
+            <span className="text-[9.5px] font-bold">สำรวจ</span>
+            {mobileTab === 'explore' && <span className="w-1 h-1 bg-[#4c1d95] rounded-full mt-0.5" />}
+          </button>
+
+          {/* Tab 2: ตั๋วของฉัน */}
+          <button
+            onClick={() => setMobileTab('tickets')}
+            className={`flex flex-col items-center gap-0.5 transition-colors duration-200 ${
+              mobileTab === 'tickets' ? 'text-[#4c1d95]' : 'text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            <div className="relative">
+              <Armchair className="w-5 h-5" />
+              {userBooking && (
+                <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full border border-white" />
+              )}
+            </div>
+            <span className="text-[9.5px] font-bold">ตั๋วของฉัน</span>
+            {mobileTab === 'tickets' && <span className="w-1 h-1 bg-[#4c1d95] rounded-full mt-0.5" />}
+          </button>
+
+          {/* Tab 3: โปรไฟล์ */}
+          <button
+            onClick={() => setMobileTab('profile')}
+            className={`flex flex-col items-center gap-0.5 transition-colors duration-200 ${
+              mobileTab === 'profile' ? 'text-[#4c1d95]' : 'text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            <User className="w-5 h-5" />
+            <span className="text-[9.5px] font-bold">โปรไฟล์</span>
+            {mobileTab === 'profile' && <span className="w-1 h-1 bg-[#4c1d95] rounded-full mt-0.5" />}
+          </button>
         </div>
       )}
 
