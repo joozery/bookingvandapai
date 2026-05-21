@@ -431,7 +431,7 @@ export default function CustomerPage() {
     if (seat.type === 'staff') {
       setMessage({
         type: 'error',
-        text: `ที่นั่งสตาฟ (ไม่สามารถจองได้): ${seat.staffName || 'สตาฟประจำทริป'}`
+        text: `ที่นั่งผู้จัด (ไม่สามารถจองได้): ${seat.staffName || 'ผู้จัดประจำทริป'}`
       });
       setTimeout(() => setMessage(null), 4000);
       return;
@@ -648,7 +648,7 @@ export default function CustomerPage() {
                 จองที่นั่งรถตู้ 11 ที่นั่ง
               </h1>
               <div className="text-[11px] sm:text-xs text-slate-400 font-semibold mt-1 flex flex-wrap items-center gap-1.5">
-                <span>เลือกกรุ๊ป</span>
+                <span>เลือกทริป</span>
                 <ChevronRight className="w-3 h-3 text-slate-300" />
                 <span>เลือกรถตู้</span>
                 <ChevronRight className="w-3 h-3 text-slate-300" />
@@ -705,7 +705,7 @@ export default function CustomerPage() {
             }`}>
               {currentStep > 1 ? <Check className="w-4 h-4" /> : '1'}
             </div>
-            <span className={`hidden md:inline ${currentStep >= 1 ? 'text-[#4c1d95]' : ''}`}>เลือกกรุ๊ป</span>
+            <span className={`hidden md:inline ${currentStep >= 1 ? 'text-[#4c1d95]' : ''}`}>เลือกทริป</span>
           </div>
           <div className={`flex-1 h-0.5 mx-2 min-w-[10px] ${currentStep > 1 ? 'bg-[#4c1d95]' : 'bg-slate-200'}`} />
 
@@ -866,11 +866,11 @@ export default function CustomerPage() {
         {/* ========================================================================= */}
         <section className="lg:col-span-3 flex flex-col gap-6">
           
-          {/* 1.1 เลือกกรุ๊ปเดินทาง */}
+          {/* 1.1 เลือกทริป */}
           <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
             <h2 className="text-sm sm:text-base font-bold text-slate-800 mb-4 flex items-center gap-1.5 uppercase tracking-wide">
               <Compass className="w-4 h-4 text-[#4c1d95]" />
-              <span>เลือกกรุ๊ปเดินทาง</span>
+              <span>เลือกทริป</span>
             </h2>
 
             {loading ? (
@@ -880,7 +880,7 @@ export default function CustomerPage() {
                 ))}
               </div>
             ) : trips.length === 0 ? (
-              <p className="text-xs text-slate-400 text-center py-4">ไม่พบกรุ๊ปเดินทางในขณะนี้</p>
+              <p className="text-xs text-slate-400 text-center py-4">ไม่พบทริปเดินทางในขณะนี้</p>
             ) : (
               <div className="flex flex-col gap-3 max-h-[640px] overflow-y-auto pr-1.5 scrollbar-thin">
                 {trips.map((trip) => {
@@ -1145,8 +1145,8 @@ export default function CustomerPage() {
                               {/* Cushion */}
                               <div className="flex-1 w-full rounded-[8px] mt-1 flex flex-col items-center justify-center bg-purple-50/95 relative">
                                 <span className="text-[10px] font-extrabold tracking-tight bg-purple-600 text-white rounded px-1 scale-90 mb-0.5">1</span>
-                                <span className="text-[9px] font-bold leading-none">สตาฟ</span>
-                                <span className="text-[6.5px] text-purple-700 scale-90 font-medium">(Staff)</span>
+                                <span className="text-[9px] font-bold leading-none">ผู้จัด</span>
+                                <span className="text-[6.5px] text-purple-700 scale-90 font-medium">(Admin)</span>
                                 {seat.staffName && (
                                   <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 bg-purple-600 text-white text-[6px] font-bold px-1 rounded-full whitespace-nowrap shadow-sm scale-75">
                                     {seat.staffName.split(' ')[0]}
@@ -1157,23 +1157,21 @@ export default function CustomerPage() {
                           );
                         })()}
 
-                        {/* Walkway label (middle / col 2) */}
-                        <div className="bg-slate-100 text-slate-500 border border-slate-200/80 px-2.5 py-0.5 rounded text-[8px] font-bold text-center uppercase tracking-widest scale-90 select-none">
-                          ทางเดิน
-                        </div>
+                        {/* Walkway label (middle / col 2) -> empty now */}
+                        <div className="w-[58px] h-[64px]" />
 
                         {/* Driver D (right / col 3) */}
                         {(() => {
                           const seat = selectedVan.seats.find((s) => s.row === 1 && s.col === 3);
                           return (
-                            <div className="relative w-[58px] h-[64px] rounded-[14px] flex flex-col justify-between p-1.5 transition-all duration-300 shadow-md select-none border border-b-[4px] bg-gradient-to-b from-slate-200 to-slate-300 border-slate-400 text-slate-700 shadow-slate-200/50">
+                            <div className="relative w-[58px] h-[64px] rounded-[14px] flex flex-col justify-between p-1.5 transition-all duration-300 shadow-md select-none border border-b-[4px] bg-slate-900 border-black text-white shadow-slate-900/50">
                               {/* Headrest */}
-                              <div className="w-[32px] h-[10px] rounded-[4px] mx-auto bg-slate-400/80" />
+                              <div className="w-[32px] h-[10px] rounded-[4px] mx-auto bg-slate-700/80" />
                               {/* Cushion */}
-                              <div className="flex-1 w-full rounded-[8px] mt-1 flex flex-col items-center justify-center bg-slate-100/90">
-                                <span className="text-[10px] font-extrabold tracking-tight bg-slate-400 text-white rounded px-1 scale-90 mb-0.5">D</span>
-                                <span className="text-[9px] font-bold leading-none">คนขับ</span>
-                                <span className="text-[6.5px] text-slate-500 scale-90 font-medium">(Driver)</span>
+                              <div className="flex-1 w-full rounded-[8px] mt-1 flex flex-col items-center justify-center bg-slate-800">
+                                <span className="text-[10px] font-extrabold tracking-tight bg-black text-white rounded px-1 scale-90 mb-0.5">D</span>
+                                <span className="text-[9px] font-bold leading-none text-white">คนขับ</span>
+                                <span className="text-[6.5px] text-slate-400 scale-90 font-medium">(Driver)</span>
                               </div>
                             </div>
                           );
@@ -1182,7 +1180,11 @@ export default function CustomerPage() {
                       </div>
 
                       {/* ROW 2: Seats 4 (left), 3 (middle), 2 (right) */}
-                      <div className="grid grid-cols-3 items-center justify-items-center">
+                      <div className="grid grid-cols-3 items-center justify-items-center relative">
+                        {/* Door label (beside Seat 4) */}
+                        <div className="absolute -left-1 top-1/2 -translate-y-1/2 bg-slate-100 text-slate-500 border border-slate-200/80 px-2.5 py-0.5 rounded text-[8px] font-bold text-center uppercase tracking-widest scale-90 select-none -rotate-90 origin-center translate-x-[-15px]">
+                          ประตู
+                        </div>
                         {[1, 2, 3].map((colVal) => {
                           const seat = selectedVan.seats.find((s) => s.row === 2 && s.col === colVal);
                           if (!seat) return <div key={colVal} className="w-[58px] h-[64px]" />;
@@ -1220,19 +1222,19 @@ export default function CustomerPage() {
                   </div>
                   <div className="flex items-center space-x-2">
                     <div className="w-3.5 h-3.5 rounded bg-purple-200 border border-purple-400" />
-                    <span>1 สตาฟ (ไม่สามารถเลือกได้)</span>
+                    <span>1 ผู้จัด (ไม่สามารถเลือกได้)</span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <div className="w-3.5 h-3.5 rounded bg-green-500 border border-green-600" />
-                    <span>ว่าง (Green)</span>
+                    <span>ว่าง</span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <div className="w-3.5 h-3.5 rounded bg-purple-800 border border-purple-950" />
-                    <span>จองแล้ว (Purple)</span>
+                    <span>จองแล้ว</span>
                   </div>
                   <div className="flex items-center space-x-2 col-span-2 sm:col-span-1">
-                    <div className="w-3.5 h-3.5 rounded bg-red-600 border border-red-700" />
-                    <span>ไม่สามารถเลือกได้</span>
+                    <div className="w-3.5 h-3.5 rounded bg-amber-400 border border-amber-500" />
+                    <span>รออนุมัติ</span>
                   </div>
                 </div>
               </div>
@@ -1241,7 +1243,7 @@ export default function CustomerPage() {
               <div className="bg-purple-50 border border-purple-200 rounded-xl p-3.5 flex items-start gap-2.5 text-xs text-purple-950 leading-relaxed font-semibold">
                 <Info className="w-4.5 h-4.5 text-[#4c1d95] shrink-0 mt-0.5" />
                 <p>
-                  หมายเหตุ: ที่นั่ง D (คนขับ) และ 1 (สตาฟ) ไม่สามารถจองได้ • สามารถจองได้เฉพาะเบาะ 2 - 10 เท่านั้น
+                  หมายเหตุ: ที่นั่ง D (คนขับ) และ 1 (ผู้จัด) ไม่สามารถจองได้ • สามารถจองได้เฉพาะเบาะ 2 - 10 เท่านั้น
                 </p>
               </div>
 
@@ -2015,22 +2017,22 @@ export default function CustomerPage() {
 
     if (seat.status === 'available') {
       if (isSelected) {
-        containerStyle = 'bg-gradient-to-b from-[#c084fc] to-[#7e22ce] border-[#581c87] border-b-[4px] text-white shadow-purple-900/40 ring-2 ring-purple-400 ring-offset-2 ring-offset-slate-900 scale-105';
+        containerStyle = 'bg-[#c084fc] border-[#581c87] border-b-[4px] text-white shadow-purple-900/40 ring-2 ring-purple-400 ring-offset-2 ring-offset-slate-900 scale-105';
         headrestStyle = 'bg-[#e9d5ff]';
         cushionStyle = 'bg-[#9333ea]';
       } else {
-        containerStyle = 'bg-gradient-to-b from-[#34d399] to-[#059669] border-[#065f46] border-b-[4px] text-white hover:from-[#6ee7b7] hover:to-[#047857] shadow-emerald-950/30';
-        headrestStyle = 'bg-[#a7f3d0]';
-        cushionStyle = 'bg-[#10b981]';
+        containerStyle = 'bg-[#22c55e] border-[#16a34a] border-b-[4px] text-white hover:bg-[#16a34a] shadow-emerald-950/30';
+        headrestStyle = 'bg-[#86efac]';
+        cushionStyle = 'bg-[#15803d]';
       }
     } else if (seat.status === 'pending') {
-      containerStyle = 'bg-gradient-to-b from-[#fbbf24] to-[#d97706] border-[#78350f] border-b-[4px] text-white cursor-not-allowed shadow-amber-950/20';
-      headrestStyle = 'bg-[#fde68a]';
-      cushionStyle = 'bg-[#f59e0b]';
+      containerStyle = 'bg-[#fbbf24] border-[#b45309] border-b-[4px] text-amber-950 cursor-not-allowed shadow-amber-950/20';
+      headrestStyle = 'bg-[#fde047]';
+      cushionStyle = 'bg-[#d97706]';
     } else if (seat.status === 'booked') {
-      containerStyle = 'bg-gradient-to-b from-[#6b21a8] to-[#4c1d95] border-[#3b0764] border-b-[4px] text-purple-100 cursor-not-allowed shadow-none';
+      containerStyle = 'bg-[#6b21a8] border-[#4c1d95] border-b-[4px] text-purple-100 cursor-not-allowed shadow-none';
       headrestStyle = 'bg-[#d8b4fe]/45';
-      cushionStyle = 'bg-[#3b0764]/40';
+      cushionStyle = 'bg-[#581c87]';
     }
 
     return (

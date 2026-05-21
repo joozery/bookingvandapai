@@ -48,7 +48,7 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!tripSel || !vanSel || !seatSel) { alert('กรุณาเลือกทริป รถ และที่นั่ง'); return; }
-    if (!form.nickname || !form.fullName || !form.phone) { alert('กรุณากรอกข้อมูลลูกค้าให้ครบ'); return; }
+    if (!form.nickname || !form.fullName || !form.phone) { alert('กรุณากรอกข้อมูลลูกทริปให้ครบ'); return; }
     await onManualSubmit({ tripId: tripSel, vanId: vanSel, seatId: seatSel, ...form });
     setShowForm(false);
     setForm({ nickname: '', fullName: '', phone: '', note: '' });

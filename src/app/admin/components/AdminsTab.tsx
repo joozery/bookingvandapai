@@ -23,7 +23,7 @@ const AVAILABLE_PERMISSIONS = [
   { id: 'bookings', label: 'การจองและผู้โดยสาร (Bookings)' },
   { id: 'checkin', label: 'QR Check-in (Check-in)' },
   { id: 'users', label: 'จัดการสมาชิก (Users)' },
-  { id: 'staff', label: 'ทีมงาน / สตาฟ (Admin Roles)' },
+  { id: 'staff', label: 'ทีมงาน / ผู้จัด (Admin Roles)' },
   { id: 'insurance', label: 'ประกันการเดินทาง (Insurance)' },
   { id: 'reports', label: 'รายงาน (Reports)' },
   { id: 'settings', label: 'ตั้งค่า (Settings)' },

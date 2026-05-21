@@ -35,7 +35,7 @@ type SortKey = 'lastSeen' | 'totalBookings' | 'checkedIn' | 'nickname';
 type FilterRole = 'all' | 'customer' | 'admin' | 'vip' | 'blocked';
 
 const ROLE_CONFIG = {
-  customer: { label: 'ลูกค้า',  color: 'bg-blue-50 text-blue-700 border-blue-200',   icon: User },
+  customer: { label: 'ลูกทริป',  color: 'bg-blue-50 text-blue-700 border-blue-200',   icon: User },
   admin:    { label: 'แอดมิน', color: 'bg-violet-50 text-violet-700 border-violet-200', icon: ShieldCheck },
   vip:      { label: 'VIP',     color: 'bg-amber-50 text-amber-700 border-amber-200',   icon: Star },
 };
@@ -347,7 +347,7 @@ export default function UsersTab({ users, onRefresh }: Props) {
                       : 'bg-white text-slate-500 border-slate-200 hover:border-violet-300 hover:text-violet-600'
                   )}
                 >
-                  {r === 'all' ? 'ทั้งหมด' : r === 'customer' ? 'ลูกค้า' : r === 'admin' ? 'แอดมิน' : r === 'vip' ? 'VIP' : 'ถูกบล็อก'}
+                  {r === 'all' ? 'ทั้งหมด' : r === 'customer' ? 'ลูกทริป' : r === 'admin' ? 'แอดมิน' : r === 'vip' ? 'VIP' : 'ถูกบล็อก'}
                 </button>
               ))}
             </div>

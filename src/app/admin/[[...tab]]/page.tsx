@@ -38,7 +38,7 @@ const NAV = [
   },
   { id: 'users',   label: 'จัดการสมาชิก', icon: UserCheck },
   { id: 'checkin', label: 'Check-in QR', icon: QrCode },
-  { id: 'staff',   label: 'ทีมงาน / สตาฟ', icon: Shield },
+  { id: 'staff',   label: 'ทีมงาน / ผู้จัด', icon: Shield },
   { id: 'insurance', label: 'ประกันการเดินทาง', icon: Lock },
   { id: 'reports',   label: 'รายงาน', icon: FileText, children: [
     { id: 'reports-finance', label: 'รายงานการเงิน' },
@@ -202,7 +202,7 @@ export default function AdminPage() {
             
             <div className="text-center pt-3 border-t border-slate-100 mt-2">
               <a href="/" className="text-[11px] font-semibold text-slate-400 hover:text-slate-600 transition">
-                &larr; กลับไปหน้าแรก (สำหรับลูกค้า)
+                &larr; กลับไปหน้าแรก (สำหรับลูกทริป)
               </a>
             </div>
           </form>
@@ -294,7 +294,7 @@ export default function AdminPage() {
   const handleAddVan     = (tripId: string) => api(() => fetch('/api/vans', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ tripId }) }), 'เพิ่มรถตู้สำเร็จ!');
   const handleDelVan     = async (id: string) => { if (!confirm('ยืนยันลบรถ?')) return; api(() => fetch(`/api/vans/${id}`, { method:'DELETE' }), 'ลบรถเรียบร้อย'); };
   const handleUpdateVan  = (id: string, data: any) => api(() => fetch(`/api/vans/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) }), 'บันทึกสำเร็จ!');
-  const handleUpdateStaff = (vanId: string, seatId: string, staffName: string) => api(() => fetch(`/api/vans/${vanId}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ updateSeatId: seatId, staffName }) }), 'บันทึกชื่อสตาฟสำเร็จ!');
+  const handleUpdateStaff = (vanId: string, seatId: string, staffName: string) => api(() => fetch(`/api/vans/${vanId}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ updateSeatId: seatId, staffName }) }), 'บันทึกชื่อผู้จัดสำเร็จ!');
 
   const stats = {
     trips:     trips.length,
@@ -573,7 +573,7 @@ export default function AdminPage() {
                  activeTab === 'trips'     ? 'จัดการทริป' :
                  activeTab === 'vans'      ? 'จัดการรถตู้' :
                  activeTab === 'users'     ? 'จัดการสมาชิก' : 
-                 activeTab === 'staff'     ? 'ทีมงาน / สตาฟ' : 
+                 activeTab === 'staff'     ? 'ทีมงาน / ผู้จัด' : 
                  activeTab === 'insurance' ? 'ประกันการเดินทาง' : 'QR Check-in'}
               </h1>
               <p className="text-xs text-slate-400 mt-0.5">
@@ -581,7 +581,7 @@ export default function AdminPage() {
                  activeTab === 'bookings'  ? 'จัดการคำขอจองและอนุมัติที่นั่ง' :
                  activeTab === 'users'     ? 'ดูและจัดการข้อมูลสมาชิกทั้งหมด' : 
                  activeTab === 'insurance' ? 'จัดการข้อมูลและประวัติประกันการเดินทางของผู้โดยสาร' : 
-                 activeTab === 'staff'     ? 'จัดการสิทธิแอดมิน, สตาฟ และกำหนดการบล็อก' : ''}
+                 activeTab === 'staff'     ? 'จัดการสิทธิแอดมิน, ผู้จัด และกำหนดการบล็อก' : ''}
               </p>
             </div>
             <div className="flex items-center gap-2">

@@ -26,6 +26,12 @@ export async function GET() {
       console.error('Admin profiles fetch error:', profilesError);
     }
 
+    // Fetch trips and vans for resolving names
+    const [{ data: trips }, { data: vans }] = await Promise.all([
+      supabase.from('trips').select('id, name'),
+      supabase.from('vans').select('id, number')
+    ]);
+
     const profileMap = new Map();
     if (profiles) {
       profiles.forEach((p: any) => {
@@ -35,10 +41,15 @@ export async function GET() {
       });
     }
 
+    const tripMap = new Map((trips || []).map((t: any) => [t.id, t.name]));
+    const vanMap = new Map((vans || []).map((v: any) => [v.id, v.number]));
+
     const mergedBookings = (bookings || []).map((booking: any) => {
       const profile = profileMap.get(booking.lineUserId);
       return {
         ...booking,
+        tripName: tripMap.get(booking.tripId) || 'Unknown Trip',
+        vanNumber: vanMap.get(booking.vanId) || 1,
         nationalId: booking.nationalId || profile?.nationalId || null,
         birthDate: booking.birthDate || profile?.birthDate || null,
         profile: profile || null

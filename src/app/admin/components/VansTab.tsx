@@ -159,7 +159,7 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
                     {/* Staff Seat */}
                     {staffSeat && (
                       <div className="border-t border-slate-200 pt-3">
-                        <p className="text-[10px] font-bold text-violet-700 mb-1.5">สตาฟประจำคัน (เบาะ 1)</p>
+                        <p className="text-[10px] font-bold text-violet-700 mb-1.5">ผู้จัดประจำคัน (เบาะ 1)</p>
                         {editingStaff?.vanId === van.id && editingStaff?.seatId === staffSeat.id ? (
                           <form onSubmit={handleStaffSubmit} className="flex gap-2">
                             <Input
@@ -167,7 +167,7 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
                               value={editingStaff.staffName}
                               onChange={e => setEditingStaff({ ...editingStaff, staffName: e.target.value })}
                               className="h-7 text-xs flex-1"
-                              placeholder="ชื่อสตาฟ"
+                              placeholder="ชื่อผู้จัด"
                             />
                             <button type="submit" className="px-3 h-7 bg-violet-600 text-white text-[10px] rounded-lg font-bold hover:bg-violet-700 transition">บันทึก</button>
                             <button type="button" onClick={() => setEditingStaff(null)} className="px-3 h-7 border border-slate-200 text-[10px] rounded-lg text-slate-500 hover:bg-slate-100 transition">ยกเลิก</button>
@@ -178,7 +178,7 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
                             className="flex items-center gap-2 text-[10px] text-slate-600 hover:text-violet-600 bg-violet-50 px-3 py-1.5 rounded-lg border border-violet-100 transition group"
                           >
                             <div className="w-5 h-5 rounded bg-violet-200 flex items-center justify-center text-violet-700 font-black text-[10px]">1</div>
-                            <span className="font-semibold">{staffSeat.staffName || 'ยังไม่ระบุชื่อสตาฟ'}</span>
+                            <span className="font-semibold">{staffSeat.staffName || 'ยังไม่ระบุชื่อผู้จัด'}</span>
                             <Edit2 className="w-2.5 h-2.5 ml-auto opacity-0 group-hover:opacity-100 transition" />
                           </button>
                         )}

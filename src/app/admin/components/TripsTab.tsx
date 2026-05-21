@@ -201,7 +201,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
             <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
               สร้างทริปใหม่
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">กรอกรายละเอียดทริปเพื่อให้ลูกค้าสามารถจองได้</p>
+            <p className="text-xs text-slate-500 mt-0.5">กรอกรายละเอียดทริปเพื่อให้ลูกทริปสามารถจองได้</p>
           </div>
         </div>
 
