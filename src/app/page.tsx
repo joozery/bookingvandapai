@@ -457,12 +457,15 @@ export default function CustomerPage() {
     }
 
     if (seat.type === 'staff') {
-      setMessage({
-        type: 'error',
-        text: `ที่นั่งผู้จัด (ไม่สามารถจองได้): ${seat.staffName || 'ผู้จัดประจำทริป'}`
-      });
-      setTimeout(() => setMessage(null), 4000);
-      return;
+      const isStaffInSubsequentVan = (selectedVan?.vanNumber || 1) > 1;
+      if (!isStaffInSubsequentVan) {
+        setMessage({
+          type: 'error',
+          text: `ที่นั่งผู้จัด (ไม่สามารถจองได้): ${seat.staffName || 'ผู้จัดประจำทริป'}`
+        });
+        setTimeout(() => setMessage(null), 4000);
+        return;
+      }
     }
 
     if (seat.status !== 'available') {
@@ -1306,6 +1309,9 @@ export default function CustomerPage() {
                         {(() => {
                           const seat = selectedVan.seats.find((s) => s.row === 1 && s.col === 1);
                           if (!seat) return <div className="w-[58px] h-[64px]" />;
+                          if (selectedVan.vanNumber > 1) {
+                            return renderVanSeat(seat);
+                          }
                           return (
                             <div className="relative w-[58px] h-[64px] rounded-[14px] flex flex-col justify-between p-1.5 transition-all duration-300 shadow-md select-none border border-b-[4px] bg-gradient-to-b from-[#e9d5ff] to-[#c084fc] border-[#a855f7] text-[#581c87] shadow-purple-200/50">
                               {/* Headrest */}

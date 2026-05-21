@@ -85,7 +85,10 @@ export async function POST(request: Request) {
     const seat = seats[seatIndex];
 
     if (seat.type !== 'customer') {
-      return NextResponse.json({ success: false, error: 'Only customer seats can be booked' }, { status: 400 });
+      const isStaffInSubsequentVan = seat.type === 'staff' && (van.vanNumber || 1) > 1;
+      if (!isStaffInSubsequentVan) {
+        return NextResponse.json({ success: false, error: 'Only customer seats can be booked' }, { status: 400 });
+      }
     }
 
     if (seat.status !== 'available') {
