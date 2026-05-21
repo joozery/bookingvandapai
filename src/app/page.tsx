@@ -674,11 +674,13 @@ export default function CustomerPage() {
             <div className="shrink-0 shadow-md rounded-2xl overflow-hidden bg-white p-1 border-2 border-[#4c1d95] flex items-center justify-center">
               <img src="/logo/logo.png" alt="DAPAIDERNPAI Logo" className="w-12 h-12 object-contain" />
             </div>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-extrabold text-slate-800 tracking-tight leading-none">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-lg sm:text-2xl font-extrabold text-slate-800 tracking-tight leading-tight truncate">
                 จองรถตู้ทริป “ด่าไป เดินไป”
               </h1>
-              <div className="text-[11px] sm:text-xs text-slate-400 font-semibold mt-2 flex flex-wrap items-center gap-1.5">
+              
+              {/* Desktop & Tablet Stepper */}
+              <div className="hidden sm:flex text-xs text-slate-400 font-semibold mt-2 flex-wrap items-center gap-1.5">
                 {[
                   { id: 1, name: 'เลือกทริป' },
                   { id: 2, name: 'เลือกรถตู้' },
@@ -706,6 +708,31 @@ export default function CustomerPage() {
                     </React.Fragment>
                   );
                 })}
+              </div>
+
+              {/* Mobile Premium Compact Stepper */}
+              <div className="flex sm:hidden items-center justify-between mt-2 w-full bg-purple-50/50 border border-purple-100/50 rounded-lg py-1.5 px-2.5">
+                <span className="text-[10px] font-bold text-slate-500 flex items-center gap-1.5">
+                  <span className="w-4 h-4 bg-[#4c1d95] text-white rounded-full flex items-center justify-center font-black text-[9px] shrink-0">
+                    {currentStep}
+                  </span>
+                  <span>
+                    ขั้นตอน: <span className="text-[#4c1d95] font-black">
+                      {
+                        ['เลือกทริป', 'เลือกรถตู้', 'เลือกที่นั่ง', 'กรอกข้อมูล', 'ยืนยันการจอง'][currentStep - 1] || 'เลือกทริป'
+                      }
+                    </span>
+                  </span>
+                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[9px] font-extrabold text-slate-400">{currentStep}/5</span>
+                  <div className="w-16 bg-slate-200 h-1 rounded-full overflow-hidden">
+                    <div 
+                      className="bg-[#4c1d95] h-full rounded-full transition-all duration-500" 
+                      style={{ width: `${(currentStep / 5) * 100}%` }}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
