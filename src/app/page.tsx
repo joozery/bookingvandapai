@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSession, signIn, signOut } from "next-auth/react";
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { QRCodeSVG } from 'qrcode.react';
 import { toPng } from 'html-to-image';
 import {
@@ -643,6 +644,21 @@ export default function CustomerPage() {
   };
 
   const currentStep = getTimelineStep();
+
+  // ─── Sync currentStep → URL ?step=N ──────────────────────────────────────
+  const router = useRouter();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    // Only sync when user is logged in and has profile (otherwise no step UI shown)
+    if (!lineUser || !hasProfile) return;
+    const params = new URLSearchParams(window.location.search);
+    const currentInUrl = params.get('step');
+    if (currentInUrl !== String(currentStep)) {
+      params.set('step', String(currentStep));
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    }
+  }, [currentStep, lineUser, hasProfile]);
 
   return (
     <div className="flex-1 flex flex-col bg-[#f8fafc] text-slate-800 min-h-screen">
