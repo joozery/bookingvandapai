@@ -82,6 +82,15 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const filteredTrips = React.useMemo(() => {
+    return trips.filter(trip => 
+      trip.name.toLowerCase().includes(search.toLowerCase()) ||
+      trip.pickupPoint.toLowerCase().includes(search.toLowerCase()) ||
+      (trip.tripPeriod && trip.tripPeriod.toLowerCase().includes(search.toLowerCase())) ||
+      trip.departureDate.includes(search)
+    );
+  }, [trips, search]);
+
   if (editingTrip) {
     return (
       <div className="w-full space-y-6 animate-in slide-in-from-bottom-4 duration-300">
@@ -310,14 +319,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
     );
   }
 
-  const filteredTrips = React.useMemo(() => {
-    return trips.filter(trip => 
-      trip.name.toLowerCase().includes(search.toLowerCase()) ||
-      trip.pickupPoint.toLowerCase().includes(search.toLowerCase()) ||
-      (trip.tripPeriod && trip.tripPeriod.toLowerCase().includes(search.toLowerCase())) ||
-      trip.departureDate.includes(search)
-    );
-  }, [trips, search]);
+
 
   return (
     <div className="space-y-6">

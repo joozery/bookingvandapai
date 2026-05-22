@@ -312,7 +312,7 @@ export default function AdminPage() {
     setExpandedNav(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
 
   // ── Sidebar content ─────────────────────────────────────────────────────────
-  const SidebarContent = () => (
+  const sidebarContent = (
     <div className="flex flex-col h-full bg-white select-none">
       {/* Logo Section */}
       <div className="h-16 flex items-center gap-3 px-4 border-b border-slate-100 shrink-0 bg-white">
@@ -494,7 +494,7 @@ export default function AdminPage() {
         sidebarOpen ? 'w-60' : 'w-16',
         mobileSidebar ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       )}>
-        <SidebarContent />
+        {sidebarContent}
       </aside>
 
       {/* ════ RIGHT SIDE ══════════════════════════════════════════════════════ */}

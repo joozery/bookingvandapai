@@ -56,7 +56,7 @@ export const DigitalTicket = forwardRef<HTMLDivElement, Props>(({ booking, htmlI
                 {/* Perforation 1 (Header to Body) */}
                 <div className="relative flex items-center justify-center w-full bg-[#f3effa] select-none h-4">
                   <div className="absolute -left-2 w-4 h-4 rounded-full bg-[#f5f6fa] border-r border-[#EAD6FF]/30 z-10 shadow-inner"></div>
-                  <div className="flex items-center justify-between w-full px-4 gap-1 opacity-50">
+                  <div className="flex items-center justify-between w-full px-4 gap-1 opacity-50 overflow-hidden">
                     {Array.from({ length: 26 }).map((_, i) => (
                       <div key={i} className="w-1.5 h-1.5 rounded-full bg-[#2E1A47]/40 shrink-0" />
                     ))}
@@ -73,7 +73,7 @@ export const DigitalTicket = forwardRef<HTMLDivElement, Props>(({ booking, htmlI
                     {/* Left Column: Trip Info */}
                     <div className="flex flex-col justify-center flex-1 pr-1 min-w-0">
                       <span className="text-[9px] font-black text-[#5A3882]/80 uppercase tracking-wider block">ชื่อทริป</span>
-                      <span className="text-[#2E1A47] font-black text-[18px] leading-tight block mt-0.5 tracking-tight truncate-two-lines">
+                      <span className="text-[#2E1A47] font-black text-[18px] leading-tight block mt-0.5 tracking-tight truncate-two-lines break-words whitespace-normal" style={{ wordBreak: 'break-word' }}>
                         {booking.tripName}
                       </span>
                       <div className="mt-1.5">
@@ -193,7 +193,7 @@ export const DigitalTicket = forwardRef<HTMLDivElement, Props>(({ booking, htmlI
                 {/* Perforation 2 (Body to Bottom Section) */}
                 <div className="relative flex items-center justify-center w-full bg-[#f3effa] select-none h-4">
                   <div className="absolute -left-2 w-4 h-4 rounded-full bg-[#f5f6fa] border-r border-[#EAD6FF]/30 z-10 shadow-inner"></div>
-                  <div className="flex items-center justify-between w-full px-4 gap-1 opacity-50">
+                  <div className="flex items-center justify-between w-full px-4 gap-1 opacity-50 overflow-hidden">
                     {Array.from({ length: 26 }).map((_, i) => (
                       <div key={i} className="w-1.5 h-1.5 rounded-full bg-[#2E1A47]/40 shrink-0" />
                     ))}

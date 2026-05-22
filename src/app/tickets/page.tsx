@@ -66,8 +66,7 @@ export default function TicketsPage() {
       const dataUrl = await toPng(ele, {
         cacheBust: true,
         backgroundColor: '#ffffff',
-        pixelRatio: 4,
-        style: { margin: '0', transform: 'none', left: '0', top: '0' }
+        pixelRatio: 4
       });
       const filename = `BookingTicket-Seat${seatLabel || 'X'}.png`;
 

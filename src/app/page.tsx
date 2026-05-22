@@ -232,14 +232,9 @@ export default function CustomerPage() {
       if (data.success) {
         setTrips(data.trips);
         if (data.trips.length > 0) {
-          const params = new URLSearchParams(window.location.search);
-          const tripIdParam = params.get('tripId');
-          if (tripIdParam) {
-            const t = data.trips.find((x: Trip) => x.id === tripIdParam);
-            setSelectedTrip(t || null);
-          } else {
-            setSelectedTrip(null);
-          }
+          // We intentionally do not auto-select the trip here.
+          // This ensures the user starts at Step 1 and can review the trip details before proceeding.
+          setSelectedTrip(null);
         }
       }
     } catch (err) {
@@ -680,10 +675,7 @@ export default function CustomerPage() {
       const dataUrl = await toPng(ele, {
         cacheBust: true,
         backgroundColor: '#ffffff',
-        pixelRatio: 4,
-        width: ele.offsetWidth,
-        height: ele.offsetHeight,
-        style: { margin: '0', transform: 'none', left: '0', top: '0' }
+        pixelRatio: 4
       });
       
       const filename = `BookingTicket-Seat${seatLabel || 'X'}.png`;
@@ -951,7 +943,7 @@ export default function CustomerPage() {
       </section>
       )}
 
-      {(!hasProfile || showProfileModal) ? (
+      {lineUser && (!hasProfile || showProfileModal) ? (
         <div className="flex-1 flex flex-col items-center justify-center p-4 py-8 animate-in fade-in zoom-in-95 duration-500 mt-4">
           <div className="bg-white max-w-md w-full rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
              <div className="bg-[#4c1d95] p-6 text-center">
@@ -1060,6 +1052,27 @@ export default function CustomerPage() {
                 </div>
              </form>
           </div>
+        </div>
+      ) : !lineUser ? (
+        <div className="flex-1 flex flex-col items-center justify-center p-4 py-12 animate-in fade-in zoom-in-95 duration-500">
+           <div className="bg-white max-w-sm w-full rounded-3xl shadow-xl border border-slate-200 p-8 text-center flex flex-col items-center">
+             <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+               <User className="w-8 h-8 text-slate-300" />
+             </div>
+             <h2 className="text-lg font-black text-slate-800 mb-2">เข้าสู่ระบบเพื่อดำเนินการต่อ</h2>
+             <p className="text-xs text-slate-500 mb-6 leading-relaxed">
+               กรุณาเข้าสู่ระบบด้วย LINE เพื่อทำการจองที่นั่งและดูข้อมูลตั๋วโดยสารของคุณ
+             </p>
+             <button
+               onClick={handleLoginClick}
+               className="w-full bg-[#06C755] hover:bg-[#05b34c] text-white py-3.5 px-4 rounded-xl font-black text-xs transition-all duration-300 shadow-md shadow-[#06C755]/20 flex items-center justify-center gap-2 active:scale-95"
+             >
+               <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current shrink-0">
+                 <path d="M24 10.3c0-4.7-4.8-8.5-10.7-8.5S2.7 5.6 2.7 10.3c0 4.2 3.8 7.7 8.9 8.4.3.1.8.2.9.5.1.2 0 .6-.1.8l-.4 2.6c0 .3-.2 1.1 1 0l7.2-7.2h.1c2.7-1.1 3.9-3.1 3.9-5.1z" />
+               </svg>
+               <span>เข้าสู่ระบบด้วย LINE</span>
+             </button>
+           </div>
         </div>
       ) : (
       <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full flex-grow flex flex-col gap-6 pb-24 lg:pb-10">
@@ -1246,7 +1259,7 @@ export default function CustomerPage() {
         <section className={`flex-col gap-6 lg:flex lg:col-span-3 ${currentStep === 1 || currentStep === 2 || isRequestingTransfer ? (mobileTab === 'explore' ? 'flex' : 'hidden') : 'hidden'}`}>
           
           {/* 1.1 เลือกทริป — Show only on step 1 */}
-          <div className={currentStep === 2 || (userBooking && isRequestingTransfer) ? 'hidden' : 'block'}>
+          <div className={currentStep > 1 || (userBooking && isRequestingTransfer) ? 'hidden' : 'block'}>
           <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
             <h2 className="text-sm sm:text-base font-bold text-slate-800 mb-4 flex items-center gap-1.5 uppercase tracking-wide">
               <Compass className="w-4 h-4 text-[#4c1d95]" />
@@ -1439,7 +1452,7 @@ export default function CustomerPage() {
         {/* ========================================================================= */}
         {/* COLUMN 2: MIDDLE (5 columns on lg) - DETAILED VAN & SEAT MAP */}
         {/* ========================================================================= */}
-        <section className={`flex-col gap-6 lg:col-span-5 ${(userBooking && !isRequestingTransfer) ? 'hidden lg:hidden' : (currentStep === 3 || isRequestingTransfer ? (mobileTab === 'explore' ? 'flex lg:flex' : 'hidden lg:flex') : 'hidden lg:flex')}`}>
+        <section className={`flex-col gap-6 lg:col-span-5 ${(userBooking && !isRequestingTransfer) ? 'hidden lg:hidden' : (currentStep === 3 || isRequestingTransfer ? (mobileTab === 'explore' ? 'flex lg:flex' : 'hidden lg:hidden') : 'hidden lg:hidden')}`}>
           
           {selectedVan ? (
             <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex-1 flex flex-col justify-between">
@@ -1666,7 +1679,7 @@ export default function CustomerPage() {
         {/* ========================================================================= */}
         {/* COLUMN 3: RIGHT SIDE (4 columns on lg) - BOOKING FORM / DIGITAL TICKET */}
         {/* ========================================================================= */}
-        <section className={`flex-col gap-6 lg:col-span-4 ${(currentStep === 4 || currentStep === 5 || !!userBooking) ? (mobileTab === 'explore' ? 'flex lg:flex' : 'hidden lg:flex') : 'hidden lg:flex'}`}>
+        <section className={`flex-col gap-6 lg:col-span-4 ${(currentStep === 4 || currentStep === 5 || !!userBooking) ? (mobileTab === 'explore' ? 'flex lg:flex' : 'hidden lg:hidden') : 'hidden lg:hidden'}`}>
           
           {/* Active Digital Ticket display if user has a booking */}
           {lineUser && userBooking && (
