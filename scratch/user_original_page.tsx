@@ -1,11 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSession, signIn, signOut } from "next-auth/react";
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import { QRCodeSVG } from 'qrcode.react';
-import DigitalTicket from '@/components/DigitalTicket';
 import { toPng } from 'html-to-image';
 import {
   Compass,
@@ -27,10 +24,8 @@ import {
   MessageSquare,
   Lock,
   Download,
-  X,
-  ChevronDown
+  X
 } from 'lucide-react';
-import LandingPage from '../components/LandingPage';
 
 interface Seat {
   id: string;
@@ -80,7 +75,7 @@ interface Booking {
   lineUserId: string;
   lineUserName: string;
   lineUserProfilePic: string;
-  status: 'pending' | 'approved' | 'rejected' | 'cancel_pending';
+  status: 'pending' | 'approved' | 'rejected';
   createdAt: string;
   checkedIn: boolean;
   checkedInAt: string | null;
@@ -129,12 +124,8 @@ export default function CustomerPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [downloadingTicketId, setDownloadingTicketId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const ticketRef = useRef<HTMLDivElement>(null);
-  
-  // Landing Page vs Booking App Mode
-  const [isLandingMode, setIsLandingMode] = useState(true);
 
   // Form States
   const [nickname, setNickname] = useState('');
@@ -146,12 +137,6 @@ export default function CustomerPage() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [hasProfile, setHasProfile] = useState(false);
   const [isSubmittingProfile, setIsSubmittingProfile] = useState(false);
-
-  // Mobile Tab & Modals States
-  const [mobileTab, setMobileTab] = useState<'explore' | 'tickets' | 'profile'>('explore');
-  const [showBookingHistoryModal, setShowBookingHistoryModal] = useState(false);
-  const [allUserBookings, setAllUserBookings] = useState<any[]>([]);
-  const [showHelpCenterModal, setShowHelpCenterModal] = useState(false);
   
   const [nationalId, setNationalId] = useState('');
   const [birthDate, setBirthDate] = useState('');
@@ -159,16 +144,13 @@ export default function CustomerPage() {
   const [emergencyPhone, setEmergencyPhone] = useState('');
   const [allergies, setAllergies] = useState('');
   const [medicalConditions, setMedicalConditions] = useState('');
-  const [consentInsurance, setConsentInsurance] = useState(false);
 
   // 1. Fetch Trips initially
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const tripIdParam = params.get('tripId');
-    const stepParam = params.get('step');
-    if (tripIdParam || stepParam) {
-      if (tripIdParam) setUrlTripId(tripIdParam);
-      setIsLandingMode(false);
+    if (tripIdParam) {
+      setUrlTripId(tripIdParam);
     }
     fetchTrips();
   }, []);
@@ -218,12 +200,6 @@ export default function CustomerPage() {
     return () => clearInterval(interval);
   }, [selectedTrip, selectedVan?.id, lineUser]);
 
-  useEffect(() => {
-    if (lineUser) {
-      fetchAllUserBookings();
-    }
-  }, [lineUser]);
-
   const fetchTrips = async () => {
     try {
       setLoading(true);
@@ -236,9 +212,9 @@ export default function CustomerPage() {
           const tripIdParam = params.get('tripId');
           if (tripIdParam) {
             const t = data.trips.find((x: Trip) => x.id === tripIdParam);
-            setSelectedTrip(t || null);
+            setSelectedTrip(t || data.trips[0]);
           } else {
-            setSelectedTrip(null);
+            setSelectedTrip(data.trips[0]);
           }
         }
       }
@@ -255,14 +231,9 @@ export default function CustomerPage() {
       const data = await res.json();
       if (data.success && data.vans.length > 0) {
         setVans(data.vans);
-        if (selectedVan) {
-          const matchedVan = data.vans.find((v: Van) => v.id === selectedVan.id);
-          if (matchedVan) {
-            setSelectedVan(matchedVan);
-          } else {
-            setSelectedVan(null);
-          }
-        }
+        const currentSelectedId = selectedVan?.id;
+        const matchedVan = data.vans.find((v: Van) => v.id === currentSelectedId);
+        setSelectedVan(matchedVan || data.vans[0]);
       }
     } catch (err) {
       console.error(err);
@@ -303,11 +274,9 @@ export default function CustomerPage() {
         setEmergencyPhone(data.profile.emergencyPhone || '');
         setAllergies(data.profile.allergies || '');
         setMedicalConditions(data.profile.medicalConditions || '');
-        setConsentInsurance(true);
         setShowProfileModal(false);
       } else {
         setHasProfile(false);
-        setConsentInsurance(false);
         setShowProfileModal(true);
       }
     } catch (err) {
@@ -320,12 +289,6 @@ export default function CustomerPage() {
     if (!lineUser) return;
     if (!fullName.trim() || !nickname.trim() || !phone.trim() || !nationalId.trim() || !birthDate.trim() || !emergencyName.trim() || !emergencyPhone.trim()) {
       setMessage({ type: 'error', text: 'กรุณากรอกข้อมูลบังคับให้ครบถ้วนทุกช่อง' });
-      setTimeout(() => setMessage(null), 3000);
-      return;
-    }
-
-    if (!consentInsurance) {
-      setMessage({ type: 'error', text: 'กรุณากดยินยอมเพื่อให้ใช้ข้อมูลในการทำประกัน' });
       setTimeout(() => setMessage(null), 3000);
       return;
     }
@@ -371,7 +334,7 @@ export default function CustomerPage() {
       const res = await fetch(`/api/bookings?lineUserId=${lineUser.userId}&tripId=${selectedTrip.id}`);
       const data = await res.json();
       if (data.success && data.bookings.length > 0) {
-        const approvedBooking = data.bookings.find((b: Booking) => b.status === 'approved' || b.status === 'cancel_pending');
+        const approvedBooking = data.bookings.find((b: Booking) => b.status === 'approved');
         const pendingBooking = data.bookings.find((b: Booking) => b.status === 'pending');
         const activeBooking = approvedBooking || pendingBooking;
 
@@ -406,7 +369,7 @@ export default function CustomerPage() {
       const res = await fetch(`/api/bookings?lineUserId=${lineUser.userId}&tripId=${selectedTrip.id}`);
       const data = await res.json();
       if (data.success) {
-        const approvedBooking = data.bookings.find((b: Booking) => b.status === 'approved' || b.status === 'cancel_pending');
+        const approvedBooking = data.bookings.find((b: Booking) => b.status === 'approved');
         const pendingBooking = data.bookings.find((b: Booking) => b.status === 'pending');
         const activeBooking = approvedBooking || pendingBooking;
 
@@ -426,32 +389,6 @@ export default function CustomerPage() {
       }
     } catch (err) {
       // Silent error
-    }
-  };
-
-  const fetchAllUserBookings = async () => {
-    if (!lineUser) return;
-    try {
-      const res = await fetch(`/api/bookings?lineUserId=${lineUser.userId}`);
-      const data = await res.json();
-      if (data.success) {
-        // Fetch full details for each booking to get tripName, cost, etc.
-        const fullBookings = await Promise.all(
-          data.bookings.map(async (b: any) => {
-            try {
-              const ticketRes = await fetch(`/api/bookings/${b.id}`);
-              const ticketData = await ticketRes.json();
-              return ticketData.success ? ticketData.booking : b;
-            } catch (e) {
-              return b;
-            }
-          })
-        );
-        fullBookings.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        setAllUserBookings(fullBookings);
-      }
-    } catch (err) {
-      console.error(err);
     }
   };
 
@@ -492,15 +429,12 @@ export default function CustomerPage() {
     }
 
     if (seat.type === 'staff') {
-      const isStaffInSubsequentVan = (selectedVan?.vanNumber || 1) > 1;
-      if (!isStaffInSubsequentVan) {
-        setMessage({
-          type: 'error',
-          text: `ที่นั่งผู้จัด (ไม่สามารถจองได้): ${seat.staffName || 'ผู้จัดประจำทริป'}`
-        });
-        setTimeout(() => setMessage(null), 4000);
-        return;
-      }
+      setMessage({
+        type: 'error',
+        text: `ที่นั่งผู้จัด (ไม่สามารถจองได้): ${seat.staffName || 'ผู้จัดประจำทริป'}`
+      });
+      setTimeout(() => setMessage(null), 4000);
+      return;
     }
 
     if (seat.status !== 'available') {
@@ -565,14 +499,12 @@ export default function CustomerPage() {
 
       const data = await res.json();
       if (data.success) {
-        setMessage({ type: 'success', text: 'จองที่นั่งสำเร็จแล้ว! ดูตั๋วของคุณได้ที่ "ตั๋วของฉัน" หรือ "ประวัติการจอง"' });
-        setSelectedTrip(null);
-        setSelectedVan(null);
+        setMessage({ type: 'success', text: data.message });
         setSelectedSeat(null);
-        setUserBooking(null);
         setNote('');
         setIsRequestingTransfer(false);
-        fetchAllUserBookings();
+        fetchUserBooking();
+        fetchVans(selectedTrip.id);
       } else {
         setMessage({ type: 'error', text: data.error });
       }
@@ -585,19 +517,18 @@ export default function CustomerPage() {
   };
 
   const handleCancelBooking = async (bookingId: string) => {
-    if (!confirm('คุณต้องการยกเลิกการจอง/การส่งคำขอนี้ใช่หรือไม่? (รอแอดมินอนุมัติ)')) return;
+    if (!confirm('คุณต้องการยกเลิกการจอง/การส่งคำขอนี้ใช่หรือไม่?')) return;
     try {
       const res = await fetch(`/api/bookings/${bookingId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'cancel_pending' }),
+        method: 'DELETE',
       });
       const data = await res.json();
       if (data.success) {
-        setMessage({ type: 'success', text: 'ส่งคำขอยกเลิกสำเร็จ รอแอดมินอนุมัติ' });
-        // Refresh booking state
-        fetchUserBooking();
-        fetchAllUserBookings();
+        setMessage({ type: 'success', text: 'ยกเลิกคำขอจองสำเร็จแล้ว' });
+        setUserBooking(null);
+        if (selectedTrip) {
+          fetchVans(selectedTrip.id);
+        }
       } else {
         setMessage({ type: 'error', text: data.error });
       }
@@ -671,114 +602,16 @@ export default function CustomerPage() {
     }
   };
 
-  const handleDownloadSpecificTicket = async (ticketId: string, seatLabel: string) => {
-    const ele = document.getElementById(`ticket-${ticketId}`);
-    if (!ele) return;
-    
-    setDownloadingTicketId(ticketId);
-    try {
-      const dataUrl = await toPng(ele, {
-        cacheBust: true,
-        backgroundColor: '#ffffff',
-        pixelRatio: 4,
-        width: ele.offsetWidth,
-        height: ele.offsetHeight,
-        style: { margin: '0', transform: 'none', left: '0', top: '0' }
-      });
-      
-      const filename = `BookingTicket-Seat${seatLabel || 'X'}.png`;
-
-      if (navigator.share) {
-        try {
-          const res = await fetch(dataUrl);
-          const blob = await res.blob();
-          const file = new File([blob], filename, { type: 'image/png' });
-          if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({ files: [file], title: 'บัตรโดยสาร Booking Van' });
-            setDownloadingTicketId(null);
-            return;
-          }
-        } catch (e) {}
-      }
-
-      const link = document.createElement('a');
-      link.href = dataUrl;
-      link.download = filename;
-      link.click();
-    } catch (err) {
-      console.error("Error capturing ticket", err);
-      setMessage({ type: 'error', text: 'เกิดข้อผิดพลาดในการบันทึกรูปบัตรโดยสาร' });
-      setTimeout(() => setMessage(null), 3000);
-    } finally {
-      setDownloadingTicketId(null);
-    }
-  };
-
   // Determine current timeline step
   const getTimelineStep = () => {
-    if (userBooking && !isRequestingTransfer) return 5;
     if (!selectedTrip) return 1;
     if (!selectedVan) return 2;
-    if (!selectedSeat) return 3;
-    if (isRequestingTransfer && selectedSeat) return 3;
-    return 4;
+    if (!selectedSeat && !userBooking) return 3;
+    if (selectedSeat && !userBooking) return 4;
+    return 5;
   };
 
   const currentStep = getTimelineStep();
-
-  // ─── Sync currentStep → URL ?step=N ──────────────────────────────────────
-  const router = useRouter();
-  const pathname = usePathname();
-
-  useEffect(() => {
-    // Only sync when user is logged in and has profile (otherwise no step UI shown)
-    if (!lineUser || !hasProfile) return;
-    const params = new URLSearchParams(window.location.search);
-    const currentInUrl = params.get('step');
-    if (currentInUrl !== String(currentStep)) {
-      params.set('step', String(currentStep));
-      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-    }
-  }, [currentStep, lineUser, hasProfile]);
-
-  if (isLandingMode) {
-    return (
-      <div className="flex-1 flex flex-col bg-[#f8fafc] text-slate-800 min-h-screen">
-        {/* Global alert messages banner */}
-        {message && (
-          <div className="fixed top-24 right-4 z-50 animate-bounce max-w-sm">
-            <div
-              className={`p-4 rounded-xl shadow-2xl flex items-start gap-3 backdrop-blur-xl border ${
-                message.type === 'success'
-                  ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
-                  : 'bg-rose-50 border-rose-300 text-rose-800'
-              }`}
-            >
-              {message.type === 'success' ? (
-                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-              ) : (
-                <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
-              )}
-              <p className="text-xs font-semibold">{message.text}</p>
-            </div>
-          </div>
-        )}
-        
-        <LandingPage 
-          onLoginClick={() => {
-            if (lineUser) {
-              setIsLandingMode(false);
-            } else {
-              handleLoginClick();
-            }
-          }} 
-          showHelpCenter={() => setShowHelpCenterModal(true)} 
-          trips={trips}
-          isLoggedIn={!!lineUser}
-        />
-      </div>
-    );
-  }
 
   return (
     <div className="flex-1 flex flex-col bg-[#f8fafc] text-slate-800 min-h-screen">
@@ -803,74 +636,57 @@ export default function CustomerPage() {
       )}
 
       {/* Header Panel matching screenshot */}
-      <header className="bg-white border-b border-slate-200 py-3 sm:py-4 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 sm:gap-4">
-          <div className="flex items-center space-x-3 sm:space-x-4 min-w-0">
+      <header className="bg-white border-b border-slate-200 py-4 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex items-center space-x-4">
             {/* Real Brand Logo */}
-            <div className="shrink-0 flex items-center justify-center">
-              <img src="/logo/logo.png" alt="DAPAIDERNPAI Logo" className="w-10 h-10 sm:w-14 sm:h-14 object-contain" />
+            <div className="shrink-0 shadow-md rounded-2xl overflow-hidden bg-white p-1 border-2 border-[#4c1d95] flex items-center justify-center">
+              <img src="/logo/logo.png" alt="DAPAIDERNPAI Logo" className="w-12 h-12 object-contain" />
             </div>
-            <div className="flex-1 min-w-0 flex items-center">
-              <h1 className="text-base sm:text-2xl font-extrabold text-slate-800 tracking-tight leading-tight truncate">
-                จองรถตู้ทริป “ด่าไป เดินไป”
+            <div>
+              <h1 className="text-xl sm:text-2xl font-extrabold text-slate-800 tracking-tight leading-none">
+                จองที่นั่งรถตู้ 11 ที่นั่ง
               </h1>
+              <div className="text-[11px] sm:text-xs text-slate-400 font-semibold mt-1 flex flex-wrap items-center gap-1.5">
+                <span>เลือกทริป</span>
+                <ChevronRight className="w-3 h-3 text-slate-300" />
+                <span>เลือกรถตู้</span>
+                <ChevronRight className="w-3 h-3 text-slate-300" />
+                <span className="text-[#4c1d95] font-bold">เลือกที่นั่ง</span>
+                <ChevronRight className="w-3 h-3 text-slate-300" />
+                <span>กรอกข้อมูล</span>
+                <ChevronRight className="w-3 h-3 text-slate-300" />
+                <span>ยืนยันการจอง</span>
+              </div>
             </div>
           </div>
 
           {/* Quick links on the right */}
-          <div className="flex items-center space-x-2 sm:space-x-3 text-xs font-semibold text-slate-600 shrink-0">
-            <button
-              onClick={() => setShowHelpCenterModal(true)}
-              className="hidden sm:flex items-center space-x-1 hover:text-[#4c1d95] transition px-2.5 py-1.5 rounded-lg hover:bg-slate-100 mr-2"
-            >
+          <div className="flex items-center space-x-3 self-start md:self-center text-xs font-semibold text-slate-600">
+            <button className="hidden sm:flex items-center space-x-1 hover:text-[#4c1d95] transition px-2.5 py-1.5 rounded-lg hover:bg-slate-100">
+              <HelpCircle className="w-4 h-4 text-slate-400" />
+              <span>วิธีการใช้งาน</span>
+            </button>
+            <button className="hidden sm:flex items-center space-x-1 hover:text-[#4c1d95] transition px-2.5 py-1.5 rounded-lg hover:bg-slate-100">
               <MessageSquare className="w-4 h-4 text-slate-400" />
               <span>ติดต่อแอดมิน</span>
             </button>
+            <a href="/admin" className="hidden sm:flex items-center space-x-1 text-[#4c1d95] hover:text-purple-900 bg-purple-50 hover:bg-purple-100 transition px-3 py-1.5 rounded-lg border border-purple-200 mr-2">
+              <User className="w-4 h-4 text-purple-700" />
+              <span>แอดมิน</span>
+            </a>
             
-            {/* User Profile & Dropdown Menu */}
+            {/* User Profile & Logout */}
             {lineUser && (
-              <div className="relative group flex items-center">
-                <button className="flex items-center bg-white border border-slate-200 rounded-full py-1 px-1 pr-4 shadow-sm hover:border-[#4c1d95] hover:ring-2 hover:ring-purple-100 transition-all focus:outline-none">
-                  <img src={lineUser.pictureUrl} alt={lineUser.displayName} className="w-7 h-7 rounded-full border border-slate-100 object-cover mr-2" />
-                  <span className="font-bold text-slate-700 text-[11px] mr-2 truncate max-w-[100px]">{lineUser.displayName}</span>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#4c1d95] transition-colors" />
+              <div className="flex items-center bg-white border border-slate-200 rounded-full py-1 px-1 pr-3 shadow-sm ml-auto">
+                <img src={lineUser.pictureUrl} alt={lineUser.displayName} className="w-7 h-7 rounded-full border border-slate-100 object-cover mr-2" />
+                <span className="font-bold text-slate-700 text-[11px] mr-3 truncate max-w-[100px]">{lineUser.displayName}</span>
+                <button onClick={() => setShowProfileModal(true)} className="text-slate-500 hover:text-[#4c1d95] transition flex items-center justify-center p-1.5 rounded-full hover:bg-purple-50 mr-1" title="แก้ไขข้อมูลส่วนตัว">
+                  <User className="w-3.5 h-3.5" />
                 </button>
-                
-                {/* Invisible hover bridge to prevent menu closing */}
-                <div className="absolute top-full right-0 w-full h-2"></div>
-                
-                {/* Dropdown Menu */}
-                <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-slate-200 rounded-2xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-right scale-95 group-hover:scale-100 z-50 overflow-hidden flex flex-col py-2">
-                  <Link
-                    href="/"
-                    className="flex items-center px-4 py-2.5 text-left text-[11px] font-bold text-slate-700 hover:bg-purple-50 hover:text-[#4c1d95] transition"
-                  >
-                    <Compass className="w-4 h-4 mr-2 text-[#4c1d95]" />
-                    สำรวจ
-                  </Link>
-                  <Link
-                    href="/tickets"
-                    className="flex items-center px-4 py-2.5 text-left text-[11px] font-bold text-slate-700 hover:bg-purple-50 hover:text-[#4c1d95] transition"
-                  >
-                    <Armchair className="w-4 h-4 mr-2 text-[#4c1d95]" />
-                    ตั๋วของฉัน
-                  </Link>
-                  <button
-                    onClick={() => setShowProfileModal(true)}
-                    className="flex items-center px-4 py-2.5 text-left text-[11px] font-bold text-slate-700 hover:bg-purple-50 hover:text-[#4c1d95] transition w-full"
-                  >
-                    <User className="w-4 h-4 mr-2 text-[#4c1d95]" />
-                    โปรไฟล์
-                  </button>
-                  <div className="h-[1px] bg-slate-100 my-1 mx-2"></div>
-                  <button
-                    onClick={handleLogout}
-                    className="flex items-center px-4 py-2.5 text-left text-[11px] font-bold text-rose-600 hover:bg-rose-50 transition"
-                  >
-                    <LogOut className="w-4 h-4 mr-2" />
-                    ออกจากระบบ
-                  </button>
-                </div>
+                <button onClick={handleLogout} className="text-rose-500 hover:text-white hover:bg-rose-500 transition flex items-center justify-center p-1.5 rounded-full bg-rose-50" title="ออกจากระบบ">
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
               </div>
             )}
           </div>
@@ -879,79 +695,78 @@ export default function CustomerPage() {
 
       {/* Steps horizontal timeline matching screenshot */}
       {lineUser && hasProfile && (
-      <section className="bg-white border-b border-slate-200 pt-4 pb-8 md:py-4 px-4">
+      <section className="bg-white border-b border-slate-200 py-6 px-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between text-xs sm:text-sm font-bold text-slate-500">
-
-          {/* Step 1 — always clickable to go back to start */}
-          <button
-            onClick={() => { setSelectedTrip(null); setSelectedVan(null); setSelectedSeat(null); setUserBooking(null); }}
-            disabled={currentStep === 1 && !userBooking}
-            className={`relative flex items-center md:space-x-2 shrink-0 group transition ${currentStep > 1 || userBooking ? 'cursor-pointer' : 'cursor-default'}`}
-          >
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white transition
-              ${currentStep === 1 ? 'bg-[#4c1d95] ring-4 ring-purple-100' : 'bg-[#4c1d95]'}
-              ${currentStep > 1 || userBooking ? 'group-hover:brightness-110 group-hover:ring-2 group-hover:ring-purple-300' : ''}
-            `}>
+          
+          {/* Step 1 */}
+          <div className="flex items-center space-x-2 shrink-0">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${
+              currentStep > 1 ? 'bg-[#4c1d95]' : 'bg-[#4c1d95] ring-4 ring-purple-100'
+            }`}>
               {currentStep > 1 ? <Check className="w-4 h-4" /> : '1'}
             </div>
-            <span className={`absolute top-10 left-0 md:static md:top-auto text-[10px] md:text-sm whitespace-nowrap transition ${currentStep >= 1 ? 'text-[#4c1d95]' : ''} ${currentStep > 1 || userBooking ? 'group-hover:underline' : ''}`}>เลือกทริป</span>
-          </button>
+            <span className={`hidden md:inline ${currentStep >= 1 ? 'text-[#4c1d95]' : ''}`}>เลือกทริป</span>
+          </div>
           <div className={`flex-1 h-0.5 mx-2 min-w-[10px] ${currentStep > 1 ? 'bg-[#4c1d95]' : 'bg-slate-200'}`} />
 
-          {/* Step 2 — clickable if past step 2 */}
-          <button
-            onClick={() => { if (!userBooking && currentStep > 2) { setSelectedVan(null); setSelectedSeat(null); } }}
-            disabled={currentStep <= 2 || !!userBooking}
-            className={`relative flex items-center md:space-x-2 shrink-0 group transition ${!userBooking && currentStep > 2 ? 'cursor-pointer' : 'cursor-default'}`}
-          >
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white transition
-              ${currentStep > 2 ? 'bg-[#4c1d95]' : currentStep === 2 ? 'bg-[#4c1d95] ring-4 ring-purple-100' : 'bg-slate-200'}
-              ${!userBooking && currentStep > 2 ? 'group-hover:brightness-110 group-hover:ring-2 group-hover:ring-purple-300' : ''}
-            `}>
+          {/* Step 2 */}
+          <div className="flex items-center space-x-2 shrink-0">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${
+              currentStep > 2 ? 'bg-[#4c1d95]' : currentStep === 2 ? 'bg-[#4c1d95] ring-4 ring-purple-100' : 'bg-slate-200'
+            }`}>
               {currentStep > 2 ? <Check className="w-4 h-4" /> : '2'}
             </div>
-            <span className={`absolute top-10 left-1/2 -translate-x-1/2 md:static md:translate-x-0 md:top-auto text-[10px] md:text-sm whitespace-nowrap transition ${currentStep >= 2 ? 'text-[#4c1d95]' : ''} ${!userBooking && currentStep > 2 ? 'group-hover:underline' : ''}`}>เลือกรถตู้</span>
-          </button>
+            <span className={`hidden md:inline ${currentStep >= 2 ? 'text-[#4c1d95]' : ''}`}>เลือกรถตู้</span>
+          </div>
           <div className={`flex-1 h-0.5 mx-2 min-w-[10px] ${currentStep > 2 ? 'bg-[#4c1d95]' : 'bg-slate-200'}`} />
 
-          {/* Step 3 — clickable if past step 3 */}
-          <button
-            onClick={() => { if (!userBooking && currentStep > 3) { setSelectedSeat(null); } }}
-            disabled={currentStep <= 3 || !!userBooking}
-            className={`relative flex items-center md:space-x-2 shrink-0 group transition ${!userBooking && currentStep > 3 ? 'cursor-pointer' : 'cursor-default'}`}
-          >
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white transition
-              ${currentStep === 3 ? 'bg-[#4c1d95] ring-4 ring-purple-100' : currentStep > 3 ? 'bg-[#4c1d95]' : 'bg-slate-200'}
-              ${!userBooking && currentStep > 3 ? 'group-hover:brightness-110 group-hover:ring-2 group-hover:ring-purple-300' : ''}
-            `}>
+          {/* Step 3 */}
+          <div className="flex items-center space-x-2 shrink-0">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${
+              currentStep === 3 ? 'bg-[#4c1d95] ring-4 ring-purple-100' : currentStep > 3 ? 'bg-[#4c1d95]' : 'bg-slate-200'
+            }`}>
               {currentStep > 3 ? <Check className="w-4 h-4" /> : '3'}
             </div>
-            <span className={`absolute top-10 left-1/2 -translate-x-1/2 md:static md:translate-x-0 md:top-auto text-[10px] md:text-sm whitespace-nowrap transition ${currentStep >= 3 ? 'text-[#4c1d95]' : ''} ${!userBooking && currentStep > 3 ? 'group-hover:underline' : ''}`}>เลือกที่นั่ง</span>
-          </button>
+            <span className={`hidden md:inline ${currentStep >= 3 ? 'text-[#4c1d95]' : ''}`}>เลือกที่นั่ง</span>
+          </div>
           <div className={`flex-1 h-0.5 mx-2 min-w-[10px] ${currentStep > 3 ? 'bg-[#4c1d95]' : 'bg-slate-200'}`} />
 
-          {/* Step 4 — not clickable (form step) */}
-          <div className="relative flex items-center md:space-x-2 shrink-0">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${currentStep === 4 ? 'bg-[#4c1d95] ring-4 ring-purple-100' : currentStep > 4 ? 'bg-[#4c1d95]' : 'bg-slate-200'}`}>
+          {/* Step 4 */}
+          <div className="flex items-center space-x-2 shrink-0">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${
+              currentStep === 4 ? 'bg-[#4c1d95] ring-4 ring-purple-100' : currentStep > 4 ? 'bg-[#4c1d95]' : 'bg-slate-200'
+            }`}>
               {currentStep > 4 ? <Check className="w-4 h-4" /> : '4'}
             </div>
-            <span className={`absolute top-10 left-1/2 -translate-x-1/2 md:static md:translate-x-0 md:top-auto text-[10px] md:text-sm whitespace-nowrap transition ${currentStep >= 4 ? 'text-[#4c1d95]' : ''}`}>กรอกข้อมูล</span>
+            <span className={`hidden md:inline ${currentStep >= 4 ? 'text-[#4c1d95]' : ''}`}>กรอกข้อมูล</span>
           </div>
           <div className={`flex-1 h-0.5 mx-2 min-w-[10px] ${currentStep > 4 ? 'bg-[#4c1d95]' : 'bg-slate-200'}`} />
 
           {/* Step 5 */}
-          <div className="relative flex items-center md:space-x-2 shrink-0">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${currentStep === 5 ? 'bg-[#4c1d95] ring-4 ring-purple-100' : 'bg-slate-200'}`}>
+          <div className="flex items-center space-x-2 shrink-0">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${
+              currentStep === 5 ? 'bg-[#4c1d95] ring-4 ring-purple-100' : 'bg-slate-200'
+            }`}>
               {currentStep > 5 ? <Check className="w-4 h-4" /> : '5'}
             </div>
-            <span className={`absolute top-10 right-0 md:static md:top-auto text-[10px] md:text-sm whitespace-nowrap transition ${currentStep === 5 ? 'text-[#4c1d95]' : ''}`}>ยืนยันการจอง</span>
+            <span className={`hidden md:inline ${currentStep === 5 ? 'text-[#4c1d95]' : ''}`}>ยืนยันการจอง</span>
           </div>
 
         </div>
       </section>
       )}
 
-      {(!hasProfile || showProfileModal) ? (
+      {!lineUser ? (
+        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-500 mt-10">
+           <Compass className="w-24 h-24 text-[#4c1d95] mb-6 opacity-80" />
+           <h2 className="text-3xl font-extrabold text-slate-800 mb-3 tracking-tight">ยินดีต้อนรับสู่ระบบจองรถตู้</h2>
+           <p className="text-sm text-slate-500 mb-8 max-w-sm leading-relaxed">กรุณาล็อกอินด้วยบัญชี LINE ของท่านเพื่อดำเนินการจองที่นั่งและเข้าสู่ระบบ</p>
+           <button onClick={handleLoginClick} className="bg-[#06C755] hover:bg-[#05b34c] text-white px-8 py-3.5 rounded-full font-bold text-sm transition shadow-xl shadow-[#06C755]/20 flex items-center gap-2 transform hover:scale-105">
+              <MessageSquare className="w-5 h-5" />
+              <span>ล็อกอินเข้าสู่ระบบด้วย LINE</span>
+           </button>
+        </div>
+      ) : (!hasProfile || showProfileModal) ? (
         <div className="flex-1 flex flex-col items-center justify-center p-4 py-8 animate-in fade-in zoom-in-95 duration-500 mt-4">
           <div className="bg-white max-w-md w-full rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
              <div className="bg-[#4c1d95] p-6 text-center">
@@ -1023,24 +838,6 @@ export default function CustomerPage() {
                   <input type="text" id="medicalConditions" value={medicalConditions} onChange={(e) => setMedicalConditions(e.target.value)} placeholder="เช่น หอบหืด, เบาหวาน" className="w-full bg-slate-50 border border-slate-200 focus:border-[#4c1d95] rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200" />
                 </div>
 
-                <div className="flex items-start gap-2.5 bg-purple-50/50 border border-purple-100 rounded-xl p-3 mt-2">
-                  <input
-                    type="checkbox"
-                    id="consentInsurance"
-                    required
-                    checked={consentInsurance}
-                    onChange={(e) => setConsentInsurance(e.target.checked)}
-                    className="mt-0.5 w-3.5 h-3.5 rounded border-slate-300 text-[#4c1d95] focus:ring-[#4c1d95] accent-[#4c1d95] cursor-pointer"
-                  />
-                  <label htmlFor="consentInsurance" className="text-[10.5px] leading-relaxed text-slate-600 font-semibold cursor-pointer select-none">
-                    ข้าพเจ้ายินยอมให้ผู้จัดทริป “ด่าไป เดินไป” เก็บ ใช้ และเปิดเผยข้อมูลส่วนบุคคลของข้าพเจ้า ได้แก่ ชื่อ-นามสกุล เบอร์โทรศัพท์ เลขบัตรประชาชน วันเดือนปีเกิด ข้อมูลผู้ติดต่อฉุกเฉิน รวมถึงข้อมูลสุขภาพ เช่น โรคประจำตัว และอาการแพ้อาหาร เพื่อใช้ในการ:
-                    <ul className="list-disc pl-4 mt-1 space-y-0.5 text-slate-500 font-medium">
-                      <li>ทำประกันการเดินทาง</li>
-                      <li>ติดต่อประสานงาน และดูแลความปลอดภัยในทริปนี้</li>
-                    </ul>
-                  </label>
-                </div>
-
                 <div className="flex gap-2 mt-4">
                   {hasProfile && (
                     <button type="button" onClick={() => setShowProfileModal(false)} className="w-1/3 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold py-3 rounded-xl transition duration-200 shadow-sm flex items-center justify-center">
@@ -1062,191 +859,14 @@ export default function CustomerPage() {
           </div>
         </div>
       ) : (
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full flex-grow flex flex-col gap-6 pb-24 lg:pb-10">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-grow grid grid-cols-1 lg:grid-cols-12 gap-8">
         
-        {/* Back Navigation — show on step 2+ */}
-        {currentStep > 1 && !userBooking && (
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => {
-                if (currentStep === 2) { setSelectedTrip(null); setSelectedVan(null); setSelectedSeat(null); }
-                if (currentStep === 3) { setSelectedVan(null); setSelectedSeat(null); }
-                if (currentStep === 4) { setSelectedSeat(null); }
-              }}
-              className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-[#4c1d95] transition px-3 py-1.5 rounded-lg hover:bg-purple-50 border border-slate-200 bg-white shadow-sm"
-            >
-              <ChevronRight className="w-3.5 h-3.5 rotate-180" />
-              <span>ย้อนกลับ</span>
-            </button>
-            <span className="text-[11px] text-slate-400 font-semibold">
-              {currentStep === 2 && selectedTrip && `ทริป: ${selectedTrip.name}`}
-              {currentStep === 3 && selectedVan && `รถตู้คันที่ ${selectedVan.vanNumber}`}
-              {currentStep === 4 && selectedSeat && `เบาะที่ ${selectedSeat.label}`}
-            </span>
-          </div>
-        )}
-
-        {/* On mobile, if active tab is profile, show the profile screen */}
-        {mobileTab === 'profile' && lineUser && (
-          <div className="lg:hidden col-span-1 flex flex-col gap-6 bg-white rounded-3xl p-5 border border-slate-200 shadow-sm animate-in fade-in duration-200">
-            {/* Profile Header */}
-            <div className="border-b border-slate-100 pb-4 text-center">
-              <h2 className="text-base font-bold text-slate-800">โปรไฟล์</h2>
-            </div>
-
-            {/* Profile Card Section */}
-            <div className="flex flex-col items-center py-6 bg-slate-50 rounded-2xl border border-slate-100/50">
-              <div className="w-20 h-20 bg-slate-200 rounded-full overflow-hidden border-4 border-white shadow-md relative">
-                <img
-                  src={lineUser.pictureUrl}
-                  alt={lineUser.displayName}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <h3 className="text-sm font-extrabold text-slate-800 mt-3">
-                {fullName || lineUser.displayName}
-              </h3>
-              <p className="text-[11px] text-slate-400 font-semibold mt-1 font-mono">
-                {phone || 'ยังไม่ได้ระบุเบอร์โทรศัพท์'}
-              </p>
-            </div>
-
-            {/* Menu List matching screenshot */}
-            <div className="flex flex-col gap-1 mt-2">
-              {/* Menu Item 1: ข้อมูลส่วนตัว */}
-              <button
-                onClick={() => setShowProfileModal(true)}
-                className="w-full flex items-center justify-between py-3.5 px-3 hover:bg-slate-50 rounded-2xl transition duration-200 text-left"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-[#4c1d95]/10 flex items-center justify-center text-[#4c1d95]">
-                    <User className="w-4.5 h-4.5" />
-                  </div>
-                  <span className="text-xs font-bold text-slate-700">ข้อมูลส่วนตัว & ประกันภัย</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-400" />
-              </button>
-
-              {/* Menu Item 2: ประวัติการจอง */}
-              <button
-                onClick={() => {
-                  fetchAllUserBookings();
-                  setShowBookingHistoryModal(true);
-                }}
-                className="w-full flex items-center justify-between py-3.5 px-3 hover:bg-slate-50 rounded-2xl transition duration-200 text-left"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-[#4c1d95]/10 flex items-center justify-center text-[#4c1d95]">
-                    <Clock className="w-4.5 h-4.5" />
-                  </div>
-                  <span className="text-xs font-bold text-slate-700">ประวัติการจองทริป</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-400" />
-              </button>
-
-              {/* Menu Item 3: ติดต่อแอดมิน */}
-              <button
-                onClick={() => setShowHelpCenterModal(true)}
-                className="w-full flex items-center justify-between py-3.5 px-3 hover:bg-slate-50 rounded-2xl transition duration-200 text-left"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-[#4c1d95]/10 flex items-center justify-center text-[#4c1d95]">
-                    <MessageSquare className="w-4.5 h-4.5" />
-                  </div>
-                  <span className="text-xs font-bold text-slate-700">ศูนย์ช่วยเหลือ & ติดต่อแอดมิน</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-400" />
-              </button>
-
-              {/* Logout Button */}
-              <button
-                onClick={handleLogout}
-                className="w-full flex items-center justify-between py-3.5 px-3 hover:bg-rose-50 rounded-2xl transition duration-200 text-left mt-6"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center text-rose-500">
-                    <LogOut className="w-4.5 h-4.5" />
-                  </div>
-                  <span className="text-xs font-bold text-rose-600">ออกจากระบบ (LINE Logout)</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-rose-400" />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* On mobile, if active tab is tickets, show all tickets */}
-        {mobileTab === 'tickets' && lineUser && (
-          <div className="lg:hidden col-span-1 flex flex-col gap-4 bg-white rounded-3xl p-5 border border-slate-200 shadow-sm animate-in fade-in duration-200">
-            <div className="border-b border-slate-100 pb-4 text-center">
-              <h2 className="text-base font-bold text-slate-800 flex items-center justify-center gap-2">
-                <Armchair className="w-5 h-5 text-[#4c1d95]" />
-                <span>ตั๋วโดยสารของฉัน</span>
-              </h2>
-            </div>
-            
-            <div className="flex flex-col gap-8 pb-4">
-              {allUserBookings.length === 0 ? (
-                <div className="py-8 text-center flex flex-col items-center">
-                  <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-3">
-                    <Armchair className="w-8 h-8 text-slate-300" />
-                  </div>
-                  <p className="text-sm font-bold text-slate-500">ยังไม่มีตั๋วโดยสาร</p>
-                  <button onClick={() => setMobileTab('explore')} className="mt-4 text-xs font-bold text-[#4c1d95] bg-purple-50 hover:bg-purple-100 px-4 py-2.5 rounded-xl transition border border-purple-100">
-                    ไปสำรวจทริปกันเลย
-                  </button>
-                </div>
-              ) : (
-                allUserBookings.map((b) => (
-                  <div key={b.id} className="flex flex-col items-center">
-                    <DigitalTicket booking={b as any} htmlId={`ticket-${b.id}`} />
-                    
-                    <div className="w-full max-w-[380px] mt-4 flex flex-col gap-2 px-1">
-                      <button
-                        onClick={() => handleDownloadSpecificTicket(b.id, b.seatLabel)}
-                        disabled={downloadingTicketId === b.id}
-                        className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition duration-200 flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-70 disabled:cursor-not-allowed"
-                      >
-                        {downloadingTicketId === b.id ? (
-                          <>
-                            <RefreshCw className="w-4 h-4 animate-spin" />
-                            <span>กำลังเตรียมรูปภาพ...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Download className="w-4 h-4" />
-                            <span>บันทึกรูปตั๋วใบนี้</span>
-                          </>
-                        )}
-                      </button>
-                      <button
-                        onClick={() => { 
-                          const t = trips.find(trip => trip.id === b.tripId);
-                          if (t) setSelectedTrip(t);
-                          setMobileTab('explore'); 
-                        }}
-                        className="w-full py-2.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold transition duration-200 shadow-sm"
-                      >
-                        จัดการที่นั่งทริปนี้ / ดูรายละเอียด
-                      </button>
-                    </div>
-                    {b !== allUserBookings[allUserBookings.length - 1] && (
-                      <div className="w-full h-[1px] bg-slate-200 mt-8 mb-2 border-dashed"></div>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        )}
-
         {/* ========================================================================= */}
         {/* COLUMN 1: LEFT SIDE (3 columns on lg) - SELECT TRIP & VAN */}
         {/* ========================================================================= */}
-        <section className={`flex-col gap-6 lg:flex lg:col-span-3 ${currentStep === 1 || currentStep === 2 || isRequestingTransfer ? (mobileTab === 'explore' ? 'flex' : 'hidden') : 'hidden'}`}>
+        <section className="lg:col-span-3 flex flex-col gap-6">
           
-          {/* 1.1 เลือกทริป — Show only on step 1 */}
-          <div className={currentStep === 2 || (userBooking && isRequestingTransfer) ? 'hidden' : 'block'}>
+          {/* 1.1 เลือกทริป */}
           <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
             <h2 className="text-sm sm:text-base font-bold text-slate-800 mb-4 flex items-center gap-1.5 uppercase tracking-wide">
               <Compass className="w-4 h-4 text-[#4c1d95]" />
@@ -1263,20 +883,11 @@ export default function CustomerPage() {
               <p className="text-xs text-slate-400 text-center py-4">ไม่พบทริปเดินทางในขณะนี้</p>
             ) : (
               <div className="flex flex-col gap-3 max-h-[640px] overflow-y-auto pr-1.5 scrollbar-thin">
-                {!urlTripId && (
-                  <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl mb-1 flex items-start gap-2">
-                    <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                    <p className="text-amber-800 text-[11px] font-bold leading-relaxed">
-                      โปรดเข้าสู่ระบบผ่านลิ้งก์ที่แอดมินส่งให้เท่านั้น (คุณจะไม่สามารถเลือกทริปจองเองได้)
-                    </p>
-                  </div>
-                )}
                 {trips.map((trip) => {
                   const isSelected = selectedTrip?.id === trip.id;
                   const nights = trip.durationDays - 1;
                   const seatsLeft = trip.availableSeats ?? 0;
-                  const userBookedThisTrip = allUserBookings.some(b => b.tripId === trip.id && b.status !== 'cancelled');
-                  const isDisabled = urlTripId !== trip.id || userBookedThisTrip;
+                  const isDisabled = urlTripId !== null && urlTripId !== trip.id;
                   return (
                     <button
                       key={trip.id}
@@ -1289,11 +900,9 @@ export default function CustomerPage() {
                       className={`w-full text-left relative rounded-xl border transition-all duration-200 overflow-hidden flex flex-col ${
                         isSelected
                           ? 'border-[#4c1d95] ring-2 ring-[#4c1d95]/30 shadow-md shadow-purple-100'
-                          : userBookedThisTrip
-                            ? 'border-slate-200 opacity-60 cursor-not-allowed bg-slate-50 grayscale-[50%]'
-                            : isDisabled
-                              ? 'border-slate-200 opacity-50 cursor-not-allowed bg-slate-50'
-                              : 'border-slate-200 hover:border-purple-200 hover:shadow-sm bg-white'
+                          : isDisabled
+                            ? 'border-slate-200 opacity-50 cursor-not-allowed bg-slate-50'
+                            : 'border-slate-200 hover:border-purple-200 hover:shadow-sm bg-white'
                       }`}
                     >
                       {/* Image header strip */}
@@ -1309,13 +918,11 @@ export default function CustomerPage() {
                           <h3 className="text-white font-bold text-xs leading-tight drop-shadow flex-1 pr-2">{trip.name}</h3>
                           {/* Seat badge */}
                           <div className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-bold border ${
-                            userBookedThisTrip
-                              ? 'bg-purple-600/90 text-white border-purple-500'
-                              : seatsLeft > 0
-                                ? 'bg-emerald-500/90 text-white border-emerald-400'
-                                : 'bg-rose-500/90 text-white border-rose-400'
+                            seatsLeft > 0
+                              ? 'bg-emerald-500/90 text-white border-emerald-400'
+                              : 'bg-rose-500/90 text-white border-rose-400'
                           }`}>
-                            {userBookedThisTrip ? 'จองแล้ว' : seatsLeft > 0 ? `ว่าง ${seatsLeft} ที่` : 'เต็ม'}
+                            {seatsLeft > 0 ? `ว่าง ${seatsLeft} ที่` : 'เต็ม'}
                           </div>
                         </div>
                       </div>
@@ -1344,14 +951,6 @@ export default function CustomerPage() {
                               <span className="text-[10px] text-slate-500 font-semibold">{trip.departureTime} น.</span>
                             </div>
                           </div>
-                          {/* Cost / Price row */}
-                          <div className="flex items-center gap-1 pt-0.5">
-                            <span className="text-[10px] font-bold text-[#4c1d95]">ราคาทริป:</span>
-                            <span className="text-xs font-black text-[#4c1d95] font-mono">
-                              ฿{trip.cost?.toLocaleString('th-TH') || '0'}
-                            </span>
-                            <span className="text-[9px] text-slate-400 font-semibold">/ ท่าน</span>
-                          </div>
                         </div>
 
                         {/* Selected check */}
@@ -1369,9 +968,9 @@ export default function CustomerPage() {
               </div>
             )}
           </div>
-          </div> {/* end trip section wrapper */}
-          {/* 1.2 เลือกรถตู้ — show only on step 2 */}
-          <div className={currentStep === 1 && !(userBooking && isRequestingTransfer) ? 'hidden' : 'block'}>
+
+          {/* 1.2 เลือกรถตู้ */}
+          {selectedTrip && (
             <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm animate-in fade-in duration-200">
               <h2 className="text-sm sm:text-base font-bold text-slate-800 mb-4 flex items-center gap-1.5 uppercase tracking-wide">
                 <Armchair className="w-4 h-4 text-[#4c1d95]" />
@@ -1432,14 +1031,14 @@ export default function CustomerPage() {
                 </div>
               )}
             </div>
-          </div> {/* end van section wrapper */}
+          )}
 
         </section>
 
         {/* ========================================================================= */}
         {/* COLUMN 2: MIDDLE (5 columns on lg) - DETAILED VAN & SEAT MAP */}
         {/* ========================================================================= */}
-        <section className={`flex-col gap-6 lg:col-span-5 ${(userBooking && !isRequestingTransfer) ? 'hidden lg:hidden' : (currentStep === 3 || isRequestingTransfer ? (mobileTab === 'explore' ? 'flex lg:flex' : 'hidden lg:flex') : 'hidden lg:flex')}`}>
+        <section className="lg:col-span-5 flex flex-col gap-6">
           
           {selectedVan ? (
             <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex-1 flex flex-col justify-between">
@@ -1539,9 +1138,6 @@ export default function CustomerPage() {
                         {(() => {
                           const seat = selectedVan.seats.find((s) => s.row === 1 && s.col === 1);
                           if (!seat) return <div className="w-[58px] h-[64px]" />;
-                          if (selectedVan.vanNumber > 1) {
-                            return renderVanSeat(seat);
-                          }
                           return (
                             <div className="relative w-[58px] h-[64px] rounded-[14px] flex flex-col justify-between p-1.5 transition-all duration-300 shadow-md select-none border border-b-[4px] bg-gradient-to-b from-[#e9d5ff] to-[#c084fc] border-[#a855f7] text-[#581c87] shadow-purple-200/50">
                               {/* Headrest */}
@@ -1666,7 +1262,7 @@ export default function CustomerPage() {
         {/* ========================================================================= */}
         {/* COLUMN 3: RIGHT SIDE (4 columns on lg) - BOOKING FORM / DIGITAL TICKET */}
         {/* ========================================================================= */}
-        <section className={`flex-col gap-6 lg:col-span-4 ${(currentStep === 4 || currentStep === 5 || !!userBooking) ? (mobileTab === 'explore' ? 'flex lg:flex' : 'hidden lg:flex') : 'hidden lg:flex'}`}>
+        <section className="lg:col-span-4 flex flex-col gap-6">
           
           {/* Active Digital Ticket display if user has a booking */}
           {lineUser && userBooking && (
@@ -1676,7 +1272,325 @@ export default function CustomerPage() {
                 <span>บัตรโดยสารการจอง</span>
               </h2>
 
-                            <DigitalTicket ref={ticketRef} booking={userBooking as any} htmlId="main-ticket" />
+              <div ref={ticketRef} className="relative w-full max-w-[380px] mx-auto bg-white rounded-[20px] overflow-hidden shadow-xl border border-slate-100 flex flex-col font-sans select-none">
+                
+                {/* 1. Header Section (Gradient purple with climber silhouette moon & birds) */}
+                <div className="relative w-full h-[120px] bg-gradient-to-b from-[#56368C] via-[#3C1D6E] to-[#250A4E] overflow-hidden shrink-0">
+                  {/* Inline Mountain and Climber Vector Illustration */}
+                  <svg className="absolute inset-0 w-full h-full" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 120" preserveAspectRatio="none">
+                    {/* Gradients definition */}
+                    <defs>
+                      <radialGradient id="moonGlow" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+                        <stop offset="0%" stopColor="#EAD6FF" stopOpacity="0.3" />
+                        <stop offset="50%" stopColor="#C59EFF" stopOpacity="0.08" />
+                        <stop offset="100%" stopColor="#56368C" stopOpacity="0" />
+                      </radialGradient>
+                    </defs>
+
+                    {/* Moon */}
+                    <circle cx="270" cy="40" r="32" fill="url(#moonGlow)" />
+                    <circle cx="270" cy="40" r="28" fill="#F3EEFA" opacity="0.9" />
+                    
+                    {/* Birds */}
+                    <path d="M190,35 Q193,31 195,33 Q197,31 200,35 Q197,33 195,35 Z" fill="#1C063C" />
+                    <path d="M218,25 Q222,21 224,23 Q226,21 230,25 Q226,23 224,25 Z" fill="#1C063C" />
+                    <path d="M238,38 Q241,34 243,36 Q245,34 248,38 Q245,36 243,38 Z" fill="#1C063C" />
+
+                    {/* Layer 1: Far Mountains (Lightest purple) */}
+                    <path d="M0,120 L0,89 L70,71 L170,98 L250,64 L330,86 L380,68 L380,120 Z" fill="#3B1E6D" />
+                    
+                    {/* Layer 2: Mid Mountains */}
+                    <path d="M140,120 L230,87 L300,45 L330,60 L380,49 L380,120 Z" fill="#1E073F" />
+                    
+                    {/* Climber silhouette on the main peak at x=300, y=45 */}
+                    <path d="M292,32 C293,31 295,31 296,32 C297,33 297,35 296,36 C295,37 293,37 292,36 C291,35 291,33 292,32 Z" fill="#0D0120" /> {/* Head */}
+                    {/* Torso & Arms */}
+                    <path d="M294,36 L301,42 C303,44 306,41 304,39 L297,34 Z" fill="#0D0120" /> {/* Right Arm reaching out */}
+                    <path d="M290,36 L283,30 C281,28 279,30 281,32 L287,37 Z" fill="#0D0120" /> {/* Left Arm reaching up */}
+                    <path d="M291,36 C293,36 296,38 297,41 L293,48 L288,41 Z" fill="#0D0120" /> {/* Torso */}
+                    {/* Legs bent in climbing/summit stance */}
+                    <path d="M288,41 L279,45 L277,52 L282,52 L283,47 L290,43 Z" fill="#0D0120" /> {/* Left Leg */}
+                    <path d="M293,41 L296,48 L299,50 L299,53 L295,53 L293,49 L291,43 Z" fill="#0D0120" /> {/* Right Leg */}
+
+                    {/* Pine trees silhouettes on the right */}
+                    <g fill="#0D0120">
+                      <polygon points="360,60 355,74 365,74" />
+                      <polygon points="360,70 352,89 368,89" />
+                      <polygon points="360,85 348,109 372,109" />
+                      <rect x="358" y="109" width="4" height="21" />
+                    </g>
+                    
+                    {/* Pine trees silhouettes on the left */}
+                    <g fill="#3B1E6D" opacity="0.6">
+                      <polygon points="20,82 16,94 24,94" />
+                      <polygon points="20,90 13,107 27,107" />
+                      <polygon points="20,103 10,127 30,127" />
+                    </g>
+                  </svg>
+                  
+                  {/* Brand and Logo info overlay */}
+                  <div className="absolute left-4 top-4.5 z-20 flex items-center gap-2.5">
+                    <div className="w-[50px] h-[50px] bg-[#2E1A47] rounded-full p-0.5 border border-[#EAD6FF]/40 shadow-md flex items-center justify-center shrink-0">
+                      <img src="/logo/logo.png" alt="Logo" className="w-[44px] h-[44px] object-contain rounded-full" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="font-black text-[15px] tracking-wide text-yellow-300 drop-shadow-md font-sans uppercase">DAPAIDERNPAI</span>
+                      <span className="font-bold text-[8px] tracking-[0.2em] text-[#EAD6FF] uppercase mt-0.5 drop-shadow">BOARDING PASS</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Perforation 1 (Header to Body) */}
+                <div className="relative flex items-center justify-center w-full bg-[#f3effa] select-none h-4">
+                  <div className="absolute -left-2 w-4 h-4 rounded-full bg-[#f5f6fa] border-r border-[#EAD6FF]/30 z-10 shadow-inner"></div>
+                  <div className="flex items-center justify-between w-full px-4 gap-1 opacity-50">
+                    {Array.from({ length: 26 }).map((_, i) => (
+                      <div key={i} className="w-1.5 h-1.5 rounded-full bg-[#2E1A47]/40 shrink-0" />
+                    ))}
+                  </div>
+                  <div className="absolute -right-2 w-4 h-4 rounded-full bg-[#f5f6fa] border-l border-[#EAD6FF]/30 z-10 shadow-inner"></div>
+                </div>
+
+                {/* 2. Main Ticket Body (Destination, QR & Booking Details) */}
+                <div className="bg-[#f3effa] px-4 pb-2.5 flex-1 flex flex-col">
+                  
+                  {/* Trip Title & QR row */}
+                  <div className="flex justify-between items-stretch gap-3 py-1.5 border-b border-[#2E1A47]/15">
+                    
+                    {/* Left Column: Trip Info */}
+                    <div className="flex flex-col justify-center flex-1 pr-1 min-w-0">
+                      <span className="text-[9px] font-black text-[#5A3882]/80 uppercase tracking-wider block">ชื่อทริป</span>
+                      <span className="text-[#2E1A47] font-black text-[18px] leading-tight block mt-0.5 tracking-tight truncate-two-lines">
+                        {userBooking.tripName}
+                      </span>
+                      <div className="mt-1.5">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-[#2E1A47] text-white">
+                          {userBooking.durationDays && userBooking.durationDays > 1 
+                            ? `${userBooking.durationDays} วัน ${userBooking.durationDays - 1} คืน` 
+                            : 'ไปเช้าเย็นกลับ (1 วัน)'}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {/* Vertical Dashed Line Divider */}
+                    <div className="w-[1.5px] border-l border-dashed border-[#2E1A47]/20 my-0.5 shrink-0"></div>
+                    
+                    {/* Right Column: QR Code Container */}
+                    <div className="shrink-0 flex flex-col items-center justify-center">
+                      <div className="border border-[#2E1A47]/20 rounded-xl bg-white p-2 flex flex-col items-center justify-center w-[110px] shadow-sm">
+                        <span className="text-[8px] font-black text-[#5A3882] mb-1 tracking-tight">เช็กอินก่อนขึ้นรถ</span>
+                        <div className="bg-white p-0.5 rounded-lg">
+                          <QRCodeSVG value={userBooking.id} size={66} level="M" includeMargin={false} />
+                        </div>
+                        <span className="text-[7px] font-bold text-[#5A3882]/85 text-center leading-tight mt-1 max-w-[95px]">
+                          สแกน QR Code นี้ เพื่อเช็กอินก่อนขึ้นรถ
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Booking details table grid */}
+                  <div className="mt-2.5 border border-[#2E1A47]/15 rounded-xl overflow-hidden bg-white/40 backdrop-blur-sm shadow-sm">
+                    {/* Row 1: Van and Seat Label */}
+                    <div className="grid grid-cols-2 divide-x divide-[#2E1A47]/15 border-b border-[#2E1A47]/15">
+                      <div className="p-2 flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-[#2E1A47]/10 flex items-center justify-center shrink-0">
+                          <Compass className="w-4.5 h-4.5 text-[#2E1A47]" />
+                        </div>
+                        <div>
+                          <span className="text-[8.5px] font-black text-[#5A3882]/80 block leading-none">คันที่นั่ง</span>
+                          <span className="text-[15px] font-black text-[#2E1A47] block mt-0.5 leading-none">{userBooking.vanNumber}</span>
+                        </div>
+                      </div>
+                      <div className="p-2 flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-[#2E1A47]/10 flex items-center justify-center shrink-0">
+                          <Armchair className="w-4.5 h-4.5 text-[#2E1A47]" />
+                        </div>
+                        <div>
+                          <span className="text-[8.5px] font-black text-[#5A3882]/80 block leading-none">หมายเลขที่นั่ง</span>
+                          <span className="text-[15px] font-black text-[#2E1A47] block mt-0.5 leading-none font-mono">{userBooking.seatLabel}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Row 2: Departure Date and Time */}
+                    <div className="grid grid-cols-2 divide-x divide-[#2E1A47]/15 border-b border-[#2E1A47]/15">
+                      <div className="p-2 flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-[#2E1A47]/10 flex items-center justify-center shrink-0">
+                          <Calendar className="w-4.5 h-4.5 text-[#2E1A47]" />
+                        </div>
+                        <div>
+                          <span className="text-[8.5px] font-black text-[#5A3882]/80 block leading-none">วันเดินทาง</span>
+                          <span className="text-[11.5px] font-black text-[#2E1A47] block mt-0.5 leading-none">{userBooking.departureDate}</span>
+                        </div>
+                      </div>
+                      <div className="p-2 flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-[#2E1A47]/10 flex items-center justify-center shrink-0">
+                          <Clock className="w-4.5 h-4.5 text-[#2E1A47]" />
+                        </div>
+                        <div>
+                          <span className="text-[8.5px] font-black text-[#5A3882]/80 block leading-none">เวลาเดินทาง</span>
+                          <span className="text-[11.5px] font-black text-[#2E1A47] block mt-0.5 leading-none">{userBooking.departureTime} น.</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Row 3: Pickup Point */}
+                    <div className="p-2 flex items-center gap-2 border-b border-[#2E1A47]/15">
+                      <div className="w-7 h-7 rounded-lg bg-[#2E1A47]/10 flex items-center justify-center shrink-0">
+                        <MapPin className="w-4.5 h-4.5 text-[#2E1A47]" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-[8.5px] font-black text-[#5A3882]/80 block leading-none">สถานที่ขึ้นรถ</span>
+                        <span className="text-[11.5px] font-black text-[#2E1A47] block mt-0.5 leading-tight truncate">{userBooking.pickupPoint}</span>
+                      </div>
+                    </div>
+
+                    {/* Row 4: Passenger Info */}
+                    <div className="grid grid-cols-2 divide-x divide-[#2E1A47]/15">
+                      <div className="p-2 flex items-center gap-2 min-w-0">
+                        <div className="w-7 h-7 rounded-lg bg-[#2E1A47]/10 flex items-center justify-center shrink-0">
+                          <User className="w-4.5 h-4.5 text-[#2E1A47]" />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="text-[8.5px] font-black text-[#5A3882]/80 block leading-none">ชื่อลูกทริป</span>
+                          <span className="text-[11.5px] font-black text-[#2E1A47] block mt-0.5 leading-tight truncate">{userBooking.fullName}</span>
+                        </div>
+                      </div>
+                      <div className="p-2 flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-[#2E1A47]/10 flex items-center justify-center shrink-0">
+                          <Phone className="w-4.5 h-4.5 text-[#2E1A47]" />
+                        </div>
+                        <div>
+                          <span className="text-[8.5px] font-black text-[#5A3882]/80 block leading-none">เบอร์โทรศัพท์ลูกทริป</span>
+                          <span className="text-[11.5px] font-black text-[#2E1A47] block mt-0.5 leading-none">{userBooking.phone}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {userBooking.note && (
+                    <div className="mt-2 px-2.5 py-1.5 bg-purple-50/70 border border-purple-100/60 rounded-lg leading-relaxed">
+                      <span className="text-[#5A3882] font-black text-[8px] block leading-none mb-0.5">รายละเอียดเพิ่มเติม (Note):</span>
+                      <span className="text-[#2E1A47] font-bold text-[9.5px] block italic leading-tight">"{userBooking.note}"</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Perforation 2 (Body to Bottom Section) */}
+                <div className="relative flex items-center justify-center w-full bg-[#f3effa] select-none h-4">
+                  <div className="absolute -left-2 w-4 h-4 rounded-full bg-[#f5f6fa] border-r border-[#EAD6FF]/30 z-10 shadow-inner"></div>
+                  <div className="flex items-center justify-between w-full px-4 gap-1 opacity-50">
+                    {Array.from({ length: 26 }).map((_, i) => (
+                      <div key={i} className="w-1.5 h-1.5 rounded-full bg-[#2E1A47]/40 shrink-0" />
+                    ))}
+                  </div>
+                  <div className="absolute -right-2 w-4 h-4 rounded-full bg-[#f5f6fa] border-l border-[#EAD6FF]/30 z-10 shadow-inner"></div>
+                </div>
+
+                {/* 3. Bottom Driver Section with mountain scenery & Van vector graphic */}
+                <div className="relative w-full bg-gradient-to-b from-[#DDCFEA] to-[#C9B6E1] p-4 pb-7 overflow-hidden shrink-0">
+                  
+                  {/* Inline Mountain & Van Silhouette vector on the right */}
+                  <svg className="absolute right-0 bottom-0 w-[160px] h-[80px] pointer-events-none select-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 80" preserveAspectRatio="none">
+                    {/* Landscape Background */}
+                    <path d="M0,80 Q43,55 95,63 T160,46 L160,80 Z" fill="#2E1A47" opacity="0.35" />
+                    
+                    {/* Pine trees silhouettes */}
+                    <g fill="#2E1A47" opacity="0.4">
+                      <polygon points="10,59 7,67 13,67" />
+                      <polygon points="10,65 6,76 14,76" />
+                      <polygon points="22,63 19,72 25,72" />
+                      <polygon points="22,69 18,78 26,78" />
+                    </g>
+
+                    {/* White Van Illustration */}
+                    <g transform="translate(35, 38) scale(0.85)">
+                      {/* Shadow */}
+                      <ellipse cx="60" cy="38" rx="55" ry="5.5" fill="#1C063C" opacity="0.3" />
+                      
+                      {/* Van Body */}
+                      <path d="M8,12 C8,8 14,4 25,3 L90,3 C102,3 108,6 110,12 L114,24 C115,26 114,35 111,35 L8,35 C5,35 5,28 6,24 Z" fill="#F8FAFC" />
+                      <path d="M8,12 C8,8 14,4 25,3 L90,3 C102,3 108,6 110,12 L114,24" stroke="#CBD5E1" strokeWidth="0.8" fill="none" />
+                      
+                      {/* Windshield & Windows */}
+                      <path d="M92,5 L106,6 L104,18 L90,18 Z" fill="#2E1A47" />
+                      <path d="M60,5 L88,5 L88,18 L60,18 Z" fill="#2E1A47" />
+                      <path d="M32,5 L56,5 L56,18 L32,18 Z" fill="#2E1A47" />
+                      <path d="M11,6 C13,5 20,5 28,5 L28,18 L10,18 C9,15 9,10 11,6 Z" fill="#2E1A47" />
+                      
+                      {/* Bumper, Lights */}
+                      <path d="M108,22 L114,24 C115,26 114,35 111,35 L98,35 Z" fill="#E2E8F0" />
+                      <rect x="105" y="27" width="7" height="4.5" rx="1.5" fill="#475569" />
+                      <rect x="107" y="29" width="4.5" height="2.5" rx="1" fill="#FEF08A" />
+                      
+                      {/* Wheels */}
+                      <circle cx="92" cy="35" r="9.5" fill="#1e1b4b" />
+                      <circle cx="92" cy="35" r="7.5" fill="#475569" />
+                      <circle cx="92" cy="35" r="3.5" fill="#94A3B8" />
+                      <circle cx="28" cy="35" r="9.5" fill="#1e1b4b" />
+                      <circle cx="28" cy="35" r="7.5" fill="#475569" />
+                      <circle cx="28" cy="35" r="3.5" fill="#94A3B8" />
+                      
+                      {/* Side Lines */}
+                      <line x1="10" y1="24" x2="90" y2="24" stroke="#CBD5E1" strokeWidth="1" />
+                      <rect x="5" y="21" width="3" height="4.5" fill="#EF4444" />
+                    </g>
+                  </svg>
+
+                  {/* Driver information */}
+                  <div className="inline-flex px-2 py-0.5 rounded bg-[#2E1A47] text-white text-[8.5px] font-black mb-2 shadow-sm uppercase tracking-wide relative z-10">
+                    ข้อมูลคนขับรถตู้
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-x-2 gap-y-2 relative z-10 max-w-[200px]">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-6 h-6 rounded bg-[#2E1A47]/10 flex items-center justify-center shrink-0">
+                        <User className="w-3.5 h-3.5 text-[#2E1A47]" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-[7.5px] font-bold text-[#5A3882]/85 block leading-none">ชื่อคนขับรถตู้</span>
+                        <span className="text-[10.5px] font-black text-[#2E1A47] block mt-0.5 truncate leading-none">{userBooking.driverName || 'ยังไม่ระบุ'}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-6 h-6 rounded bg-[#2E1A47]/10 flex items-center justify-center shrink-0">
+                        <Phone className="w-3.5 h-3.5 text-[#2E1A47]" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-[7.5px] font-bold text-[#5A3882]/85 block leading-none">เบอร์โทรศัพท์คนขับ</span>
+                        <span className="text-[10.5px] font-black text-[#2E1A47] block mt-0.5 truncate leading-none">{userBooking.driverPhone || 'ยังไม่ระบุ'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* License Plate Visual rendering */}
+                  {(() => {
+                    const plate = parsePlate(userBooking.plateNumber);
+                    return (
+                      <div className="mt-2.5 flex items-center gap-2 relative z-10">
+                        {/* Realistic Thai Mini License Plate */}
+                        <div className="border border-[#2E1A47] bg-white rounded px-1.5 py-0.5 flex flex-col items-center justify-center shrink-0 w-[58px] h-[28px] shadow-sm select-none">
+                          <span className="text-[9px] font-extrabold text-[#2E1A47] leading-none tracking-tight">{plate.number}</span>
+                          <div className="w-[90%] h-[0.5px] bg-[#2E1A47]/30 my-0.5"></div>
+                          <span className="text-[5.5px] font-black text-[#2E1A47] leading-none scale-90">{plate.province}</span>
+                        </div>
+                        
+                        <div>
+                          <span className="text-[7.5px] font-bold text-[#5A3882]/80 block leading-none">ป้ายทะเบียนรถ</span>
+                          <span className="text-[10.5px] font-black text-[#2E1A47] block mt-0.5 leading-none">{userBooking.plateNumber || 'ยังไม่ระบุ'}</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Bottom slogan centered exactly matching screenshot */}
+                  <div className="absolute bottom-1.5 left-0 right-0 text-center text-[#2E1A47] text-[9.5px] font-black italic tracking-wide select-none">
+                    ดำไป เดินไป • ไปด้วยกัน... สนุกกว่า
+                  </div>
+                </div>
+              </div>
+
               {/* Pending Transfer Banner */}
               {(userBooking as any).pendingTransfer && (
                 <div className="bg-amber-50 border border-amber-300 rounded-xl p-3 flex items-start gap-2.5 animate-in fade-in duration-300">
@@ -1718,58 +1632,30 @@ export default function CustomerPage() {
                   )}
                 </button>
                 <div className="flex gap-2">
-                  {userBooking.status === 'cancel_pending' ? (
-                    <div className="flex-1 py-2 rounded-xl bg-rose-50 text-rose-600 text-[11px] font-bold border border-rose-200 flex items-center justify-center gap-1.5 cursor-not-allowed opacity-80">
-                      <Clock className="w-3.5 h-3.5" />
-                      <span>รอแอดมินอนุมัติการยกเลิก</span>
-                    </div>
-                  ) : (
-                    <>
-                      <button
-                        onClick={() => handleCancelBooking(userBooking.id)}
-                        className="flex-1 py-2 rounded-xl border border-rose-200 hover:bg-rose-50 text-rose-600 text-[11px] font-bold transition duration-200"
-                      >
-                        ยกเลิกการจอง
-                      </button>
-                      {userBooking.status === 'approved' && !(userBooking as any).pendingTransfer && (
-                        <button
-                          onClick={() => {
-                            setIsRequestingTransfer(true);
-                            setSelectedSeat(null);
-                            if (vans.length > 0) {
-                              const currentVan = vans.find(v => v.vanNumber === userBooking.vanNumber);
-                              if (currentVan) setSelectedVan(currentVan);
-                            }
-                            setMessage({
-                              type: 'success',
-                              text: 'กรุณาเลือกที่นั่งใหม่ที่ว่าง (สีเขียว) บนผังรถตู้เพื่อส่งคำขอย้ายที่นั่ง'
-                            });
-                            setTimeout(() => setMessage(null), 5000);
-                          }}
-                          className="flex-1 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-[#4c1d95] text-[11px] font-bold border border-purple-200 transition duration-200 flex items-center justify-center gap-1"
-                        >
-                          <RefreshCw className="w-3.5 h-3.5" />
-                          <span>ขอย้ายที่นั่ง</span>
-                        </button>
-                      )}
-                    </>
+                  <button
+                    onClick={() => handleCancelBooking(userBooking.id)}
+                    className="flex-1 py-2 rounded-xl border border-rose-200 hover:bg-rose-50 text-rose-600 text-[11px] font-bold transition duration-200"
+                  >
+                    ยกเลิกการจอง
+                  </button>
+                  {userBooking.status === 'approved' && !(userBooking as any).pendingTransfer && (
+                    <button
+                      onClick={() => {
+                        setIsRequestingTransfer(true);
+                        setSelectedSeat(null);
+                        setMessage({
+                          type: 'success',
+                          text: 'กรุณาเลือกที่นั่งใหม่ที่ว่าง (สีเขียว) บนผังรถตู้เพื่อส่งคำขอย้ายที่นั่ง'
+                        });
+                        setTimeout(() => setMessage(null), 5000);
+                      }}
+                      className="flex-1 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-[#4c1d95] text-[11px] font-bold border border-purple-200 transition duration-200 flex items-center justify-center gap-1"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      <span>ขอย้ายที่นั่ง</span>
+                    </button>
                   )}
                 </div>
-                
-                {/* Finish / Loop back to Step 1 button */}
-                <button
-                  onClick={() => {
-                    setSelectedTrip(null);
-                    setSelectedVan(null);
-                    setSelectedSeat(null);
-                    setUserBooking(null);
-                    if (mobileTab !== 'explore') setMobileTab('explore');
-                  }}
-                  className="w-full mt-1 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-bold transition duration-200 shadow-md flex items-center justify-center gap-1.5"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>การจองเสร็จสิ้น / จองทริปอื่นต่อ</span>
-                </button>
               </div>
             </div>
           )}
@@ -1872,31 +1758,17 @@ export default function CustomerPage() {
                 <span>ข้อมูลผู้จอง</span>
               </h2>
 
-              {/* Selected seat & Trip cost indicators */}
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <div>
-                  <span className="text-xs font-bold text-slate-500 block mb-1">เบาะที่เลือก</span>
-                  <div className="bg-purple-50 border border-purple-100 rounded-xl py-3 text-center text-slate-700 font-extrabold text-lg tracking-wide h-[54px] flex items-center justify-center">
-                    {selectedSeat ? (
-                      <span className="text-[#4c1d95] font-extrabold font-mono text-base">
-                        เบาะ {selectedSeat.label}
-                      </span>
-                    ) : (
-                      <span className="text-slate-400 font-bold text-base">-</span>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <span className="text-xs font-bold text-slate-500 block mb-1">ราคาทริป</span>
-                  <div className="bg-purple-50/50 border border-[#4c1d95]/10 rounded-xl py-3 text-center text-[#4c1d95] font-extrabold tracking-wide h-[54px] flex items-center justify-center">
-                    {selectedTrip ? (
-                      <span className="font-extrabold text-base font-mono">
-                        ฿{selectedTrip.cost?.toLocaleString('th-TH') || '0'}
-                      </span>
-                    ) : (
-                      <span className="text-slate-400 font-bold text-base">-</span>
-                    )}
-                  </div>
+              {/* Selected seat indicator box */}
+              <div className="mb-4">
+                <span className="text-xs font-bold text-slate-500 block mb-1">เบาะที่เลือก</span>
+                <div className="bg-purple-50 border border-purple-100 rounded-xl py-3 text-center text-slate-700 font-extrabold text-lg tracking-wide">
+                  {selectedSeat ? (
+                    <span className="text-[#4c1d95] font-extrabold font-mono text-xl">
+                      เบาะ {selectedSeat.label}
+                    </span>
+                  ) : (
+                    <span className="text-slate-400 font-bold">-</span>
+                  )}
                 </div>
               </div>
 
@@ -2004,7 +1876,6 @@ export default function CustomerPage() {
               </p>
             </div>
           )}
-
 
         </section>
 
@@ -2121,178 +1992,6 @@ export default function CustomerPage() {
               </div>
             </form>
           </div>
-        </div>
-      )}
-
-      {/* Booking History Modal */}
-      {showBookingHistoryModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white border border-slate-200 rounded-3xl max-w-md w-full p-6 relative overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 text-slate-800">
-            <div className="absolute top-0 left-0 w-full h-1.5 bg-[#4c1d95]" />
-            
-            <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
-              <h3 className="text-sm sm:text-base font-bold text-slate-800 flex items-center gap-2">
-                <Clock className="w-4.5 h-4.5 text-[#4c1d95]" />
-                <span>ประวัติการจองทริปทั้งหมด</span>
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowBookingHistoryModal(false)}
-                className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1.5 rounded-full transition"
-              >
-                <X className="w-4.5 h-4.5" />
-              </button>
-            </div>
-
-            {/* Bookings list container */}
-            <div className="max-h-[360px] overflow-y-auto pr-1 space-y-3.5 scrollbar-thin">
-              {allUserBookings.length === 0 ? (
-                <p className="text-xs text-slate-400 text-center py-6">ยังไม่เคยมีประวัติการจองทริป</p>
-              ) : (
-                allUserBookings.map((b) => (
-                  <div key={b.id} className="bg-slate-50 border border-slate-100 rounded-xl p-3.5 flex flex-col gap-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="text-xs font-bold text-slate-800 leading-tight">
-                        ทริปที่จอง: {b.tripName || 'ไม่ระบุชื่อทริป'}
-                      </span>
-                      <span className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-bold border ${
-                        b.status === 'approved'
-                          ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
-                          : b.status === 'pending'
-                            ? 'bg-amber-50 text-amber-600 border-amber-200'
-                            : b.status === 'cancel_pending'
-                              ? 'bg-rose-50 text-rose-600 border-rose-200'
-                              : 'bg-slate-100 text-slate-500 border-slate-200'
-                      }`}>
-                        {b.status === 'approved' ? 'อนุมัติแล้ว' : b.status === 'cancel_pending' ? 'รออนุมัติยกเลิก' : b.status === 'pending' ? 'รออนุมัติ' : 'ยกเลิก'}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-slate-500 font-semibold">
-                      <span>เบาะ: {b.seatLabel || b.seatId}</span>
-                      <span>ออก: {b.departureDate || ''} เวลา {b.departureTime || ''} น.</span>
-                    </div>
-                    <div className="border-t border-slate-200/50 pt-2 flex items-center justify-between text-[10px] font-black text-[#4c1d95]">
-                      <span>ราคาทริป</span>
-                      <span>฿{b.cost?.toLocaleString('th-TH') || '0'}</span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            <div className="mt-5 border-t border-slate-100 pt-3 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setShowBookingHistoryModal(false)}
-                className="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold px-4 py-2.5 rounded-xl transition duration-200"
-              >
-                ปิดหน้าต่าง
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Help Center & Contact Modal */}
-      {showHelpCenterModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white border border-slate-200 rounded-3xl max-w-md w-full p-6 relative overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 text-slate-800">
-            <div className="absolute top-0 left-0 w-full h-1.5 bg-[#4c1d95]" />
-            
-            <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
-              <h3 className="text-sm sm:text-base font-bold text-slate-800 flex items-center gap-2">
-                <MessageSquare className="w-4.5 h-4.5 text-[#4c1d95]" />
-                <span>ศูนย์ช่วยเหลือ & ติดต่อแอดมิน</span>
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowHelpCenterModal(false)}
-                className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1.5 rounded-full transition"
-              >
-                <X className="w-4.5 h-4.5" />
-              </button>
-            </div>
-
-            <div className="space-y-4 text-xs leading-relaxed text-slate-600">
-              <div className="bg-purple-50/50 border border-purple-100 rounded-xl p-3">
-                <h4 className="font-bold text-[#4c1d95] mb-1">ต้องการยกเลิกหรือขอเปลี่ยนเบาะที่นั่ง?</h4>
-                <p className="text-[11px] text-slate-500 leading-normal">
-                  ลูกทริปสามารถส่งคำขอย้ายเบาะที่นั่งได้โดยตรงบนแผนผังรถตู้ โดยการคลิกเบาะเดิมของตนเองแล้วเลือกเบาะใหม่ จากนั้นระบบจะส่งเรื่องให้แอดมินทำการอนุมัติทันที
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <h4 className="font-bold text-slate-700">ช่องทางการติดต่อแอดมิน</h4>
-                <p className="text-[11px]">
-                  หากมีข้อสงสัยเกี่ยวกับรายละเอียดของทริป การทำประกันเดินทาง หรือต้องการความช่วยเหลือเพิ่มเติม สามารถติดต่อผ่านช่องทาง Line Official Account หรือเบอร์โทรติดต่อได้ตลอดเวลาครับ
-                </p>
-                <div className="flex flex-col gap-2 pt-1">
-                  <a
-                    href="https://line.me"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="bg-[#06C755] hover:bg-[#05b34c] text-white py-2.5 px-4 rounded-xl font-bold flex items-center justify-center gap-2 transition"
-                  >
-                    <MessageSquare className="w-4.5 h-4.5" />
-                    <span>ติดต่อแอดมินผ่าน LINE Official</span>
-                  </a>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-5 border-t border-slate-100 pt-3 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setShowHelpCenterModal(false)}
-                className="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold px-4 py-2.5 rounded-xl transition duration-200"
-              >
-                ปิดหน้าต่าง
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Mobile Bottom Navigation Bar matching screenshot style */}
-      {lineUser && hasProfile && !showProfileModal && (
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 py-2 px-6 flex justify-around items-center shadow-lg">
-          {/* Tab 1: สำรวจ */}
-          <button
-            onClick={() => setMobileTab('explore')}
-            className={`flex flex-col items-center gap-0.5 transition-colors duration-200 ${
-              mobileTab === 'explore' ? 'text-[#4c1d95]' : 'text-slate-400 hover:text-slate-600'
-            }`}
-          >
-            <Compass className="w-5 h-5" />
-            <span className="text-[9.5px] font-bold">สำรวจ</span>
-            {mobileTab === 'explore' && <span className="w-1 h-1 bg-[#4c1d95] rounded-full mt-0.5" />}
-          </button>
-
-          {/* Tab 2: ตั๋วของฉัน */}
-          <Link
-            href="/tickets"
-            className={`flex flex-col items-center gap-0.5 transition-colors duration-200 text-slate-400 hover:text-slate-600`}
-          >
-            <div className="relative">
-              <Armchair className="w-5 h-5" />
-              {userBooking && (
-                <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full border border-white" />
-              )}
-            </div>
-            <span className="text-[9.5px] font-bold">ตั๋วของฉัน</span>
-          </Link>
-
-          {/* Tab 3: โปรไฟล์ */}
-          <button
-            onClick={() => setMobileTab('profile')}
-            className={`flex flex-col items-center gap-0.5 transition-colors duration-200 ${
-              mobileTab === 'profile' ? 'text-[#4c1d95]' : 'text-slate-400 hover:text-slate-600'
-            }`}
-          >
-            <User className="w-5 h-5" />
-            <span className="text-[9.5px] font-bold">โปรไฟล์</span>
-            {mobileTab === 'profile' && <span className="w-1 h-1 bg-[#4c1d95] rounded-full mt-0.5" />}
-          </button>
         </div>
       )}
 

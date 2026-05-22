@@ -1,11 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSession, signIn, signOut } from "next-auth/react";
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import { QRCodeSVG } from 'qrcode.react';
-import DigitalTicket from '@/components/DigitalTicket';
 import { toPng } from 'html-to-image';
 import {
   Compass,
@@ -27,10 +24,8 @@ import {
   MessageSquare,
   Lock,
   Download,
-  X,
-  ChevronDown
+  X
 } from 'lucide-react';
-import LandingPage from '../components/LandingPage';
 
 interface Seat {
   id: string;
@@ -129,12 +124,8 @@ export default function CustomerPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [downloadingTicketId, setDownloadingTicketId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const ticketRef = useRef<HTMLDivElement>(null);
-  
-  // Landing Page vs Booking App Mode
-  const [isLandingMode, setIsLandingMode] = useState(true);
 
   // Form States
   const [nickname, setNickname] = useState('');
@@ -165,10 +156,8 @@ export default function CustomerPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const tripIdParam = params.get('tripId');
-    const stepParam = params.get('step');
-    if (tripIdParam || stepParam) {
-      if (tripIdParam) setUrlTripId(tripIdParam);
-      setIsLandingMode(false);
+    if (tripIdParam) {
+      setUrlTripId(tripIdParam);
     }
     fetchTrips();
   }, []);
@@ -218,12 +207,6 @@ export default function CustomerPage() {
     return () => clearInterval(interval);
   }, [selectedTrip, selectedVan?.id, lineUser]);
 
-  useEffect(() => {
-    if (lineUser) {
-      fetchAllUserBookings();
-    }
-  }, [lineUser]);
-
   const fetchTrips = async () => {
     try {
       setLoading(true);
@@ -236,9 +219,9 @@ export default function CustomerPage() {
           const tripIdParam = params.get('tripId');
           if (tripIdParam) {
             const t = data.trips.find((x: Trip) => x.id === tripIdParam);
-            setSelectedTrip(t || null);
+            setSelectedTrip(t || data.trips[0]);
           } else {
-            setSelectedTrip(null);
+            setSelectedTrip(data.trips[0]);
           }
         }
       }
@@ -255,14 +238,9 @@ export default function CustomerPage() {
       const data = await res.json();
       if (data.success && data.vans.length > 0) {
         setVans(data.vans);
-        if (selectedVan) {
-          const matchedVan = data.vans.find((v: Van) => v.id === selectedVan.id);
-          if (matchedVan) {
-            setSelectedVan(matchedVan);
-          } else {
-            setSelectedVan(null);
-          }
-        }
+        const currentSelectedId = selectedVan?.id;
+        const matchedVan = data.vans.find((v: Van) => v.id === currentSelectedId);
+        setSelectedVan(matchedVan || data.vans[0]);
       }
     } catch (err) {
       console.error(err);
@@ -435,20 +413,7 @@ export default function CustomerPage() {
       const res = await fetch(`/api/bookings?lineUserId=${lineUser.userId}`);
       const data = await res.json();
       if (data.success) {
-        // Fetch full details for each booking to get tripName, cost, etc.
-        const fullBookings = await Promise.all(
-          data.bookings.map(async (b: any) => {
-            try {
-              const ticketRes = await fetch(`/api/bookings/${b.id}`);
-              const ticketData = await ticketRes.json();
-              return ticketData.success ? ticketData.booking : b;
-            } catch (e) {
-              return b;
-            }
-          })
-        );
-        fullBookings.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        setAllUserBookings(fullBookings);
+        setAllUserBookings(data.bookings);
       }
     } catch (err) {
       console.error(err);
@@ -565,14 +530,12 @@ export default function CustomerPage() {
 
       const data = await res.json();
       if (data.success) {
-        setMessage({ type: 'success', text: 'จองที่นั่งสำเร็จแล้ว! ดูตั๋วของคุณได้ที่ "ตั๋วของฉัน" หรือ "ประวัติการจอง"' });
-        setSelectedTrip(null);
-        setSelectedVan(null);
+        setMessage({ type: 'success', text: data.message });
         setSelectedSeat(null);
-        setUserBooking(null);
         setNote('');
         setIsRequestingTransfer(false);
-        fetchAllUserBookings();
+        fetchUserBooking();
+        fetchVans(selectedTrip.id);
       } else {
         setMessage({ type: 'error', text: data.error });
       }
@@ -597,7 +560,6 @@ export default function CustomerPage() {
         setMessage({ type: 'success', text: 'ส่งคำขอยกเลิกสำเร็จ รอแอดมินอนุมัติ' });
         // Refresh booking state
         fetchUserBooking();
-        fetchAllUserBookings();
       } else {
         setMessage({ type: 'error', text: data.error });
       }
@@ -671,114 +633,16 @@ export default function CustomerPage() {
     }
   };
 
-  const handleDownloadSpecificTicket = async (ticketId: string, seatLabel: string) => {
-    const ele = document.getElementById(`ticket-${ticketId}`);
-    if (!ele) return;
-    
-    setDownloadingTicketId(ticketId);
-    try {
-      const dataUrl = await toPng(ele, {
-        cacheBust: true,
-        backgroundColor: '#ffffff',
-        pixelRatio: 4,
-        width: ele.offsetWidth,
-        height: ele.offsetHeight,
-        style: { margin: '0', transform: 'none', left: '0', top: '0' }
-      });
-      
-      const filename = `BookingTicket-Seat${seatLabel || 'X'}.png`;
-
-      if (navigator.share) {
-        try {
-          const res = await fetch(dataUrl);
-          const blob = await res.blob();
-          const file = new File([blob], filename, { type: 'image/png' });
-          if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({ files: [file], title: 'บัตรโดยสาร Booking Van' });
-            setDownloadingTicketId(null);
-            return;
-          }
-        } catch (e) {}
-      }
-
-      const link = document.createElement('a');
-      link.href = dataUrl;
-      link.download = filename;
-      link.click();
-    } catch (err) {
-      console.error("Error capturing ticket", err);
-      setMessage({ type: 'error', text: 'เกิดข้อผิดพลาดในการบันทึกรูปบัตรโดยสาร' });
-      setTimeout(() => setMessage(null), 3000);
-    } finally {
-      setDownloadingTicketId(null);
-    }
-  };
-
   // Determine current timeline step
   const getTimelineStep = () => {
-    if (userBooking && !isRequestingTransfer) return 5;
     if (!selectedTrip) return 1;
     if (!selectedVan) return 2;
-    if (!selectedSeat) return 3;
-    if (isRequestingTransfer && selectedSeat) return 3;
-    return 4;
+    if (!selectedSeat && !userBooking) return 3;
+    if (selectedSeat && !userBooking) return 4;
+    return 5;
   };
 
   const currentStep = getTimelineStep();
-
-  // ─── Sync currentStep → URL ?step=N ──────────────────────────────────────
-  const router = useRouter();
-  const pathname = usePathname();
-
-  useEffect(() => {
-    // Only sync when user is logged in and has profile (otherwise no step UI shown)
-    if (!lineUser || !hasProfile) return;
-    const params = new URLSearchParams(window.location.search);
-    const currentInUrl = params.get('step');
-    if (currentInUrl !== String(currentStep)) {
-      params.set('step', String(currentStep));
-      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-    }
-  }, [currentStep, lineUser, hasProfile]);
-
-  if (isLandingMode) {
-    return (
-      <div className="flex-1 flex flex-col bg-[#f8fafc] text-slate-800 min-h-screen">
-        {/* Global alert messages banner */}
-        {message && (
-          <div className="fixed top-24 right-4 z-50 animate-bounce max-w-sm">
-            <div
-              className={`p-4 rounded-xl shadow-2xl flex items-start gap-3 backdrop-blur-xl border ${
-                message.type === 'success'
-                  ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
-                  : 'bg-rose-50 border-rose-300 text-rose-800'
-              }`}
-            >
-              {message.type === 'success' ? (
-                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-              ) : (
-                <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
-              )}
-              <p className="text-xs font-semibold">{message.text}</p>
-            </div>
-          </div>
-        )}
-        
-        <LandingPage 
-          onLoginClick={() => {
-            if (lineUser) {
-              setIsLandingMode(false);
-            } else {
-              handleLoginClick();
-            }
-          }} 
-          showHelpCenter={() => setShowHelpCenterModal(true)} 
-          trips={trips}
-          isLoggedIn={!!lineUser}
-        />
-      </div>
-    );
-  }
 
   return (
     <div className="flex-1 flex flex-col bg-[#f8fafc] text-slate-800 min-h-screen">
@@ -803,74 +667,127 @@ export default function CustomerPage() {
       )}
 
       {/* Header Panel matching screenshot */}
-      <header className="bg-white border-b border-slate-200 py-3 sm:py-4 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 sm:gap-4">
-          <div className="flex items-center space-x-3 sm:space-x-4 min-w-0">
+      <header className="bg-white border-b border-slate-200 py-4 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex items-center space-x-4">
             {/* Real Brand Logo */}
-            <div className="shrink-0 flex items-center justify-center">
-              <img src="/logo/logo.png" alt="DAPAIDERNPAI Logo" className="w-10 h-10 sm:w-14 sm:h-14 object-contain" />
+            <div className="shrink-0 shadow-md rounded-2xl overflow-hidden bg-white p-1 border-2 border-[#4c1d95] flex items-center justify-center">
+              <img src="/logo/logo.png" alt="DAPAIDERNPAI Logo" className="w-12 h-12 object-contain" />
             </div>
-            <div className="flex-1 min-w-0 flex items-center">
-              <h1 className="text-base sm:text-2xl font-extrabold text-slate-800 tracking-tight leading-tight truncate">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-lg sm:text-2xl font-extrabold text-slate-800 tracking-tight leading-tight truncate">
                 จองรถตู้ทริป “ด่าไป เดินไป”
               </h1>
+              
+              {/* Desktop & Tablet Stepper */}
+              <div className="hidden sm:flex text-xs text-slate-400 font-semibold mt-2 flex-wrap items-center gap-1.5">
+                {[
+                  { id: 1, name: 'เลือกทริป' },
+                  { id: 2, name: 'เลือกรถตู้' },
+                  { id: 3, name: 'เลือกที่นั่ง' },
+                  { id: 4, name: 'กรอกข้อมูล' },
+                  { id: 5, name: 'ยืนยันการจอง' },
+                ].map((step, idx) => {
+                  const isActive = step.id === currentStep;
+                  const isPassed = step.id < currentStep;
+
+                  return (
+                    <React.Fragment key={step.id}>
+                      {idx > 0 && <ChevronRight className="w-3 h-3 text-slate-300 shrink-0" />}
+                      <span
+                        className={`transition-all duration-300 px-2 py-0.5 rounded-full ${
+                          isActive
+                            ? 'bg-purple-50 border border-purple-100 text-[#4c1d95] font-black shadow-sm scale-105'
+                            : isPassed
+                            ? 'text-slate-700 font-bold'
+                            : 'text-slate-400 font-medium'
+                        }`}
+                      >
+                        {step.name}
+                      </span>
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+
+              {/* Mobile Premium Compact Stepper */}
+              <div className="flex sm:hidden items-center justify-between mt-2 w-full bg-purple-50/50 border border-purple-100/50 rounded-lg py-1.5 px-2.5">
+                <span className="text-[10px] font-bold text-slate-500 flex items-center gap-1.5">
+                  <span className="w-4 h-4 bg-[#4c1d95] text-white rounded-full flex items-center justify-center font-black text-[9px] shrink-0">
+                    {currentStep}
+                  </span>
+                  <span>
+                    ขั้นตอน: <span className="text-[#4c1d95] font-black">
+                      {
+                        ['เลือกทริป', 'เลือกรถตู้', 'เลือกที่นั่ง', 'กรอกข้อมูล', 'ยืนยันการจอง'][currentStep - 1] || 'เลือกทริป'
+                      }
+                    </span>
+                  </span>
+                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[9px] font-extrabold text-slate-400">{currentStep}/5</span>
+                  <div className="w-16 bg-slate-200 h-1 rounded-full overflow-hidden">
+                    <div 
+                      className="bg-[#4c1d95] h-full rounded-full transition-all duration-500" 
+                      style={{ width: `${(currentStep / 5) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Quick links on the right */}
-          <div className="flex items-center space-x-2 sm:space-x-3 text-xs font-semibold text-slate-600 shrink-0">
+          <div className="flex items-center space-x-3 self-start md:self-center text-xs font-semibold text-slate-600">
+            <button className="hidden sm:flex items-center space-x-1 hover:text-[#4c1d95] transition px-2.5 py-1.5 rounded-lg hover:bg-slate-100">
+              <HelpCircle className="w-4 h-4 text-slate-400" />
+              <span>วิธีการใช้งาน</span>
+            </button>
             <button
               onClick={() => setShowHelpCenterModal(true)}
-              className="hidden sm:flex items-center space-x-1 hover:text-[#4c1d95] transition px-2.5 py-1.5 rounded-lg hover:bg-slate-100 mr-2"
+              className="hidden sm:flex items-center space-x-1 hover:text-[#4c1d95] transition px-2.5 py-1.5 rounded-lg hover:bg-slate-100"
             >
               <MessageSquare className="w-4 h-4 text-slate-400" />
               <span>ติดต่อแอดมิน</span>
             </button>
-            
-            {/* User Profile & Dropdown Menu */}
+            <a href="/admin" className="hidden sm:flex items-center space-x-1 text-[#4c1d95] hover:text-purple-900 bg-purple-50 hover:bg-purple-100 transition px-3 py-1.5 rounded-lg border border-purple-200 mr-2">
+              <User className="w-4 h-4 text-purple-700" />
+              <span>แอดมิน</span>
+            </a>
+
             {lineUser && (
-              <div className="relative group flex items-center">
-                <button className="flex items-center bg-white border border-slate-200 rounded-full py-1 px-1 pr-4 shadow-sm hover:border-[#4c1d95] hover:ring-2 hover:ring-purple-100 transition-all focus:outline-none">
-                  <img src={lineUser.pictureUrl} alt={lineUser.displayName} className="w-7 h-7 rounded-full border border-slate-100 object-cover mr-2" />
-                  <span className="font-bold text-slate-700 text-[11px] mr-2 truncate max-w-[100px]">{lineUser.displayName}</span>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#4c1d95] transition-colors" />
+              <>
+                <button
+                  onClick={() => {
+                    fetchAllUserBookings();
+                    setShowBookingHistoryModal(true);
+                  }}
+                  className="flex items-center space-x-1 text-slate-700 hover:text-purple-950 hover:bg-purple-50 transition px-2.5 py-1.5 rounded-lg border border-slate-200 mr-1 shadow-sm bg-white shrink-0"
+                >
+                  <Clock className="w-3.5 h-3.5 text-[#4c1d95]" />
+                  <span className="font-bold text-[10.5px]">ประวัติการจอง</span>
                 </button>
-                
-                {/* Invisible hover bridge to prevent menu closing */}
-                <div className="absolute top-full right-0 w-full h-2"></div>
-                
-                {/* Dropdown Menu */}
-                <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-slate-200 rounded-2xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-right scale-95 group-hover:scale-100 z-50 overflow-hidden flex flex-col py-2">
-                  <Link
-                    href="/"
-                    className="flex items-center px-4 py-2.5 text-left text-[11px] font-bold text-slate-700 hover:bg-purple-50 hover:text-[#4c1d95] transition"
-                  >
-                    <Compass className="w-4 h-4 mr-2 text-[#4c1d95]" />
-                    สำรวจ
-                  </Link>
-                  <Link
-                    href="/tickets"
-                    className="flex items-center px-4 py-2.5 text-left text-[11px] font-bold text-slate-700 hover:bg-purple-50 hover:text-[#4c1d95] transition"
-                  >
-                    <Armchair className="w-4 h-4 mr-2 text-[#4c1d95]" />
-                    ตั๋วของฉัน
-                  </Link>
-                  <button
-                    onClick={() => setShowProfileModal(true)}
-                    className="flex items-center px-4 py-2.5 text-left text-[11px] font-bold text-slate-700 hover:bg-purple-50 hover:text-[#4c1d95] transition w-full"
-                  >
-                    <User className="w-4 h-4 mr-2 text-[#4c1d95]" />
-                    โปรไฟล์
-                  </button>
-                  <div className="h-[1px] bg-slate-100 my-1 mx-2"></div>
-                  <button
-                    onClick={handleLogout}
-                    className="flex items-center px-4 py-2.5 text-left text-[11px] font-bold text-rose-600 hover:bg-rose-50 transition"
-                  >
-                    <LogOut className="w-4 h-4 mr-2" />
-                    ออกจากระบบ
-                  </button>
-                </div>
+                <button
+                  onClick={() => setShowProfileModal(true)}
+                  className="flex items-center space-x-1 text-slate-700 hover:text-purple-950 hover:bg-purple-50 transition px-2.5 py-1.5 rounded-lg border border-slate-200 mr-1 shadow-sm bg-white shrink-0"
+                >
+                  <Shield className="w-3.5 h-3.5 text-[#4c1d95]" />
+                  <span className="font-bold text-[10.5px]">ข้อมูลประกัน / โปรไฟล์</span>
+                </button>
+              </>
+            )}
+            
+            {/* User Profile & Logout */}
+            {lineUser && (
+              <div className="flex items-center bg-white border border-slate-200 rounded-full py-1 px-1 pr-3 shadow-sm ml-auto">
+                <img src={lineUser.pictureUrl} alt={lineUser.displayName} className="w-7 h-7 rounded-full border border-slate-100 object-cover mr-2" />
+                <span className="font-bold text-slate-700 text-[11px] mr-3 truncate max-w-[100px]">{lineUser.displayName}</span>
+                <button onClick={() => setShowProfileModal(true)} className="text-slate-500 hover:text-[#4c1d95] transition flex items-center justify-center p-1.5 rounded-full hover:bg-purple-50 mr-1" title="แก้ไขข้อมูลส่วนตัว">
+                  <User className="w-3.5 h-3.5" />
+                </button>
+                <button onClick={handleLogout} className="text-rose-500 hover:text-white hover:bg-rose-500 transition flex items-center justify-center p-1.5 rounded-full bg-rose-50" title="ออกจากระบบ">
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
               </div>
             )}
           </div>
@@ -879,79 +796,161 @@ export default function CustomerPage() {
 
       {/* Steps horizontal timeline matching screenshot */}
       {lineUser && hasProfile && (
-      <section className="bg-white border-b border-slate-200 pt-4 pb-8 md:py-4 px-4">
+      <section className="bg-white border-b border-slate-200 py-6 px-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between text-xs sm:text-sm font-bold text-slate-500">
-
-          {/* Step 1 — always clickable to go back to start */}
-          <button
-            onClick={() => { setSelectedTrip(null); setSelectedVan(null); setSelectedSeat(null); setUserBooking(null); }}
-            disabled={currentStep === 1 && !userBooking}
-            className={`relative flex items-center md:space-x-2 shrink-0 group transition ${currentStep > 1 || userBooking ? 'cursor-pointer' : 'cursor-default'}`}
-          >
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white transition
-              ${currentStep === 1 ? 'bg-[#4c1d95] ring-4 ring-purple-100' : 'bg-[#4c1d95]'}
-              ${currentStep > 1 || userBooking ? 'group-hover:brightness-110 group-hover:ring-2 group-hover:ring-purple-300' : ''}
-            `}>
+          
+          {/* Step 1 */}
+          <div className="flex items-center space-x-2 shrink-0">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${
+              currentStep > 1 ? 'bg-[#4c1d95]' : 'bg-[#4c1d95] ring-4 ring-purple-100'
+            }`}>
               {currentStep > 1 ? <Check className="w-4 h-4" /> : '1'}
             </div>
-            <span className={`absolute top-10 left-0 md:static md:top-auto text-[10px] md:text-sm whitespace-nowrap transition ${currentStep >= 1 ? 'text-[#4c1d95]' : ''} ${currentStep > 1 || userBooking ? 'group-hover:underline' : ''}`}>เลือกทริป</span>
-          </button>
+            <span className={`hidden md:inline ${currentStep >= 1 ? 'text-[#4c1d95]' : ''}`}>เลือกทริป</span>
+          </div>
           <div className={`flex-1 h-0.5 mx-2 min-w-[10px] ${currentStep > 1 ? 'bg-[#4c1d95]' : 'bg-slate-200'}`} />
 
-          {/* Step 2 — clickable if past step 2 */}
-          <button
-            onClick={() => { if (!userBooking && currentStep > 2) { setSelectedVan(null); setSelectedSeat(null); } }}
-            disabled={currentStep <= 2 || !!userBooking}
-            className={`relative flex items-center md:space-x-2 shrink-0 group transition ${!userBooking && currentStep > 2 ? 'cursor-pointer' : 'cursor-default'}`}
-          >
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white transition
-              ${currentStep > 2 ? 'bg-[#4c1d95]' : currentStep === 2 ? 'bg-[#4c1d95] ring-4 ring-purple-100' : 'bg-slate-200'}
-              ${!userBooking && currentStep > 2 ? 'group-hover:brightness-110 group-hover:ring-2 group-hover:ring-purple-300' : ''}
-            `}>
+          {/* Step 2 */}
+          <div className="flex items-center space-x-2 shrink-0">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${
+              currentStep > 2 ? 'bg-[#4c1d95]' : currentStep === 2 ? 'bg-[#4c1d95] ring-4 ring-purple-100' : 'bg-slate-200'
+            }`}>
               {currentStep > 2 ? <Check className="w-4 h-4" /> : '2'}
             </div>
-            <span className={`absolute top-10 left-1/2 -translate-x-1/2 md:static md:translate-x-0 md:top-auto text-[10px] md:text-sm whitespace-nowrap transition ${currentStep >= 2 ? 'text-[#4c1d95]' : ''} ${!userBooking && currentStep > 2 ? 'group-hover:underline' : ''}`}>เลือกรถตู้</span>
-          </button>
+            <span className={`hidden md:inline ${currentStep >= 2 ? 'text-[#4c1d95]' : ''}`}>เลือกรถตู้</span>
+          </div>
           <div className={`flex-1 h-0.5 mx-2 min-w-[10px] ${currentStep > 2 ? 'bg-[#4c1d95]' : 'bg-slate-200'}`} />
 
-          {/* Step 3 — clickable if past step 3 */}
-          <button
-            onClick={() => { if (!userBooking && currentStep > 3) { setSelectedSeat(null); } }}
-            disabled={currentStep <= 3 || !!userBooking}
-            className={`relative flex items-center md:space-x-2 shrink-0 group transition ${!userBooking && currentStep > 3 ? 'cursor-pointer' : 'cursor-default'}`}
-          >
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white transition
-              ${currentStep === 3 ? 'bg-[#4c1d95] ring-4 ring-purple-100' : currentStep > 3 ? 'bg-[#4c1d95]' : 'bg-slate-200'}
-              ${!userBooking && currentStep > 3 ? 'group-hover:brightness-110 group-hover:ring-2 group-hover:ring-purple-300' : ''}
-            `}>
+          {/* Step 3 */}
+          <div className="flex items-center space-x-2 shrink-0">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${
+              currentStep === 3 ? 'bg-[#4c1d95] ring-4 ring-purple-100' : currentStep > 3 ? 'bg-[#4c1d95]' : 'bg-slate-200'
+            }`}>
               {currentStep > 3 ? <Check className="w-4 h-4" /> : '3'}
             </div>
-            <span className={`absolute top-10 left-1/2 -translate-x-1/2 md:static md:translate-x-0 md:top-auto text-[10px] md:text-sm whitespace-nowrap transition ${currentStep >= 3 ? 'text-[#4c1d95]' : ''} ${!userBooking && currentStep > 3 ? 'group-hover:underline' : ''}`}>เลือกที่นั่ง</span>
-          </button>
+            <span className={`hidden md:inline ${currentStep >= 3 ? 'text-[#4c1d95]' : ''}`}>เลือกที่นั่ง</span>
+          </div>
           <div className={`flex-1 h-0.5 mx-2 min-w-[10px] ${currentStep > 3 ? 'bg-[#4c1d95]' : 'bg-slate-200'}`} />
 
-          {/* Step 4 — not clickable (form step) */}
-          <div className="relative flex items-center md:space-x-2 shrink-0">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${currentStep === 4 ? 'bg-[#4c1d95] ring-4 ring-purple-100' : currentStep > 4 ? 'bg-[#4c1d95]' : 'bg-slate-200'}`}>
+          {/* Step 4 */}
+          <div className="flex items-center space-x-2 shrink-0">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${
+              currentStep === 4 ? 'bg-[#4c1d95] ring-4 ring-purple-100' : currentStep > 4 ? 'bg-[#4c1d95]' : 'bg-slate-200'
+            }`}>
               {currentStep > 4 ? <Check className="w-4 h-4" /> : '4'}
             </div>
-            <span className={`absolute top-10 left-1/2 -translate-x-1/2 md:static md:translate-x-0 md:top-auto text-[10px] md:text-sm whitespace-nowrap transition ${currentStep >= 4 ? 'text-[#4c1d95]' : ''}`}>กรอกข้อมูล</span>
+            <span className={`hidden md:inline ${currentStep >= 4 ? 'text-[#4c1d95]' : ''}`}>กรอกข้อมูล</span>
           </div>
           <div className={`flex-1 h-0.5 mx-2 min-w-[10px] ${currentStep > 4 ? 'bg-[#4c1d95]' : 'bg-slate-200'}`} />
 
           {/* Step 5 */}
-          <div className="relative flex items-center md:space-x-2 shrink-0">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${currentStep === 5 ? 'bg-[#4c1d95] ring-4 ring-purple-100' : 'bg-slate-200'}`}>
+          <div className="flex items-center space-x-2 shrink-0">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${
+              currentStep === 5 ? 'bg-[#4c1d95] ring-4 ring-purple-100' : 'bg-slate-200'
+            }`}>
               {currentStep > 5 ? <Check className="w-4 h-4" /> : '5'}
             </div>
-            <span className={`absolute top-10 right-0 md:static md:top-auto text-[10px] md:text-sm whitespace-nowrap transition ${currentStep === 5 ? 'text-[#4c1d95]' : ''}`}>ยืนยันการจอง</span>
+            <span className={`hidden md:inline ${currentStep === 5 ? 'text-[#4c1d95]' : ''}`}>ยืนยันการจอง</span>
           </div>
 
         </div>
       </section>
       )}
 
-      {(!hasProfile || showProfileModal) ? (
+      {!lineUser ? (
+        <div className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10 lg:py-20 flex flex-col lg:flex-row items-center justify-between gap-12 lg:gap-16 animate-in fade-in duration-500 relative overflow-hidden">
+          {/* Decorative glowing gradient blobs */}
+          <div className="absolute top-10 left-1/4 w-72 h-72 bg-[#4c1d95]/15 rounded-full filter blur-[80px] -z-10 animate-pulse duration-[6000ms]" />
+          <div className="absolute bottom-10 right-1/4 w-80 h-80 bg-[#06C755]/5 rounded-full filter blur-[100px] -z-10 animate-pulse duration-[8000ms]" />
+
+          {/* Left Column: Premium Value Proposition Presentation */}
+          <div className="flex-1 text-left space-y-6 lg:max-w-[540px]">
+
+
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-800 tracking-tight leading-[1.15]">
+              ก้าวสู่การเดินทางที่ง่ายดายกับทริป <span className="bg-gradient-to-r from-[#4c1d95] via-[#6d28d9] to-indigo-600 bg-clip-text text-transparent">“ด่าไป เดินไป”</span>
+            </h2>
+
+            <p className="text-xs sm:text-sm text-slate-500 leading-relaxed font-semibold">
+              สัมผัสประสบการณ์จองที่นั่งรถตู้รูปแบบใหม่ ค้นหาทริปยอดฮิต ตรวจสอบแผนผังที่นั่งว่างแบบเรียลไทม์ และเตรียมข้อมูลทำประกันเดินทางได้อย่างครบครันในที่เดียว
+            </p>
+
+            {/* Feature Highlights Grid */}
+            <div className="space-y-4 pt-2">
+              {/* Feature 1 */}
+              <div className="flex gap-4">
+                <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center text-[#4c1d95] shrink-0 shadow-sm shadow-purple-100">
+                  <Compass className="w-5 h-5" />
+                </div>
+                <div className="space-y-0.5">
+                  <h4 className="text-xs sm:text-sm font-extrabold text-slate-800">เลือกทริปและที่นั่งอย่างรวดเร็ว</h4>
+                  <p className="text-[11px] text-slate-400 font-medium">ค้นหาทริปเดินป่า ยอดเขา ดูตารางการเดินทาง และจุดขึ้นรถได้ทันที</p>
+                </div>
+              </div>
+
+              {/* Feature 2 */}
+              <div className="flex gap-4">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shrink-0 shadow-sm shadow-emerald-100">
+                  <Armchair className="w-5 h-5" />
+                </div>
+                <div className="space-y-0.5">
+                  <h4 className="text-xs sm:text-sm font-extrabold text-slate-800">แผนผังรถตู้ซิงค์เรียลไทม์ 100%</h4>
+                  <p className="text-[11px] text-slate-400 font-medium">แสดงสถานะเบาะนั่งจริงทันที ป้องกันปัญหาจองซ้อน ให้คุณอุ่นใจทุกที่นั่ง</p>
+                </div>
+              </div>
+
+              {/* Feature 3 */}
+              <div className="flex gap-4">
+                <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0 shadow-sm shadow-indigo-100">
+                  <Shield className="w-5 h-5" />
+                </div>
+                <div className="space-y-0.5">
+                  <h4 className="text-xs sm:text-sm font-extrabold text-slate-800">ระบบประกันการเดินทางครบครัน</h4>
+                  <p className="text-[11px] text-slate-400 font-medium">กรอกข้อมูลส่วนบุคคลและข้อมูลติดต่อฉุกเฉินครั้งเดียว นำไปใช้ในทริปถัดไปได้ทันที</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Floating Glassmorphic Login Card */}
+          <div className="w-full lg:max-w-[400px] shrink-0 relative">
+            {/* Card glow backdrop */}
+            <div className="absolute inset-0 bg-gradient-to-tr from-[#4c1d95]/20 to-emerald-500/10 rounded-[32px] blur-xl -z-10" />
+
+            <div className="bg-white/80 backdrop-blur-md border border-slate-200/80 rounded-[32px] p-8 shadow-2xl flex flex-col items-center text-center">
+              {/* App / Brand Icon */}
+              <div className="w-16 h-16 bg-gradient-to-tr from-[#56368C] to-[#250A4E] rounded-3xl flex items-center justify-center text-white shadow-xl shadow-purple-900/20 mb-6 relative">
+                <Compass className="w-8 h-8 animate-spin duration-[20s]" />
+                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-emerald-500 rounded-full border border-white flex items-center justify-center" />
+              </div>
+
+              <h3 className="text-lg font-black text-slate-800">เริ่มต้นจองที่นั่ง</h3>
+              <p className="text-xs text-slate-400 font-medium mt-1 mb-8 max-w-[260px] leading-normal">
+                ล็อกอินด้วยบัญชี LINE เพื่อบันทึกข้อมูลตั๋วและโปรไฟล์ของคุณอย่างปลอดภัย
+              </p>
+
+              {/* Premium LINE Login Button */}
+              <button
+                onClick={handleLoginClick}
+                className="w-full bg-[#06C755] hover:bg-[#05b34c] text-white py-3.5 px-6 rounded-2xl font-black text-sm transition-all duration-300 shadow-lg shadow-[#06C755]/25 flex items-center justify-center gap-2.5 active:scale-98 relative overflow-hidden group"
+              >
+                {/* Shiny hover overlay effect */}
+                <span className="absolute inset-0 w-full h-full bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-out" />
+                <svg viewBox="0 0 24 24" className="w-5.5 h-5.5 fill-current shrink-0">
+                  <path d="M24 10.3c0-4.7-4.8-8.5-10.7-8.5S2.7 5.6 2.7 10.3c0 4.2 3.8 7.7 8.9 8.4.3.1.8.2.9.5.1.2 0 .6-.1.8l-.4 2.6c0 .3-.2 1.1 1 0l7.2-7.2h.1c2.7-1.1 3.9-3.1 3.9-5.1z" />
+                </svg>
+                <span>เข้าสู่ระบบด้วย LINE</span>
+              </button>
+
+              {/* Security Badge */}
+              <div className="mt-8 pt-6 border-t border-slate-100 w-full flex items-center justify-center gap-2 text-slate-400 font-bold text-[9.5px]">
+                <Lock className="w-3.5 h-3.5 text-slate-300" />
+                <span>ข้อมูลของคุณปลอดภัยและใช้เพื่อการทำประกันเท่านั้น</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (!hasProfile || showProfileModal) ? (
         <div className="flex-1 flex flex-col items-center justify-center p-4 py-8 animate-in fade-in zoom-in-95 duration-500 mt-4">
           <div className="bg-white max-w-md w-full rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
              <div className="bg-[#4c1d95] p-6 text-center">
@@ -1062,30 +1061,8 @@ export default function CustomerPage() {
           </div>
         </div>
       ) : (
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full flex-grow flex flex-col gap-6 pb-24 lg:pb-10">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-grow grid grid-cols-1 lg:grid-cols-12 gap-8 pb-20 lg:pb-8">
         
-        {/* Back Navigation — show on step 2+ */}
-        {currentStep > 1 && !userBooking && (
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => {
-                if (currentStep === 2) { setSelectedTrip(null); setSelectedVan(null); setSelectedSeat(null); }
-                if (currentStep === 3) { setSelectedVan(null); setSelectedSeat(null); }
-                if (currentStep === 4) { setSelectedSeat(null); }
-              }}
-              className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-[#4c1d95] transition px-3 py-1.5 rounded-lg hover:bg-purple-50 border border-slate-200 bg-white shadow-sm"
-            >
-              <ChevronRight className="w-3.5 h-3.5 rotate-180" />
-              <span>ย้อนกลับ</span>
-            </button>
-            <span className="text-[11px] text-slate-400 font-semibold">
-              {currentStep === 2 && selectedTrip && `ทริป: ${selectedTrip.name}`}
-              {currentStep === 3 && selectedVan && `รถตู้คันที่ ${selectedVan.vanNumber}`}
-              {currentStep === 4 && selectedSeat && `เบาะที่ ${selectedSeat.label}`}
-            </span>
-          </div>
-        )}
-
         {/* On mobile, if active tab is profile, show the profile screen */}
         {mobileTab === 'profile' && lineUser && (
           <div className="lg:hidden col-span-1 flex flex-col gap-6 bg-white rounded-3xl p-5 border border-slate-200 shadow-sm animate-in fade-in duration-200">
@@ -1175,78 +1152,12 @@ export default function CustomerPage() {
           </div>
         )}
 
-        {/* On mobile, if active tab is tickets, show all tickets */}
-        {mobileTab === 'tickets' && lineUser && (
-          <div className="lg:hidden col-span-1 flex flex-col gap-4 bg-white rounded-3xl p-5 border border-slate-200 shadow-sm animate-in fade-in duration-200">
-            <div className="border-b border-slate-100 pb-4 text-center">
-              <h2 className="text-base font-bold text-slate-800 flex items-center justify-center gap-2">
-                <Armchair className="w-5 h-5 text-[#4c1d95]" />
-                <span>ตั๋วโดยสารของฉัน</span>
-              </h2>
-            </div>
-            
-            <div className="flex flex-col gap-8 pb-4">
-              {allUserBookings.length === 0 ? (
-                <div className="py-8 text-center flex flex-col items-center">
-                  <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-3">
-                    <Armchair className="w-8 h-8 text-slate-300" />
-                  </div>
-                  <p className="text-sm font-bold text-slate-500">ยังไม่มีตั๋วโดยสาร</p>
-                  <button onClick={() => setMobileTab('explore')} className="mt-4 text-xs font-bold text-[#4c1d95] bg-purple-50 hover:bg-purple-100 px-4 py-2.5 rounded-xl transition border border-purple-100">
-                    ไปสำรวจทริปกันเลย
-                  </button>
-                </div>
-              ) : (
-                allUserBookings.map((b) => (
-                  <div key={b.id} className="flex flex-col items-center">
-                    <DigitalTicket booking={b as any} htmlId={`ticket-${b.id}`} />
-                    
-                    <div className="w-full max-w-[380px] mt-4 flex flex-col gap-2 px-1">
-                      <button
-                        onClick={() => handleDownloadSpecificTicket(b.id, b.seatLabel)}
-                        disabled={downloadingTicketId === b.id}
-                        className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition duration-200 flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-70 disabled:cursor-not-allowed"
-                      >
-                        {downloadingTicketId === b.id ? (
-                          <>
-                            <RefreshCw className="w-4 h-4 animate-spin" />
-                            <span>กำลังเตรียมรูปภาพ...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Download className="w-4 h-4" />
-                            <span>บันทึกรูปตั๋วใบนี้</span>
-                          </>
-                        )}
-                      </button>
-                      <button
-                        onClick={() => { 
-                          const t = trips.find(trip => trip.id === b.tripId);
-                          if (t) setSelectedTrip(t);
-                          setMobileTab('explore'); 
-                        }}
-                        className="w-full py-2.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold transition duration-200 shadow-sm"
-                      >
-                        จัดการที่นั่งทริปนี้ / ดูรายละเอียด
-                      </button>
-                    </div>
-                    {b !== allUserBookings[allUserBookings.length - 1] && (
-                      <div className="w-full h-[1px] bg-slate-200 mt-8 mb-2 border-dashed"></div>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        )}
-
         {/* ========================================================================= */}
         {/* COLUMN 1: LEFT SIDE (3 columns on lg) - SELECT TRIP & VAN */}
         {/* ========================================================================= */}
-        <section className={`flex-col gap-6 lg:flex lg:col-span-3 ${currentStep === 1 || currentStep === 2 || isRequestingTransfer ? (mobileTab === 'explore' ? 'flex' : 'hidden') : 'hidden'}`}>
+        <section className={`lg:col-span-3 flex flex-col gap-6 ${mobileTab !== 'explore' ? 'hidden lg:flex' : 'flex'}`}>
           
-          {/* 1.1 เลือกทริป — Show only on step 1 */}
-          <div className={currentStep === 2 || (userBooking && isRequestingTransfer) ? 'hidden' : 'block'}>
+          {/* 1.1 เลือกทริป */}
           <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
             <h2 className="text-sm sm:text-base font-bold text-slate-800 mb-4 flex items-center gap-1.5 uppercase tracking-wide">
               <Compass className="w-4 h-4 text-[#4c1d95]" />
@@ -1263,20 +1174,11 @@ export default function CustomerPage() {
               <p className="text-xs text-slate-400 text-center py-4">ไม่พบทริปเดินทางในขณะนี้</p>
             ) : (
               <div className="flex flex-col gap-3 max-h-[640px] overflow-y-auto pr-1.5 scrollbar-thin">
-                {!urlTripId && (
-                  <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl mb-1 flex items-start gap-2">
-                    <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                    <p className="text-amber-800 text-[11px] font-bold leading-relaxed">
-                      โปรดเข้าสู่ระบบผ่านลิ้งก์ที่แอดมินส่งให้เท่านั้น (คุณจะไม่สามารถเลือกทริปจองเองได้)
-                    </p>
-                  </div>
-                )}
                 {trips.map((trip) => {
                   const isSelected = selectedTrip?.id === trip.id;
                   const nights = trip.durationDays - 1;
                   const seatsLeft = trip.availableSeats ?? 0;
-                  const userBookedThisTrip = allUserBookings.some(b => b.tripId === trip.id && b.status !== 'cancelled');
-                  const isDisabled = urlTripId !== trip.id || userBookedThisTrip;
+                  const isDisabled = urlTripId !== null && urlTripId !== trip.id;
                   return (
                     <button
                       key={trip.id}
@@ -1289,11 +1191,9 @@ export default function CustomerPage() {
                       className={`w-full text-left relative rounded-xl border transition-all duration-200 overflow-hidden flex flex-col ${
                         isSelected
                           ? 'border-[#4c1d95] ring-2 ring-[#4c1d95]/30 shadow-md shadow-purple-100'
-                          : userBookedThisTrip
-                            ? 'border-slate-200 opacity-60 cursor-not-allowed bg-slate-50 grayscale-[50%]'
-                            : isDisabled
-                              ? 'border-slate-200 opacity-50 cursor-not-allowed bg-slate-50'
-                              : 'border-slate-200 hover:border-purple-200 hover:shadow-sm bg-white'
+                          : isDisabled
+                            ? 'border-slate-200 opacity-50 cursor-not-allowed bg-slate-50'
+                            : 'border-slate-200 hover:border-purple-200 hover:shadow-sm bg-white'
                       }`}
                     >
                       {/* Image header strip */}
@@ -1309,13 +1209,11 @@ export default function CustomerPage() {
                           <h3 className="text-white font-bold text-xs leading-tight drop-shadow flex-1 pr-2">{trip.name}</h3>
                           {/* Seat badge */}
                           <div className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-bold border ${
-                            userBookedThisTrip
-                              ? 'bg-purple-600/90 text-white border-purple-500'
-                              : seatsLeft > 0
-                                ? 'bg-emerald-500/90 text-white border-emerald-400'
-                                : 'bg-rose-500/90 text-white border-rose-400'
+                            seatsLeft > 0
+                              ? 'bg-emerald-500/90 text-white border-emerald-400'
+                              : 'bg-rose-500/90 text-white border-rose-400'
                           }`}>
-                            {userBookedThisTrip ? 'จองแล้ว' : seatsLeft > 0 ? `ว่าง ${seatsLeft} ที่` : 'เต็ม'}
+                            {seatsLeft > 0 ? `ว่าง ${seatsLeft} ที่` : 'เต็ม'}
                           </div>
                         </div>
                       </div>
@@ -1369,9 +1267,9 @@ export default function CustomerPage() {
               </div>
             )}
           </div>
-          </div> {/* end trip section wrapper */}
-          {/* 1.2 เลือกรถตู้ — show only on step 2 */}
-          <div className={currentStep === 1 && !(userBooking && isRequestingTransfer) ? 'hidden' : 'block'}>
+
+          {/* 1.2 เลือกรถตู้ */}
+          {selectedTrip && (
             <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm animate-in fade-in duration-200">
               <h2 className="text-sm sm:text-base font-bold text-slate-800 mb-4 flex items-center gap-1.5 uppercase tracking-wide">
                 <Armchair className="w-4 h-4 text-[#4c1d95]" />
@@ -1432,14 +1330,14 @@ export default function CustomerPage() {
                 </div>
               )}
             </div>
-          </div> {/* end van section wrapper */}
+          )}
 
         </section>
 
         {/* ========================================================================= */}
         {/* COLUMN 2: MIDDLE (5 columns on lg) - DETAILED VAN & SEAT MAP */}
         {/* ========================================================================= */}
-        <section className={`flex-col gap-6 lg:col-span-5 ${(userBooking && !isRequestingTransfer) ? 'hidden lg:hidden' : (currentStep === 3 || isRequestingTransfer ? (mobileTab === 'explore' ? 'flex lg:flex' : 'hidden lg:flex') : 'hidden lg:flex')}`}>
+        <section className={`lg:col-span-5 flex flex-col gap-6 ${mobileTab !== 'explore' ? 'hidden lg:flex' : 'flex'}`}>
           
           {selectedVan ? (
             <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex-1 flex flex-col justify-between">
@@ -1666,7 +1564,7 @@ export default function CustomerPage() {
         {/* ========================================================================= */}
         {/* COLUMN 3: RIGHT SIDE (4 columns on lg) - BOOKING FORM / DIGITAL TICKET */}
         {/* ========================================================================= */}
-        <section className={`flex-col gap-6 lg:col-span-4 ${(currentStep === 4 || currentStep === 5 || !!userBooking) ? (mobileTab === 'explore' ? 'flex lg:flex' : 'hidden lg:flex') : 'hidden lg:flex'}`}>
+        <section className={`lg:col-span-4 flex flex-col gap-6 ${mobileTab !== 'tickets' ? 'hidden lg:flex' : 'flex'}`}>
           
           {/* Active Digital Ticket display if user has a booking */}
           {lineUser && userBooking && (
@@ -1676,7 +1574,325 @@ export default function CustomerPage() {
                 <span>บัตรโดยสารการจอง</span>
               </h2>
 
-                            <DigitalTicket ref={ticketRef} booking={userBooking as any} htmlId="main-ticket" />
+              <div ref={ticketRef} className="relative w-full max-w-[380px] mx-auto bg-white rounded-[20px] overflow-hidden shadow-xl border border-slate-100 flex flex-col font-sans select-none">
+                
+                {/* 1. Header Section (Gradient purple with climber silhouette moon & birds) */}
+                <div className="relative w-full h-[120px] bg-gradient-to-b from-[#56368C] via-[#3C1D6E] to-[#250A4E] overflow-hidden shrink-0">
+                  {/* Inline Mountain and Climber Vector Illustration */}
+                  <svg className="absolute inset-0 w-full h-full" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 120" preserveAspectRatio="none">
+                    {/* Gradients definition */}
+                    <defs>
+                      <radialGradient id="moonGlow" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+                        <stop offset="0%" stopColor="#EAD6FF" stopOpacity="0.3" />
+                        <stop offset="50%" stopColor="#C59EFF" stopOpacity="0.08" />
+                        <stop offset="100%" stopColor="#56368C" stopOpacity="0" />
+                      </radialGradient>
+                    </defs>
+
+                    {/* Moon */}
+                    <circle cx="270" cy="40" r="32" fill="url(#moonGlow)" />
+                    <circle cx="270" cy="40" r="28" fill="#F3EEFA" opacity="0.9" />
+                    
+                    {/* Birds */}
+                    <path d="M190,35 Q193,31 195,33 Q197,31 200,35 Q197,33 195,35 Z" fill="#1C063C" />
+                    <path d="M218,25 Q222,21 224,23 Q226,21 230,25 Q226,23 224,25 Z" fill="#1C063C" />
+                    <path d="M238,38 Q241,34 243,36 Q245,34 248,38 Q245,36 243,38 Z" fill="#1C063C" />
+
+                    {/* Layer 1: Far Mountains (Lightest purple) */}
+                    <path d="M0,120 L0,89 L70,71 L170,98 L250,64 L330,86 L380,68 L380,120 Z" fill="#3B1E6D" />
+                    
+                    {/* Layer 2: Mid Mountains */}
+                    <path d="M140,120 L230,87 L300,45 L330,60 L380,49 L380,120 Z" fill="#1E073F" />
+                    
+                    {/* Climber silhouette on the main peak at x=300, y=45 */}
+                    <path d="M292,32 C293,31 295,31 296,32 C297,33 297,35 296,36 C295,37 293,37 292,36 C291,35 291,33 292,32 Z" fill="#0D0120" /> {/* Head */}
+                    {/* Torso & Arms */}
+                    <path d="M294,36 L301,42 C303,44 306,41 304,39 L297,34 Z" fill="#0D0120" /> {/* Right Arm reaching out */}
+                    <path d="M290,36 L283,30 C281,28 279,30 281,32 L287,37 Z" fill="#0D0120" /> {/* Left Arm reaching up */}
+                    <path d="M291,36 C293,36 296,38 297,41 L293,48 L288,41 Z" fill="#0D0120" /> {/* Torso */}
+                    {/* Legs bent in climbing/summit stance */}
+                    <path d="M288,41 L279,45 L277,52 L282,52 L283,47 L290,43 Z" fill="#0D0120" /> {/* Left Leg */}
+                    <path d="M293,41 L296,48 L299,50 L299,53 L295,53 L293,49 L291,43 Z" fill="#0D0120" /> {/* Right Leg */}
+
+                    {/* Pine trees silhouettes on the right */}
+                    <g fill="#0D0120">
+                      <polygon points="360,60 355,74 365,74" />
+                      <polygon points="360,70 352,89 368,89" />
+                      <polygon points="360,85 348,109 372,109" />
+                      <rect x="358" y="109" width="4" height="21" />
+                    </g>
+                    
+                    {/* Pine trees silhouettes on the left */}
+                    <g fill="#3B1E6D" opacity="0.6">
+                      <polygon points="20,82 16,94 24,94" />
+                      <polygon points="20,90 13,107 27,107" />
+                      <polygon points="20,103 10,127 30,127" />
+                    </g>
+                  </svg>
+                  
+                  {/* Brand and Logo info overlay */}
+                  <div className="absolute left-4 top-4.5 z-20 flex items-center gap-2.5">
+                    <div className="w-[50px] h-[50px] bg-[#2E1A47] rounded-full p-0.5 border border-[#EAD6FF]/40 shadow-md flex items-center justify-center shrink-0">
+                      <img src="/logo/logo.png" alt="Logo" className="w-[44px] h-[44px] object-contain rounded-full" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="font-black text-[15px] tracking-wide text-yellow-300 drop-shadow-md font-sans uppercase">DAPAIDERNPAI</span>
+                      <span className="font-bold text-[8px] tracking-[0.2em] text-[#EAD6FF] uppercase mt-0.5 drop-shadow">BOARDING PASS</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Perforation 1 (Header to Body) */}
+                <div className="relative flex items-center justify-center w-full bg-[#f3effa] select-none h-4">
+                  <div className="absolute -left-2 w-4 h-4 rounded-full bg-[#f5f6fa] border-r border-[#EAD6FF]/30 z-10 shadow-inner"></div>
+                  <div className="flex items-center justify-between w-full px-4 gap-1 opacity-50">
+                    {Array.from({ length: 26 }).map((_, i) => (
+                      <div key={i} className="w-1.5 h-1.5 rounded-full bg-[#2E1A47]/40 shrink-0" />
+                    ))}
+                  </div>
+                  <div className="absolute -right-2 w-4 h-4 rounded-full bg-[#f5f6fa] border-l border-[#EAD6FF]/30 z-10 shadow-inner"></div>
+                </div>
+
+                {/* 2. Main Ticket Body (Destination, QR & Booking Details) */}
+                <div className="bg-[#f3effa] px-4 pb-2.5 flex-1 flex flex-col">
+                  
+                  {/* Trip Title & QR row */}
+                  <div className="flex justify-between items-stretch gap-3 py-1.5 border-b border-[#2E1A47]/15">
+                    
+                    {/* Left Column: Trip Info */}
+                    <div className="flex flex-col justify-center flex-1 pr-1 min-w-0">
+                      <span className="text-[9px] font-black text-[#5A3882]/80 uppercase tracking-wider block">ชื่อทริป</span>
+                      <span className="text-[#2E1A47] font-black text-[18px] leading-tight block mt-0.5 tracking-tight truncate-two-lines">
+                        {userBooking.tripName}
+                      </span>
+                      <div className="mt-1.5">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-[#2E1A47] text-white">
+                          {userBooking.durationDays && userBooking.durationDays > 1 
+                            ? `${userBooking.durationDays} วัน ${userBooking.durationDays - 1} คืน` 
+                            : 'ไปเช้าเย็นกลับ (1 วัน)'}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {/* Vertical Dashed Line Divider */}
+                    <div className="w-[1.5px] border-l border-dashed border-[#2E1A47]/20 my-0.5 shrink-0"></div>
+                    
+                    {/* Right Column: QR Code Container */}
+                    <div className="shrink-0 flex flex-col items-center justify-center">
+                      <div className="border border-[#2E1A47]/20 rounded-xl bg-white p-2 flex flex-col items-center justify-center w-[110px] shadow-sm">
+                        <span className="text-[8px] font-black text-[#5A3882] mb-1 tracking-tight">เช็กอินก่อนขึ้นรถ</span>
+                        <div className="bg-white p-0.5 rounded-lg">
+                          <QRCodeSVG value={userBooking.id} size={66} level="M" includeMargin={false} />
+                        </div>
+                        <span className="text-[7px] font-bold text-[#5A3882]/85 text-center leading-tight mt-1 max-w-[95px]">
+                          สแกน QR Code นี้ เพื่อเช็กอินก่อนขึ้นรถ
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Booking details table grid */}
+                  <div className="mt-2.5 border border-[#2E1A47]/15 rounded-xl overflow-hidden bg-white/40 backdrop-blur-sm shadow-sm">
+                    {/* Row 1: Van and Seat Label */}
+                    <div className="grid grid-cols-2 divide-x divide-[#2E1A47]/15 border-b border-[#2E1A47]/15">
+                      <div className="p-2 flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-[#2E1A47]/10 flex items-center justify-center shrink-0">
+                          <Compass className="w-4.5 h-4.5 text-[#2E1A47]" />
+                        </div>
+                        <div>
+                          <span className="text-[8.5px] font-black text-[#5A3882]/80 block leading-none">คันที่นั่ง</span>
+                          <span className="text-[15px] font-black text-[#2E1A47] block mt-0.5 leading-none">{userBooking.vanNumber}</span>
+                        </div>
+                      </div>
+                      <div className="p-2 flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-[#2E1A47]/10 flex items-center justify-center shrink-0">
+                          <Armchair className="w-4.5 h-4.5 text-[#2E1A47]" />
+                        </div>
+                        <div>
+                          <span className="text-[8.5px] font-black text-[#5A3882]/80 block leading-none">หมายเลขที่นั่ง</span>
+                          <span className="text-[15px] font-black text-[#2E1A47] block mt-0.5 leading-none font-mono">{userBooking.seatLabel}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Row 2: Departure Date and Time */}
+                    <div className="grid grid-cols-2 divide-x divide-[#2E1A47]/15 border-b border-[#2E1A47]/15">
+                      <div className="p-2 flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-[#2E1A47]/10 flex items-center justify-center shrink-0">
+                          <Calendar className="w-4.5 h-4.5 text-[#2E1A47]" />
+                        </div>
+                        <div>
+                          <span className="text-[8.5px] font-black text-[#5A3882]/80 block leading-none">วันเดินทาง</span>
+                          <span className="text-[11.5px] font-black text-[#2E1A47] block mt-0.5 leading-none">{userBooking.departureDate}</span>
+                        </div>
+                      </div>
+                      <div className="p-2 flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-[#2E1A47]/10 flex items-center justify-center shrink-0">
+                          <Clock className="w-4.5 h-4.5 text-[#2E1A47]" />
+                        </div>
+                        <div>
+                          <span className="text-[8.5px] font-black text-[#5A3882]/80 block leading-none">เวลาเดินทาง</span>
+                          <span className="text-[11.5px] font-black text-[#2E1A47] block mt-0.5 leading-none">{userBooking.departureTime} น.</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Row 3: Pickup Point */}
+                    <div className="p-2 flex items-center gap-2 border-b border-[#2E1A47]/15">
+                      <div className="w-7 h-7 rounded-lg bg-[#2E1A47]/10 flex items-center justify-center shrink-0">
+                        <MapPin className="w-4.5 h-4.5 text-[#2E1A47]" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-[8.5px] font-black text-[#5A3882]/80 block leading-none">สถานที่ขึ้นรถ</span>
+                        <span className="text-[11.5px] font-black text-[#2E1A47] block mt-0.5 leading-tight truncate">{userBooking.pickupPoint}</span>
+                      </div>
+                    </div>
+
+                    {/* Row 4: Passenger Info */}
+                    <div className="grid grid-cols-2 divide-x divide-[#2E1A47]/15">
+                      <div className="p-2 flex items-center gap-2 min-w-0">
+                        <div className="w-7 h-7 rounded-lg bg-[#2E1A47]/10 flex items-center justify-center shrink-0">
+                          <User className="w-4.5 h-4.5 text-[#2E1A47]" />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="text-[8.5px] font-black text-[#5A3882]/80 block leading-none">ชื่อลูกทริป</span>
+                          <span className="text-[11.5px] font-black text-[#2E1A47] block mt-0.5 leading-tight truncate">{userBooking.fullName}</span>
+                        </div>
+                      </div>
+                      <div className="p-2 flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-[#2E1A47]/10 flex items-center justify-center shrink-0">
+                          <Phone className="w-4.5 h-4.5 text-[#2E1A47]" />
+                        </div>
+                        <div>
+                          <span className="text-[8.5px] font-black text-[#5A3882]/80 block leading-none">เบอร์โทรศัพท์ลูกทริป</span>
+                          <span className="text-[11.5px] font-black text-[#2E1A47] block mt-0.5 leading-none">{userBooking.phone}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {userBooking.note && (
+                    <div className="mt-2 px-2.5 py-1.5 bg-purple-50/70 border border-purple-100/60 rounded-lg leading-relaxed">
+                      <span className="text-[#5A3882] font-black text-[8px] block leading-none mb-0.5">รายละเอียดเพิ่มเติม (Note):</span>
+                      <span className="text-[#2E1A47] font-bold text-[9.5px] block italic leading-tight">"{userBooking.note}"</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Perforation 2 (Body to Bottom Section) */}
+                <div className="relative flex items-center justify-center w-full bg-[#f3effa] select-none h-4">
+                  <div className="absolute -left-2 w-4 h-4 rounded-full bg-[#f5f6fa] border-r border-[#EAD6FF]/30 z-10 shadow-inner"></div>
+                  <div className="flex items-center justify-between w-full px-4 gap-1 opacity-50">
+                    {Array.from({ length: 26 }).map((_, i) => (
+                      <div key={i} className="w-1.5 h-1.5 rounded-full bg-[#2E1A47]/40 shrink-0" />
+                    ))}
+                  </div>
+                  <div className="absolute -right-2 w-4 h-4 rounded-full bg-[#f5f6fa] border-l border-[#EAD6FF]/30 z-10 shadow-inner"></div>
+                </div>
+
+                {/* 3. Bottom Driver Section with mountain scenery & Van vector graphic */}
+                <div className="relative w-full bg-gradient-to-b from-[#DDCFEA] to-[#C9B6E1] p-4 pb-7 overflow-hidden shrink-0">
+                  
+                  {/* Inline Mountain & Van Silhouette vector on the right */}
+                  <svg className="absolute right-0 bottom-0 w-[160px] h-[80px] pointer-events-none select-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 80" preserveAspectRatio="none">
+                    {/* Landscape Background */}
+                    <path d="M0,80 Q43,55 95,63 T160,46 L160,80 Z" fill="#2E1A47" opacity="0.35" />
+                    
+                    {/* Pine trees silhouettes */}
+                    <g fill="#2E1A47" opacity="0.4">
+                      <polygon points="10,59 7,67 13,67" />
+                      <polygon points="10,65 6,76 14,76" />
+                      <polygon points="22,63 19,72 25,72" />
+                      <polygon points="22,69 18,78 26,78" />
+                    </g>
+
+                    {/* White Van Illustration */}
+                    <g transform="translate(35, 38) scale(0.85)">
+                      {/* Shadow */}
+                      <ellipse cx="60" cy="38" rx="55" ry="5.5" fill="#1C063C" opacity="0.3" />
+                      
+                      {/* Van Body */}
+                      <path d="M8,12 C8,8 14,4 25,3 L90,3 C102,3 108,6 110,12 L114,24 C115,26 114,35 111,35 L8,35 C5,35 5,28 6,24 Z" fill="#F8FAFC" />
+                      <path d="M8,12 C8,8 14,4 25,3 L90,3 C102,3 108,6 110,12 L114,24" stroke="#CBD5E1" strokeWidth="0.8" fill="none" />
+                      
+                      {/* Windshield & Windows */}
+                      <path d="M92,5 L106,6 L104,18 L90,18 Z" fill="#2E1A47" />
+                      <path d="M60,5 L88,5 L88,18 L60,18 Z" fill="#2E1A47" />
+                      <path d="M32,5 L56,5 L56,18 L32,18 Z" fill="#2E1A47" />
+                      <path d="M11,6 C13,5 20,5 28,5 L28,18 L10,18 C9,15 9,10 11,6 Z" fill="#2E1A47" />
+                      
+                      {/* Bumper, Lights */}
+                      <path d="M108,22 L114,24 C115,26 114,35 111,35 L98,35 Z" fill="#E2E8F0" />
+                      <rect x="105" y="27" width="7" height="4.5" rx="1.5" fill="#475569" />
+                      <rect x="107" y="29" width="4.5" height="2.5" rx="1" fill="#FEF08A" />
+                      
+                      {/* Wheels */}
+                      <circle cx="92" cy="35" r="9.5" fill="#1e1b4b" />
+                      <circle cx="92" cy="35" r="7.5" fill="#475569" />
+                      <circle cx="92" cy="35" r="3.5" fill="#94A3B8" />
+                      <circle cx="28" cy="35" r="9.5" fill="#1e1b4b" />
+                      <circle cx="28" cy="35" r="7.5" fill="#475569" />
+                      <circle cx="28" cy="35" r="3.5" fill="#94A3B8" />
+                      
+                      {/* Side Lines */}
+                      <line x1="10" y1="24" x2="90" y2="24" stroke="#CBD5E1" strokeWidth="1" />
+                      <rect x="5" y="21" width="3" height="4.5" fill="#EF4444" />
+                    </g>
+                  </svg>
+
+                  {/* Driver information */}
+                  <div className="inline-flex px-2 py-0.5 rounded bg-[#2E1A47] text-white text-[8.5px] font-black mb-2 shadow-sm uppercase tracking-wide relative z-10">
+                    ข้อมูลคนขับรถตู้
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-x-2 gap-y-2 relative z-10 max-w-[200px]">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-6 h-6 rounded bg-[#2E1A47]/10 flex items-center justify-center shrink-0">
+                        <User className="w-3.5 h-3.5 text-[#2E1A47]" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-[7.5px] font-bold text-[#5A3882]/85 block leading-none">ชื่อคนขับรถตู้</span>
+                        <span className="text-[10.5px] font-black text-[#2E1A47] block mt-0.5 truncate leading-none">{userBooking.driverName || 'ยังไม่ระบุ'}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-6 h-6 rounded bg-[#2E1A47]/10 flex items-center justify-center shrink-0">
+                        <Phone className="w-3.5 h-3.5 text-[#2E1A47]" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-[7.5px] font-bold text-[#5A3882]/85 block leading-none">เบอร์โทรศัพท์คนขับ</span>
+                        <span className="text-[10.5px] font-black text-[#2E1A47] block mt-0.5 truncate leading-none">{userBooking.driverPhone || 'ยังไม่ระบุ'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* License Plate Visual rendering */}
+                  {(() => {
+                    const plate = parsePlate(userBooking.plateNumber);
+                    return (
+                      <div className="mt-2.5 flex items-center gap-2 relative z-10">
+                        {/* Realistic Thai Mini License Plate */}
+                        <div className="border border-[#2E1A47] bg-white rounded px-1.5 py-0.5 flex flex-col items-center justify-center shrink-0 w-[58px] h-[28px] shadow-sm select-none">
+                          <span className="text-[9px] font-extrabold text-[#2E1A47] leading-none tracking-tight">{plate.number}</span>
+                          <div className="w-[90%] h-[0.5px] bg-[#2E1A47]/30 my-0.5"></div>
+                          <span className="text-[5.5px] font-black text-[#2E1A47] leading-none scale-90">{plate.province}</span>
+                        </div>
+                        
+                        <div>
+                          <span className="text-[7.5px] font-bold text-[#5A3882]/80 block leading-none">ป้ายทะเบียนรถ</span>
+                          <span className="text-[10.5px] font-black text-[#2E1A47] block mt-0.5 leading-none">{userBooking.plateNumber || 'ยังไม่ระบุ'}</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Bottom slogan centered exactly matching screenshot */}
+                  <div className="absolute bottom-1.5 left-0 right-0 text-center text-[#2E1A47] text-[9.5px] font-black italic tracking-wide select-none">
+                    ดำไป เดินไป • ไปด้วยกัน... สนุกกว่า
+                  </div>
+                </div>
+              </div>
+
               {/* Pending Transfer Banner */}
               {(userBooking as any).pendingTransfer && (
                 <div className="bg-amber-50 border border-amber-300 rounded-xl p-3 flex items-start gap-2.5 animate-in fade-in duration-300">
@@ -1736,10 +1952,6 @@ export default function CustomerPage() {
                           onClick={() => {
                             setIsRequestingTransfer(true);
                             setSelectedSeat(null);
-                            if (vans.length > 0) {
-                              const currentVan = vans.find(v => v.vanNumber === userBooking.vanNumber);
-                              if (currentVan) setSelectedVan(currentVan);
-                            }
                             setMessage({
                               type: 'success',
                               text: 'กรุณาเลือกที่นั่งใหม่ที่ว่าง (สีเขียว) บนผังรถตู้เพื่อส่งคำขอย้ายที่นั่ง'
@@ -1755,21 +1967,6 @@ export default function CustomerPage() {
                     </>
                   )}
                 </div>
-                
-                {/* Finish / Loop back to Step 1 button */}
-                <button
-                  onClick={() => {
-                    setSelectedTrip(null);
-                    setSelectedVan(null);
-                    setSelectedSeat(null);
-                    setUserBooking(null);
-                    if (mobileTab !== 'explore') setMobileTab('explore');
-                  }}
-                  className="w-full mt-1 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-bold transition duration-200 shadow-md flex items-center justify-center gap-1.5"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>การจองเสร็จสิ้น / จองทริปอื่นต่อ</span>
-                </button>
               </div>
             </div>
           )}
@@ -2269,9 +2466,11 @@ export default function CustomerPage() {
           </button>
 
           {/* Tab 2: ตั๋วของฉัน */}
-          <Link
-            href="/tickets"
-            className={`flex flex-col items-center gap-0.5 transition-colors duration-200 text-slate-400 hover:text-slate-600`}
+          <button
+            onClick={() => setMobileTab('tickets')}
+            className={`flex flex-col items-center gap-0.5 transition-colors duration-200 ${
+              mobileTab === 'tickets' ? 'text-[#4c1d95]' : 'text-slate-400 hover:text-slate-600'
+            }`}
           >
             <div className="relative">
               <Armchair className="w-5 h-5" />
@@ -2280,7 +2479,8 @@ export default function CustomerPage() {
               )}
             </div>
             <span className="text-[9.5px] font-bold">ตั๋วของฉัน</span>
-          </Link>
+            {mobileTab === 'tickets' && <span className="w-1 h-1 bg-[#4c1d95] rounded-full mt-0.5" />}
+          </button>
 
           {/* Tab 3: โปรไฟล์ */}
           <button

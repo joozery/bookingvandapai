@@ -24,9 +24,10 @@ interface LandingPageProps {
   onLoginClick: () => void;
   showHelpCenter: () => void;
   trips?: any[];
+  isLoggedIn?: boolean;
 }
 
-export default function LandingPage({ onLoginClick, showHelpCenter, trips = [] }: LandingPageProps) {
+export default function LandingPage({ onLoginClick, showHelpCenter, trips = [], isLoggedIn = false }: LandingPageProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const tripsScrollRef = useRef<HTMLDivElement>(null);
 
@@ -176,14 +177,6 @@ export default function LandingPage({ onLoginClick, showHelpCenter, trips = [] }
               <MessageSquare className="w-4 h-4 text-slate-400" />
               <span className="hidden sm:inline">ติดต่อแอดมิน</span>
             </button>
-            
-            <a 
-              href="/admin" 
-              className="flex items-center gap-1.5 text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 transition px-3 py-2 rounded-xl border border-purple-200 text-xs font-bold"
-            >
-              <span>แอดมิน</span>
-            </a>
-
             <button
               onClick={onLoginClick}
               className="bg-[#06C755] hover:bg-[#05b34c] text-white py-2 px-4 rounded-xl font-black text-xs transition-all duration-300 shadow-md shadow-[#06C755]/10 flex items-center gap-1.5 active:scale-97 group relative overflow-hidden"
@@ -193,26 +186,28 @@ export default function LandingPage({ onLoginClick, showHelpCenter, trips = [] }
               <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current shrink-0">
                 <path d="M24 10.3c0-4.7-4.8-8.5-10.7-8.5S2.7 5.6 2.7 10.3c0 4.2 3.8 7.7 8.9 8.4.3.1.8.2.9.5.1.2 0 .6-.1.8l-.4 2.6c0 .3-.2 1.1 1 0l7.2-7.2h.1c2.7-1.1 3.9-3.1 3.9-5.1z" />
               </svg>
-              <span>เข้าสู่ระบบด้วย LINE</span>
+              <span>{isLoggedIn ? 'หน้าหลัก / ตั๋วของฉัน' : 'เข้าสู่ระบบด้วย LINE'}</span>
             </button>
           </div>
         </div>
       </header>
 
       {/* Dynamic / Glowing Banner Badge */}
-      <div className="w-full bg-gradient-to-r from-[#4c1d95] via-purple-700 to-indigo-800 text-white text-center py-2.5 px-4 text-xs font-bold tracking-wider flex items-center justify-center gap-2 shadow-inner">
-        <Sparkles className="w-4 h-4 text-yellow-300 animate-pulse shrink-0" />
-        <span>ระบบจองที่นั่งรถตู้เวอร์ชันใหม่: ซิงค์แผนผังที่นั่งเรียลไทม์ 100% พร้อมประกันเดินทางอัตโนมัติ!</span>
+      <div className="w-full bg-gradient-to-r from-[#4c1d95] via-purple-700 to-indigo-800 text-white text-center py-2.5 px-4 text-[10px] sm:text-xs font-bold tracking-wider flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 shadow-inner">
+        <div className="flex items-center gap-1.5">
+          <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-yellow-300 animate-pulse shrink-0" />
+          <span>ระบบจองที่นั่งรถตู้เวอร์ชันใหม่: ซิงค์แผนผังที่นั่งเรียลไทม์ 100% พร้อมประกันเดินทางอัตโนมัติ!</span>
+        </div>
         <button 
-          onClick={onLoginClick} 
-          className="underline hover:text-yellow-200 transition font-black ml-2 hidden sm:inline-block"
+          onClick={showHelpCenter} 
+          className="underline hover:text-yellow-200 transition font-black sm:ml-2 inline-block mt-1 sm:mt-0 text-[11px] sm:text-xs"
         >
-          จองเลยวันนี้ →
+          ติดต่อแอดมินเพื่อขอลิ้งก์จอง →
         </button>
       </div>
 
       {/* Hero Section - Immersive Full-Screen Background Slider */}
-      <section className="relative h-[75vh] min-h-[580px] max-h-[750px] w-full overflow-hidden flex items-center justify-center bg-slate-950">
+      <section className="relative h-[85vh] sm:h-[75vh] min-h-[500px] sm:min-h-[580px] max-h-[750px] w-full overflow-hidden flex items-center justify-center bg-slate-950">
         
         {/* Background Image Slider with Crossfade */}
         <div className="absolute inset-0 z-0">
@@ -240,16 +235,8 @@ export default function LandingPage({ onLoginClick, showHelpCenter, trips = [] }
           }}
         />
         
-        {/* Bottom Fade to Next Section background - Low height and organic easing for an absolutely seamless, zero-fog transition */}
-        <div 
-          className="absolute bottom-0 inset-x-0 h-10 sm:h-14 z-10 pointer-events-none" 
-          style={{
-            backgroundImage: 'linear-gradient(to top, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0.9) 20%, rgba(255, 255, 255, 0.4) 55%, rgba(255, 255, 255, 0.1) 80%, rgba(255, 255, 255, 0) 100%)'
-          }}
-        />
-
-        {/* Foreground Content Card - Glassmorphism & Minimal Text */}
-        <div className="relative z-20 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center space-y-6 sm:space-y-8 animate-in fade-in zoom-in-95 duration-1000">
+        {/* Removed Bottom Fade overlay per user request */}        {/* Foreground Content Card - Glassmorphism & Minimal Text */}
+        <div className="relative z-20 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center space-y-6 sm:space-y-8 animate-in fade-in zoom-in-95 duration-1000 mt-[-40px] sm:mt-0">
           
           {/* Active slide's floating tag / badge */}
           <div className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/15 border border-white/20 rounded-full py-1.5 px-4 text-[10px] sm:text-xs font-black text-white shadow-xl backdrop-blur-md transition-all duration-500">
@@ -259,35 +246,35 @@ export default function LandingPage({ onLoginClick, showHelpCenter, trips = [] }
 
           {/* Headline - Big & Elegant yet minimal */}
           <div className="space-y-3 sm:space-y-4 max-w-3xl">
-            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.15] drop-shadow-md">
-              ก้าวสู่การเดินทางที่ง่ายดาย <br className="hidden sm:inline" />
-              กับทริป <span className="bg-gradient-to-r from-purple-400 via-indigo-300 to-violet-300 bg-clip-text text-transparent drop-shadow-sm">“ด่าไป เดินไป”</span>
+            <h1 className="text-2xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.25] sm:leading-[1.15] drop-shadow-md px-2 sm:px-0">
+              ก้าวสู่การเดินทางที่ง่ายดาย <br />
+              กับทริป <span className="bg-gradient-to-r from-purple-400 via-indigo-300 to-violet-300 bg-clip-text text-transparent drop-shadow-sm inline-block mt-1 sm:mt-0">“ด่าไป เดินไป”</span>
             </h1>
-            <p className="text-sm sm:text-base md:text-lg text-slate-200/90 leading-relaxed max-w-2xl font-medium tracking-wide drop-shadow-sm">
+            <p className="text-xs sm:text-base md:text-lg text-slate-200/90 leading-relaxed max-w-2xl mx-auto font-medium tracking-wide drop-shadow-sm px-4 sm:px-0 mt-2 sm:mt-4">
               {slides[currentSlide].subtitle}
             </p>
           </div>
 
           {/* Hero CTAs */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full sm:w-auto pt-2 pb-8">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 w-full sm:w-auto pt-4 sm:pt-2 pb-8 px-4 sm:px-0">
             <button
               onClick={onLoginClick}
-              className="w-full sm:w-auto bg-[#06C755] hover:bg-[#05b34c] text-white py-4 px-8 rounded-2xl font-black text-sm sm:text-base transition-all duration-300 shadow-lg shadow-[#06C755]/25 flex items-center justify-center gap-3 active:scale-97 group overflow-hidden relative border border-emerald-600/20"
+              className="w-full sm:w-auto bg-[#06C755] hover:bg-[#05b34c] text-white py-3.5 sm:py-4 px-8 rounded-2xl font-black text-[13px] sm:text-base transition-all duration-300 shadow-lg shadow-[#06C755]/25 flex items-center justify-center gap-2.5 sm:gap-3 active:scale-97 group overflow-hidden relative border border-emerald-600/20"
             >
               {/* shine overlay */}
               <span className="absolute inset-0 w-full h-full bg-white/15 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-out" />
-              <svg viewBox="0 0 24 24" className="w-5.5 h-5.5 fill-current shrink-0">
+              <svg viewBox="0 0 24 24" className="w-5 h-5 sm:w-5.5 sm:h-5.5 fill-current shrink-0">
                 <path d="M24 10.3c0-4.7-4.8-8.5-10.7-8.5S2.7 5.6 2.7 10.3c0 4.2 3.8 7.7 8.9 8.4.3.1.8.2.9.5.1.2 0 .6-.1.8l-.4 2.6c0 .3-.2 1.1 1 0l7.2-7.2h.1c2.7-1.1 3.9-3.1 3.9-5.1z" />
               </svg>
-              <span>เข้าสู่ระบบด้วย LINE เพื่อจองที่นั่ง</span>
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              <span>{isLoggedIn ? 'เริ่มจองที่นั่ง' : 'เข้าสู่ระบบด้วย LINE เพื่อจองที่นั่ง'}</span>
+              <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 group-hover:translate-x-1 transition-transform" />
             </button>
 
             <button
               onClick={showHelpCenter}
-              className="w-full sm:w-auto bg-white/10 hover:bg-white/15 border border-white/20 text-white py-4 px-8 rounded-2xl font-extrabold text-sm sm:text-base backdrop-blur-md transition-all duration-300 flex items-center justify-center gap-2 active:scale-97 shadow-lg"
+              className="w-full sm:w-auto bg-white/10 hover:bg-white/15 border border-white/20 text-white py-3.5 sm:py-4 px-8 rounded-2xl font-extrabold text-[13px] sm:text-base backdrop-blur-md transition-all duration-300 flex items-center justify-center gap-2 active:scale-97 shadow-lg"
             >
-              <MessageSquare className="w-4.5 h-4.5 text-slate-300 shrink-0" />
+              <MessageSquare className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-slate-300 shrink-0" />
               <span>พูดคุยสอบถามแอดมิน</span>
             </button>
           </div>
@@ -295,7 +282,7 @@ export default function LandingPage({ onLoginClick, showHelpCenter, trips = [] }
         </div>
 
         {/* Slider Indicators (Dots) - Ultra-slim Glassmorphic Pill floating cleanly above the fade transition zone */}
-        <div className="absolute bottom-16 sm:bottom-20 left-1/2 transform -translate-x-1/2 flex items-center gap-2 z-30 bg-slate-950/20 backdrop-blur-sm border border-white/10 px-3 py-1.5 rounded-full shadow-lg">
+        <div className="absolute bottom-6 sm:bottom-20 left-1/2 transform -translate-x-1/2 flex items-center gap-2 z-30 bg-slate-950/20 backdrop-blur-sm border border-white/10 px-3 py-1.5 rounded-full shadow-lg">
           {slides.map((_, idx) => (
             <button
               key={idx}
@@ -310,18 +297,18 @@ export default function LandingPage({ onLoginClick, showHelpCenter, trips = [] }
       </section>
 
       {/* Trip showcase Section - Redesigned to Premium Card Slider */}
-      <section id="destinations" className="py-20 lg:py-28 bg-white border-b border-slate-100 overflow-hidden">
+      <section id="destinations" className="py-12 lg:py-28 bg-white border-b border-slate-100 overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
           
-          <div className="text-center max-w-2xl mx-auto space-y-4 mb-16">
-            <div className="inline-flex items-center gap-1 bg-emerald-50 border border-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold">
+          <div className="text-center max-w-xl mx-auto space-y-3 sm:space-y-4 mb-10 sm:mb-16">
+            <div className="inline-flex items-center gap-1 bg-emerald-50 border border-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold">
               <Sparkles className="w-3.5 h-3.5" />
               <span>อัปเดตทริปใหม่ทุกสัปดาห์</span>
             </div>
-            <h2 className="text-2xl sm:text-4xl font-black text-slate-900 leading-tight">
+            <h2 className="text-xl sm:text-4xl font-black text-slate-900 leading-tight">
               ทริปยอดฮิตยอดนิยม “ด่าไป เดินไป”
             </h2>
-            <p className="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed">
+            <p className="text-[11px] sm:text-sm text-slate-500 font-medium leading-relaxed px-4 sm:px-0">
               สัมผัสความงามของขุนเขาและธรรมชาติชั้นแนวหน้าของเมืองไทย จองที่นั่งรถตู้เดินทางไปกับครอบครัวหรือกลุ่มเพื่อนร่วมอุดมการณ์
             </p>
           </div>
@@ -332,13 +319,13 @@ export default function LandingPage({ onLoginClick, showHelpCenter, trips = [] }
             {/* Scrollable card deck with snap alignment & hidden scrollbar */}
             <div 
               ref={tripsScrollRef}
-              className="flex gap-6 overflow-x-auto snap-x snap-mandatory pb-8 pt-4 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 [&::-webkit-scrollbar]:hidden"
+              className="flex gap-4 sm:gap-6 overflow-x-auto snap-x snap-mandatory pb-6 sm:pb-8 pt-2 sm:pt-4 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 [&::-webkit-scrollbar]:hidden"
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
               {destinations.map((dest, idx) => (
                 <div 
                   key={idx} 
-                  className="w-[85vw] max-w-[340px] sm:w-[360px] md:w-[380px] shrink-0 snap-start bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.03)] hover:shadow-[0_20px_50px_rgb(76,29,149,0.07)] transition-all duration-350 hover:-translate-y-1.5 flex flex-col group"
+                  className="w-[85vw] max-w-[340px] sm:w-[360px] md:w-[380px] shrink-0 snap-center sm:snap-start bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.03)] hover:shadow-[0_20px_50px_rgb(76,29,149,0.07)] transition-all duration-350 hover:-translate-y-1.5 flex flex-col group"
                 >
                   {/* Image top with floating seats status pill (No rating star! - aspect ratio reduced to modern 16:10 landscape) */}
                   <div className="relative aspect-[16/10] overflow-hidden bg-slate-50 shrink-0">
@@ -408,10 +395,10 @@ export default function LandingPage({ onLoginClick, showHelpCenter, trips = [] }
 
                       <div className="text-right">
                         <button 
-                          onClick={onLoginClick}
+                          onClick={showHelpCenter}
                           className="bg-purple-50 text-[#4c1d95] group-hover:bg-[#4c1d95] group-hover:text-white transition-all duration-300 py-2 px-4 rounded-xl font-black text-xxs flex items-center gap-1 border border-purple-100 group-hover:border-transparent shadow-sm active:scale-95"
                         >
-                          <span>จองที่นั่ง</span>
+                          <span>ติดต่อแอดมินเพื่อจอง</span>
                           <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                         </button>
                       </div>
@@ -443,10 +430,10 @@ export default function LandingPage({ onLoginClick, showHelpCenter, trips = [] }
 
           <div className="text-center mt-12">
             <button 
-              onClick={onLoginClick}
+              onClick={showHelpCenter}
               className="inline-flex items-center gap-2 text-xs sm:text-sm font-black text-[#4c1d95] hover:text-purple-800 underline transition"
             >
-              <span>ดูข้อมูลตารางทริปทั้งหมดและกดจองที่นี่</span>
+              <span>สอบถามข้อมูลตารางทริปทั้งหมดกับแอดมินที่นี่</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
@@ -464,7 +451,7 @@ export default function LandingPage({ onLoginClick, showHelpCenter, trips = [] }
       <section className="py-12 sm:py-16 bg-slate-50 border-t border-slate-100 overflow-hidden">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           
-          <div className="relative rounded-[2rem] sm:rounded-[2.5rem] bg-gradient-to-br from-[#4c1d95] via-[#3b137a] to-indigo-950 text-white py-10 px-6 sm:p-12 overflow-hidden shadow-2xl border border-purple-800/10 text-center space-y-6">
+          <div className="relative rounded-2xl sm:rounded-3xl bg-gradient-to-br from-[#4c1d95] via-[#3b137a] to-indigo-950 text-white py-10 px-6 sm:p-12 overflow-hidden shadow-2xl border border-purple-800/10 text-center space-y-6">
             
             {/* Interactive Glow Effects */}
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(6,199,85,0.1),transparent_45%)] pointer-events-none" />
@@ -476,19 +463,17 @@ export default function LandingPage({ onLoginClick, showHelpCenter, trips = [] }
               </h2>
               
               <p className="text-xxs sm:text-xs text-purple-200/80 max-w-md mx-auto leading-relaxed">
-                จองที่นั่งรถตู้คันโปรดของคุณง่ายๆ ผ่านระบบออนไลน์ เพื่อไม่พลาดทริปเดินป่าสุดพิเศษนี้
+                ติดต่อแอดมินของเราเพื่อขอลิ้งก์เข้าสู่ระบบจองที่นั่งรถตู้คันโปรดของคุณง่ายๆ ผ่านระบบออนไลน์ เพื่อไม่พลาดทริปเดินป่าสุดพิเศษนี้
               </p>
             </div>
 
             <div className="relative z-10 pt-1 flex justify-center">
               <button
-                onClick={onLoginClick}
+                onClick={showHelpCenter}
                 className="bg-[#06C755] hover:bg-[#05b34c] text-white py-3 px-8 rounded-xl font-black text-xxs sm:text-xs transition-all duration-300 shadow-md shadow-[#06C755]/10 flex items-center gap-2 active:scale-97 group relative overflow-hidden"
               >
-                <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current shrink-0">
-                  <path d="M24 10.3c0-4.7-4.8-8.5-10.7-8.5S2.7 5.6 2.7 10.3c0 4.2 3.8 7.7 8.9 8.4.3.1.8.2.9.5.1.2 0 .6-.1.8l-.4 2.6c0 .3-.2 1.1 1 0l7.2-7.2h.1c2.7-1.1 3.9-3.1 3.9-5.1z" />
-                </svg>
-                <span>ล็อกอิน LINE เพื่อเริ่มต้นจองเลย</span>
+                <MessageSquare className="w-4 h-4 text-white" />
+                <span>ติดต่อแอดมินเพื่อขอลิ้งก์จองเลย</span>
                 <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
               </button>
             </div>
