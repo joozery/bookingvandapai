@@ -958,7 +958,7 @@ export default function CustomerPage() {
                   <label htmlFor="fullName" className="block text-[11px] font-bold text-slate-500 mb-1">
                     ชื่อ-นามสกุล (Full Name) <span className="text-red-500">*</span>
                   </label>
-                  <input type="text" id="fullName" required value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="เช่น สมชาย ใจดี" className="w-full bg-slate-50 border border-slate-200 focus:border-[#4c1d95] rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200" />
+                  <input type="text" id="fullName" required value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="เช่น นายสมชาย ใจดี (ระบุคำนำหน้าด้วย)" className="w-full bg-slate-50 border border-slate-200 focus:border-[#4c1d95] rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200" />
                 </div>
                 
                 <div className="grid grid-cols-2 gap-3">
@@ -972,7 +972,7 @@ export default function CustomerPage() {
                     <label htmlFor="phone" className="block text-[11px] font-bold text-slate-500 mb-1">
                       เบอร์โทรศัพท์ <span className="text-red-500">*</span>
                     </label>
-                    <input type="tel" id="phone" required value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="เช่น 081-234-5678" className="w-full bg-slate-50 border border-slate-200 focus:border-[#4c1d95] rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200" />
+                    <input type="tel" id="phone" required maxLength={10} value={phone} onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, '').slice(0, 10))} placeholder="เช่น 0812345678" className="w-full bg-slate-50 border border-slate-200 focus:border-[#4c1d95] rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200" />
                   </div>
                 </div>
 
@@ -980,7 +980,7 @@ export default function CustomerPage() {
                   <label htmlFor="nationalId" className="block text-[11px] font-bold text-slate-500 mb-1">
                     เลขบัตรประจำตัวประชาชน (National ID) <span className="text-red-500">*</span>
                   </label>
-                  <input type="text" id="nationalId" required value={nationalId} onChange={(e) => setNationalId(e.target.value)} placeholder="เลข 13 หลัก" maxLength={13} className="w-full bg-slate-50 border border-slate-200 focus:border-[#4c1d95] rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200" />
+                  <input type="tel" id="nationalId" required value={nationalId} onChange={(e) => setNationalId(e.target.value.replace(/[^0-9]/g, '').slice(0, 13))} placeholder="เลข 13 หลัก" maxLength={13} className="w-full bg-slate-50 border border-slate-200 focus:border-[#4c1d95] rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200" />
                 </div>
 
                 <div>
@@ -1001,7 +1001,7 @@ export default function CustomerPage() {
                     <label htmlFor="emergencyPhone" className="block text-[11px] font-bold text-slate-500 mb-1">
                       เบอร์โทรฉุกเฉิน <span className="text-red-500">*</span>
                     </label>
-                    <input type="tel" id="emergencyPhone" required value={emergencyPhone} onChange={(e) => setEmergencyPhone(e.target.value)} placeholder="เช่น 089-123-4567" className="w-full bg-slate-50 border border-slate-200 focus:border-[#4c1d95] rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200" />
+                    <input type="tel" id="emergencyPhone" required maxLength={10} value={emergencyPhone} onChange={(e) => setEmergencyPhone(e.target.value.replace(/[^0-9]/g, '').slice(0, 10))} placeholder="เช่น 0891234567" className="w-full bg-slate-50 border border-slate-200 focus:border-[#4c1d95] rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200" />
                   </div>
                 </div>
 
@@ -1025,11 +1025,15 @@ export default function CustomerPage() {
                     className="mt-0.5 w-3.5 h-3.5 rounded border-slate-300 text-[#4c1d95] focus:ring-[#4c1d95] accent-[#4c1d95] cursor-pointer"
                   />
                   <label htmlFor="consentInsurance" className="text-[10.5px] leading-relaxed text-slate-600 font-semibold cursor-pointer select-none">
-                    ข้าพเจ้ายินยอมให้ผู้จัดทริป “ด่าไป เดินไป” เก็บ ใช้ และเปิดเผยข้อมูลส่วนบุคคลของข้าพเจ้า ได้แก่ ชื่อ-นามสกุล เบอร์โทรศัพท์ เลขบัตรประชาชน วันเดือนปีเกิด ข้อมูลผู้ติดต่อฉุกเฉิน รวมถึงข้อมูลสุขภาพ เช่น โรคประจำตัว และอาการแพ้อาหาร เพื่อใช้ในการ:
+                    ข้าพเจ้ายินยอมให้ผู้จัดทริป “ด่าไป เดินไป” เก็บ ใช้ และเปิดเผยข้อมูลส่วนบุคคลของข้าพเจ้า ได้แก่ ชื่อ-นามสกุล เบอร์โทรศัพท์ เลขบัตรประชาชน วันเดือนปีเกิด ข้อมูลผู้ติดต่อฉุกเฉิน รวมถึงข้อมูลสุขภาพ เช่น โรคประจำตัว และอาการแพ้อาหาร เพื่อใช้ในการ
                     <ul className="list-disc pl-4 mt-1 space-y-0.5 text-slate-500 font-medium">
                       <li>ทำประกันการเดินทาง</li>
-                      <li>ติดต่อประสานงาน และดูแลความปลอดภัยในทริปนี้</li>
+                      <li>ติดต่อกรณีฉุกเฉิน</li>
+                      <li>ดูแลความปลอดภัยระหว่างเข้าร่วมทริป</li>
                     </ul>
+                    <p className="mt-1 text-slate-500 font-medium">
+                      โดยข้อมูลจะถูกจัดเก็บอย่างเหมาะสม และใช้เท่าที่จำเป็นตามวัตถุประสงค์ดังกล่าวเท่านั้น จะไม่มีการเผยแพร่ข้อมูลให้บุคคลอื่น
+                    </p>
                   </label>
                 </div>
 
@@ -1942,7 +1946,7 @@ export default function CustomerPage() {
                     required
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    placeholder="กรอกชื่อจริง-นามสกุล"
+                    placeholder="กรอกชื่อจริง-นามสกุล (ระบุคำนำหน้าด้วย)"
                     disabled={!lineUser}
                     className="w-full bg-slate-50 border border-slate-200 focus:border-[#4c1d95] rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200 disabled:opacity-50"
                   />
@@ -1956,28 +1960,16 @@ export default function CustomerPage() {
                     type="tel"
                     id="phone"
                     required
+                    maxLength={10}
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="เช่น 081-234-5678"
+                    onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, '').slice(0, 10))}
+                    placeholder="เช่น 0812345678"
                     disabled={!lineUser}
                     className="w-full bg-slate-50 border border-slate-200 focus:border-[#4c1d95] rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200 disabled:opacity-50"
                   />
                 </div>
 
-                <div>
-                  <label htmlFor="note" className="block text-[11px] font-bold text-slate-500 mb-1">
-                    หมายเหตุ (ถ้ามี)
-                  </label>
-                  <textarea
-                    id="note"
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                    placeholder="เช่น อาหาร, แพ้ยา, อื่นๆ"
-                    disabled={!lineUser}
-                    rows={2}
-                    className="w-full bg-slate-50 border border-slate-200 focus:border-[#4c1d95] rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200 disabled:opacity-50 resize-none"
-                  />
-                </div>
+
 
                 {/* Confirm reservation button */}
                 <button

@@ -64,7 +64,7 @@ export default function TicketsPage() {
     setDownloadingTicketId(ticketId);
     try {
       const dataUrl = await toPng(ele, {
-        cacheBust: true,
+
         backgroundColor: '#ffffff',
         pixelRatio: 4
       });

@@ -46,7 +46,7 @@ const getReturnDate = (depDate: string, days: number) => {
 
 export const DigitalTicket = forwardRef<HTMLDivElement, Props>(({ booking, htmlId }, ref) => {
   return (
-    <div id={htmlId} ref={ref} className="relative w-full max-w-[380px] mx-auto bg-white rounded-[20px] overflow-hidden shadow-xl border border-slate-100 flex flex-col font-sans select-none">
+    <div id={htmlId} ref={ref} className="relative w-full max-w-[380px] mx-auto bg-white overflow-hidden shadow-xl border border-slate-100 flex flex-col font-sans select-none">
                 
                 {/* 1. Header Section (Gradient purple with climber silhouette moon & birds) */}
                 <div className="relative w-full h-[120px] overflow-hidden shrink-0 bg-[#250A4E]">
@@ -277,25 +277,11 @@ export const DigitalTicket = forwardRef<HTMLDivElement, Props>(({ booking, htmlI
                     </div>
                   </div>
 
-                  {/* License Plate Visual rendering */}
-                  {(() => {
-                    const plate = parsePlate(booking.plateNumber);
-                    return (
-                      <div className="mt-2.5 flex items-center gap-2 relative z-10">
-                        {/* Realistic Thai Mini License Plate */}
-                        <div className="border border-[#2E1A47] bg-white rounded px-1.5 py-0.5 flex flex-col items-center justify-center shrink-0 w-[58px] h-[28px] shadow-sm select-none">
-                          <span className="text-[9px] font-extrabold text-[#2E1A47] leading-none tracking-tight">{plate.number}</span>
-                          <div className="w-[90%] h-[0.5px] bg-[#2E1A47]/30 my-0.5"></div>
-                          <span className="text-[5.5px] font-black text-[#2E1A47] leading-none scale-90">{plate.province}</span>
-                        </div>
-                        
-                        <div>
-                          <span className="text-[7.5px] font-bold text-[#5A3882]/80 block leading-none">ป้ายทะเบียนรถ</span>
-                          <span className="text-[10.5px] font-black text-[#2E1A47] block mt-0.5 leading-none">{booking.plateNumber || 'ยังไม่ระบุ'}</span>
-                        </div>
-                      </div>
-                    );
-                  })()}
+                  {/* License Plate Text Only */}
+                  <div className="mt-2.5 relative z-10">
+                    <span className="text-[7.5px] font-bold text-[#5A3882]/85 block leading-none">ป้ายทะเบียนรถ</span>
+                    <span className="text-[10.5px] font-black text-[#2E1A47] block mt-0.5 leading-none">{booking.plateNumber || 'ยังไม่ระบุ'}</span>
+                  </div>
 
                   {/* Bottom slogan centered exactly matching screenshot */}
                   <div className="absolute bottom-1.5 left-0 right-0 text-center text-[#2E1A47] text-[9.5px] font-black italic tracking-wide select-none">
