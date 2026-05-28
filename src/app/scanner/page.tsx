@@ -1,58 +1,15 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
-import { Html5QrcodeScanner, Html5Qrcode } from 'html5-qrcode';
+import React, { useState } from 'react';
+import { Scanner } from '@yudiel/react-qr-scanner';
 import { Check, X, Clock, UserCheck, ArrowLeft, QrCode, Camera } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
 export default function ScannerPage() {
-  const [scanResult, setScanResult] = useState<string | null>(null);
   const [scannedData, setScannedData] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
   const [scannerActive, setScannerActive] = useState(true);
-
-  // We use the Html5Qrcode class directly for more control over the UI
-  const scannerRef = useRef<Html5Qrcode | null>(null);
-
-  useEffect(() => {
-    if (!scannerActive) {
-      if (scannerRef.current) {
-        scannerRef.current.stop().catch(console.error);
-        scannerRef.current = null;
-      }
-      return;
-    }
-
-    const startScanner = async () => {
-      try {
-        scannerRef.current = new Html5Qrcode("reader");
-        await scannerRef.current.start(
-          { facingMode: "environment" },
-          { fps: 10, qrbox: { width: 250, height: 250 } },
-          (decodedText) => {
-            // When scanned successfully
-            setScanResult(decodedText);
-            setScannerActive(false); // Stop scanner
-            fetchBooking(decodedText);
-          },
-          (errorMessage) => {
-            // ignore scan errors
-          }
-        );
-      } catch (err) {
-        console.error(err);
-      }
-    };
-
-    startScanner();
-
-    return () => {
-      if (scannerRef.current) {
-        scannerRef.current.stop().catch(console.error);
-      }
-    };
-  }, [scannerActive]);
 
   const fetchBooking = async (id: string) => {
     setLoading(true);
@@ -63,13 +20,23 @@ export default function ScannerPage() {
         setScannedData(data.booking);
       } else {
         alert('ไม่พบข้อมูลตั๋วนี้ในระบบ');
-        setScannerActive(true); // restart
+        setScannerActive(true);
       }
     } catch {
       alert('เกิดข้อผิดพลาดในการตรวจสอบตั๋ว');
       setScannerActive(true);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleScan = (detectedCodes: any[]) => {
+    if (detectedCodes.length > 0 && scannerActive && !loading) {
+      const value = detectedCodes[0].rawValue;
+      if (value) {
+        setScannerActive(false);
+        fetchBooking(value);
+      }
     }
   };
 
@@ -96,14 +63,13 @@ export default function ScannerPage() {
 
   const resetScanner = () => {
     setScannedData(null);
-    setScanResult(null);
     setScannerActive(true);
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans">
+    <div className="min-h-screen bg-slate-50 font-sans pb-10">
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 px-4 py-4 flex items-center justify-between sticky top-0 z-50">
+      <header className="bg-white border-b border-slate-200 px-4 py-4 flex items-center justify-between sticky top-0 z-50 shadow-sm">
         <div className="flex items-center gap-3">
           <Link href="/" className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 transition">
             <ArrowLeft className="w-5 h-5" />
@@ -120,16 +86,11 @@ export default function ScannerPage() {
         {/* Scanner View */}
         {scannerActive && (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-6">
-            <div className="p-4 bg-slate-900 text-center relative">
-              <div id="reader" className="w-full bg-black rounded-lg overflow-hidden border-2 border-slate-800" style={{ minHeight: '300px' }}></div>
-              <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                <div className="w-48 h-48 border-2 border-violet-500 rounded-xl relative opacity-50">
-                  <span className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-white rounded-tl-lg" />
-                  <span className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-white rounded-tr-lg" />
-                  <span className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-white rounded-bl-lg" />
-                  <span className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-white rounded-br-lg" />
-                </div>
-              </div>
+            <div className="bg-black relative aspect-square w-full">
+              <Scanner 
+                onScan={handleScan}
+                formats={['qr_code']}
+              />
             </div>
             <div className="p-4 text-center">
               <p className="text-sm font-bold text-slate-700 flex items-center justify-center gap-2">
