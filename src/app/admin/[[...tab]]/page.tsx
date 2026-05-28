@@ -38,8 +38,8 @@ const NAV = [
   },
   { id: 'users',   label: 'จัดการลูกทริป', icon: UserCheck },
   { id: 'checkin', label: 'Check-in QR', icon: QrCode },
-  { id: 'staff',   label: 'ทีมงาน / ผู้จัด', icon: Shield },
-  { id: 'insurance', label: 'ประกันการเดินทาง', icon: Lock },
+  { id: 'staff',   label: 'ทีมงาน / ผู้จัด', icon: Lock },
+  { id: 'insurance', label: 'ประกันการเดินทาง', icon: Shield },
   { id: 'reports',   label: 'รายงาน', icon: FileText, children: [
     { id: 'reports-finance', label: 'รายงานการเงิน' },
     { id: 'reports-trip',    label: 'รายงานทริป' },

@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { Lock, Search, Save, Check, RefreshCw, X } from 'lucide-react';
+import { Shield, Search, Save, Check, RefreshCw, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Booking, Trip } from './types';
 
@@ -106,7 +106,7 @@ export default function InsuranceTab({ trips, onRefresh }: Props) {
     <div className="space-y-4">
       {/* ── Header with admin info ───────────────────── */}
       <div className="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-4">
-        <Lock className="w-6 h-6 text-violet-600" />
+        <Shield className="w-6 h-6 text-violet-600" />
         <div>
           <p className="font-bold text-slate-800">{adminName}</p>
           <p className="text-xs text-slate-400">Username: {adminUsername}</p>
@@ -117,7 +117,7 @@ export default function InsuranceTab({ trips, onRefresh }: Props) {
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-4 flex flex-col md:flex-row items-center justify-between gap-4">
         <div>
           <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
-            <Lock className="w-5 h-5 text-violet-600" />
+            <Shield className="w-5 h-5 text-violet-600" />
             ข้อมูลประกันการเดินทาง
           </h2>
           <p className="text-xs text-slate-400 mt-1">จัดการข้อมูลเลขบัตรประชาชนและวันเกิดของลูกทริป</p>
@@ -152,7 +152,7 @@ export default function InsuranceTab({ trips, onRefresh }: Props) {
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
         {passengers.length === 0 ? (
           <div className="py-20 flex flex-col items-center justify-center text-slate-400 gap-2">
-            <Lock className="w-10 h-10 opacity-20" />
+            <Shield className="w-10 h-10 opacity-20" />
             <p className="font-semibold text-sm">ไม่พบรายชื่อลูกทริป</p>
           </div>
         ) : (
@@ -241,7 +241,7 @@ export default function InsuranceTab({ trips, onRefresh }: Props) {
                           </span>
                         ) : (
                           <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-slate-100 text-slate-300" title="ยังไม่ครบ">
-                            <Lock className="w-3 h-3" />
+                            <Shield className="w-3 h-3" />
                           </span>
                         )}
                       </td>

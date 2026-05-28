@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { 
-  ShieldCheck, ShieldAlert, Trash2, Edit, Save, X, RefreshCw, 
+  Lock, ShieldAlert, Trash2, Edit, Save, X, RefreshCw, 
   UserPlus, UserCog, UserX, AlertCircle, Key, User
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -182,7 +182,7 @@ export default function AdminsTab() {
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 text-violet-600" />
+            <Lock className="w-5 h-5 text-violet-600" />
             ระบบแอดมิน (Username & Password)
           </h2>
           <p className="text-xs text-slate-400 mt-1">กำหนดสิทธิแอดมินและการเข้าถึงเมนูต่างๆ</p>
@@ -320,7 +320,7 @@ export default function AdminsTab() {
           <div className="py-20 flex justify-center"><RefreshCw className="w-6 h-6 text-slate-300 animate-spin" /></div>
         ) : admins.length === 0 ? (
           <div className="py-20 flex flex-col items-center justify-center text-slate-400 gap-2">
-            <ShieldCheck className="w-10 h-10 opacity-20" />
+            <Lock className="w-10 h-10 opacity-20" />
             <p className="font-semibold text-sm">ยังไม่มีแอดมินในระบบ</p>
           </div>
         ) : (
