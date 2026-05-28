@@ -1371,7 +1371,10 @@ function CustomerPageContent() {
             ) : trips.length === 0 ? (
               <p className="text-xs text-slate-400 text-center py-4">ไม่พบทริปเดินทางในขณะนี้</p>
             ) : (
-              <div className="flex flex-col gap-3 overflow-y-auto pr-1.5 scrollbar-thin" style={{ maxHeight: '60vh', WebkitOverflowScrolling: 'touch' }}>
+              <div
+                className="flex flex-col gap-3 overflow-y-auto scrollbar-thin"
+                style={{ maxHeight: '564px', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}
+              >
                 {!urlTripId && (
                   <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl mb-1 flex items-start gap-2">
                     <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
@@ -1410,7 +1413,7 @@ function CustomerPageContent() {
                               ? 'border-slate-200 opacity-50 cursor-not-allowed'
                               : 'border-transparent hover:border-purple-300 cursor-pointer'
                       }`}
-                      style={{ height: '130px' }}
+                      style={{ minHeight: '130px', height: '130px', flexShrink: 0 }}
                     >
                       {/* Full bleed background image */}
                       <img
