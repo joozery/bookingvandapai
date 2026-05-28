@@ -7,7 +7,7 @@ export async function GET() {
   try {
     const { data: admins, error } = await supabase
       .from('admins')
-      .select('id, username, name, permissions, isBlocked, createdAt')
+      .select('id, username, name, avatar_url, permissions, isBlocked, createdAt')
       .order('createdAt', { ascending: false });
 
     if (error) {

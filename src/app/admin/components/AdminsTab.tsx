@@ -11,6 +11,7 @@ export interface AdminUser {
   id: string;
   username: string;
   name: string;
+  avatar_url?: string;
   permissions: string[];
   isBlocked: boolean;
   createdAt: string;
@@ -341,8 +342,12 @@ export default function AdminsTab() {
                     <tr key={admin.id} className={cn("hover:bg-slate-50/50 transition group", admin.isBlocked && "bg-rose-50/30")}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className={cn("w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-xs", admin.isBlocked ? "bg-rose-400" : "bg-gradient-to-br from-violet-500 to-purple-600")}>
-                            {admin.name.charAt(0).toUpperCase()}
+                          <div className={cn("w-9 h-9 rounded-full overflow-hidden flex items-center justify-center text-white font-bold text-xs shrink-0 border border-slate-200", admin.isBlocked ? "bg-rose-400" : "bg-gradient-to-br from-violet-500 to-purple-600")}>
+                            {admin.avatar_url ? (
+                              <img src={admin.avatar_url} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              admin.name.charAt(0).toUpperCase()
+                            )}
                           </div>
                           <div className="min-w-0">
                             <p className="font-bold text-slate-800 text-xs truncate">

@@ -23,7 +23,7 @@ export async function PUT(request: Request, props: RouteParams) {
       .from('admins')
       .update(updates)
       .eq('id', id)
-      .select('id, username, name, permissions, isBlocked, createdAt')
+      .select('id, username, name, avatar_url, permissions, isBlocked, createdAt')
       .single();
 
     if (error) throw error;
