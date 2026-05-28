@@ -328,9 +328,8 @@ export default function AdminPage() {
     <div className="flex flex-col h-full bg-white select-none">
       {/* Logo Section */}
       <div className="h-16 flex items-center gap-3 px-4 border-b border-slate-100 shrink-0 bg-white">
-        <div className="w-9 h-9 rounded-full overflow-hidden border border-slate-200 shadow-sm flex items-center justify-center shrink-0 bg-slate-50 relative group transition-all duration-300 hover:scale-105 hover:border-violet-300">
-          <img src="/logo/logov2.png" alt="DAPAIDERNPAI Logo" className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-violet-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        <div className="w-9 h-9 flex items-center justify-center shrink-0 relative transition-transform duration-300 hover:scale-105">
+          <img src="/logo/logov2.png" alt="DAPAIDERNPAI Logo" className="w-full h-full object-contain" />
         </div>
         {sidebarOpen && (
           <div className="min-w-0 flex flex-col">
