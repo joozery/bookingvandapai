@@ -23,6 +23,9 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
   const [vanForm, setVanForm] = useState({ plateNumber: '', driverName: '', driverPhone: '' });
   const [editingStaff, setEditingStaff] = useState<{ vanId: string; seatId: string; staffName: string } | null>(null);
   const [viewSeatVanId, setViewSeatVanId] = useState<string | null>(null);
+  const [selectedTripId, setSelectedTripId] = useState<string>('all');
+
+  const filteredTrips = selectedTripId === 'all' ? trips : trips.filter(t => t.id === selectedTripId);
 
   const renderAdminSeat = (s: Seat | undefined) => {
     if (!s) return <div className="w-8 h-8" />;
@@ -57,6 +60,28 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
 
   return (
     <div className="space-y-6">
+      {/* ── Toolbar ────────────────────────────────────── */}
+      <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
+            <Bus className="w-5 h-5 text-violet-600" />
+            ข้อมูลรถตู้แต่ละทริป
+          </h2>
+          <p className="text-xs text-slate-400 mt-1">เลือกทริปเพื่อจัดการรถและผังที่นั่ง</p>
+        </div>
+        
+        <select
+          value={selectedTripId}
+          onChange={(e) => setSelectedTripId(e.target.value)}
+          className="w-full sm:w-64 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-violet-500 font-medium text-slate-700"
+        >
+          <option value="all">ทุกทริป (ทั้งหมด)</option>
+          {trips.map(t => (
+            <option key={t.id} value={t.id}>{t.name}</option>
+          ))}
+        </select>
+      </div>
+
       {trips.length === 0 && (
         <div className="text-center py-16 text-slate-400 border border-dashed border-slate-200 rounded-xl">
           <Bus className="w-10 h-10 mx-auto mb-2 text-slate-200" />
@@ -64,7 +89,7 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
         </div>
       )}
 
-      {trips.map(trip => {
+      {filteredTrips.map(trip => {
         const tripVans = vans.filter(v => v.tripId === trip.id);
 
         return (
