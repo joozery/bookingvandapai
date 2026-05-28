@@ -15,6 +15,10 @@ import { Providers } from "@/components/Providers";
 export const metadata: Metadata = {
   title: "ระบบจองที่นั่งรถตู้ท่องเที่ยว - ด่าไป เดินไป",
   description: "จองที่นั่งรถตู้ท่องเที่ยวแบบเรียลไทม์ผ่าน LINE สะดวก รวดเร็ว พร้อมระบบตั๋วเดินทาง QR Check-in และแดชบอร์ดแอดมินครบวงจร",
+  icons: {
+    icon: "/logo/logo.jpg",
+    apple: "/logo/logo.jpg",
+  },
 };
 
 export default function RootLayout({
