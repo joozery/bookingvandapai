@@ -106,8 +106,9 @@ const MOCK_LINE_USERS = [
   }
 ];
 
-export default function CustomerPage() {
+function CustomerPageContent() {
   const { data: session, status: sessionStatus } = useSession();
+  const searchParams = useSearchParams();
 
   // Authentication & Simulation States
   const [lineUser, setLineUser] = useState<{ userId: string; displayName: string; pictureUrl: string } | null>(null);
@@ -161,17 +162,29 @@ export default function CustomerPage() {
   const [medicalConditions, setMedicalConditions] = useState('');
   const [consentInsurance, setConsentInsurance] = useState(false);
 
-  // 1. Fetch Trips initially
+  // Initial fetch
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const tripIdParam = params.get('tripId');
-    const stepParam = params.get('step');
+    fetchTrips();
+  }, []);
+
+  // Handle URL parameter changes for soft navigation (e.g. returning from tickets page)
+  useEffect(() => {
+    if (!searchParams) return;
+    
+    const tripIdParam = searchParams.get('tripId');
+    const stepParam = searchParams.get('step');
+    
     if (tripIdParam || stepParam) {
       if (tripIdParam) setUrlTripId(tripIdParam);
       setIsLandingMode(false);
+      
+      // Auto-select trip if step=5 is requested and trips are loaded
+      if (stepParam === '5' && tripIdParam && trips.length > 0) {
+        const trip = trips.find((t: Trip) => t.id === tripIdParam);
+        if (trip) setSelectedTrip(trip);
+      }
     }
-    fetchTrips();
-  }, []);
+  }, [searchParams, trips]);
 
   // Sync NextAuth session with local lineUser state
   useEffect(() => {
@@ -232,18 +245,10 @@ export default function CustomerPage() {
       if (data.success) {
         setTrips(data.trips);
         if (data.trips.length > 0) {
-          const params = new URLSearchParams(window.location.search);
-          const tripIdParam = params.get('tripId');
-          const stepParam = params.get('step');
-          
-          if (tripIdParam && stepParam === '5') {
-            const trip = data.trips.find((t: Trip) => t.id === tripIdParam);
-            setSelectedTrip(trip || null);
-          } else {
-            // We intentionally do not auto-select the trip here.
-            // This ensures the user starts at Step 1 and can review the trip details before proceeding.
-            setSelectedTrip(null);
-          }
+          // We intentionally do not auto-select the trip here.
+          // This ensures the user starts at Step 1 and can review the trip details before proceeding.
+          // NOTE: The searchParams useEffect will auto-select the trip if step=5 is in the URL.
+          setSelectedTrip(null);
         }
       }
     } catch (err) {
@@ -2372,4 +2377,12 @@ export default function CustomerPage() {
       </button>
     );
   }
+}
+
+export default function CustomerPage() {
+  return (
+    <React.Suspense fallback={<div className="min-h-screen bg-[#f8fafc] flex items-center justify-center">Loading...</div>}>
+      <CustomerPageContent />
+    </React.Suspense>
+  );
 }
