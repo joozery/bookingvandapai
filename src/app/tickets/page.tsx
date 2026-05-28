@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react';
 import DigitalTicket from '@/components/DigitalTicket';
 import { Armchair, Download, RefreshCw, ChevronLeft, User } from 'lucide-react';
 import Link from 'next/link';
-import html2canvas from 'html2canvas';
+import { toPng } from 'html-to-image';
 
 export default function TicketsPage() {
   const { data: session } = useSession();
@@ -63,13 +63,11 @@ export default function TicketsPage() {
     
     setDownloadingTicketId(ticketId);
     try {
-      const canvas = await html2canvas(ele, {
+      const dataUrl = await toPng(ele, {
         backgroundColor: '#ffffff',
-        scale: 4,
-        useCORS: true,
-        allowTaint: true
+        pixelRatio: 4,
+        cacheBust: true
       });
-      const dataUrl = canvas.toDataURL('image/png');
       const filename = `BookingTicket-Seat${seatLabel || 'X'}.png`;
 
       if (navigator.share) {
