@@ -1392,14 +1392,15 @@ function CustomerPageContent() {
                   const durationText = hasCustomDuration ? parts[0] : (nights > 0 ? `${trip.durationDays} วัน ${nights} คืน` : `ไปเช้าเย็นกลับ (1 วัน)`);
 
                   return (
-                    <button
+                    <div
                       key={trip.id}
+                      role="button"
+                      tabIndex={isDisabled ? -1 : 0}
                       onClick={() => {
                         if (isDisabled) return;
                         setSelectedTrip(trip);
                         setSelectedSeat(null);
                       }}
-                      disabled={isDisabled}
                       className={`w-full text-left relative rounded-xl border transition-all duration-200 overflow-hidden block ${
                         isSelected
                           ? 'border-[#4c1d95] ring-2 ring-[#4c1d95]/30 shadow-md shadow-purple-100'
@@ -1407,7 +1408,7 @@ function CustomerPageContent() {
                             ? 'border-slate-200 opacity-60 cursor-not-allowed bg-slate-50 grayscale-[50%]'
                             : isDisabled
                               ? 'border-slate-200 opacity-50 cursor-not-allowed bg-slate-50'
-                              : 'border-slate-200 hover:border-purple-200 hover:shadow-sm bg-white'
+                              : 'border-slate-200 hover:border-purple-200 hover:shadow-sm bg-white cursor-pointer'
                       }`}
                     >
                       {/* Image header strip */}
@@ -1477,7 +1478,7 @@ function CustomerPageContent() {
                           {isSelected && <Check className="w-3 h-3" />}
                         </div>
                       </div>
-                    </button>
+                    </div>
                   );
                 })}
               </div>
