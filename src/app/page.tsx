@@ -244,10 +244,22 @@ function CustomerPageContent() {
       const data = await res.json();
       if (data.success) {
         setTrips(data.trips);
+        
+        // Force auto-select if URL has step=5
+        const params = new URLSearchParams(window.location.search);
+        const tripIdParam = params.get('tripId');
+        const stepParam = params.get('step');
+        
+        if (tripIdParam && stepParam === '5') {
+          const trip = data.trips.find((t: Trip) => t.id === tripIdParam);
+          if (trip) {
+            setSelectedTrip(trip);
+            return; // Skip setting to null
+          }
+        }
+        
         if (data.trips.length > 0) {
-          // We intentionally do not auto-select the trip here.
-          // This ensures the user starts at Step 1 and can review the trip details before proceeding.
-          // NOTE: The searchParams useEffect will auto-select the trip if step=5 is in the URL.
+          // We intentionally do not auto-select the trip here by default.
           setSelectedTrip(null);
         }
       }
@@ -741,11 +753,15 @@ function CustomerPageContent() {
     if (!lineUser || !hasProfile) return;
     const params = new URLSearchParams(window.location.search);
     const currentInUrl = params.get('step');
+    
+    // Prevent overwriting a step=5 deep link before data is loaded
+    if (currentStep === 1 && currentInUrl === '5' && trips.length === 0) return;
+
     if (currentInUrl !== String(currentStep)) {
       params.set('step', String(currentStep));
       router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     }
-  }, [currentStep, lineUser, hasProfile]);
+  }, [currentStep, lineUser, hasProfile, trips.length, router, pathname]);
 
   if (isLandingMode) {
     return (
