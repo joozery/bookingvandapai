@@ -54,6 +54,10 @@ export interface Booking {
   note?: string;
   nationalId?: string | null;
   birthDate?: string | null;
+  emergencyName?: string | null;
+  emergencyPhone?: string | null;
+  allergies?: string | null;
+  medicalConditions?: string | null;
   profile?: any;
   // Joined fields
   tripName?: string;
