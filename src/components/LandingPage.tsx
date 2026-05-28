@@ -29,7 +29,22 @@ interface LandingPageProps {
 
 export default function LandingPage({ onLoginClick, showHelpCenter, trips = [], isLoggedIn = false }: LandingPageProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [settings, setSettings] = useState({
+    footer_description: 'กลุ่มเดินป่าและเดินทางสายผจญภัย มุ่งสร้างสรรค์ทริปท่องเที่ยวธรรมชาติที่คุ้มค่า สนุกสนาน มิตรภาพที่ยั่งยืน และปลอดภัยทุกก้าวเดิน',
+    contact_phone: '+66 89 123 4567',
+    contact_email: 'support@dapaidernpai.com',
+    contact_location: 'เชียงใหม่ / กรุงเทพฯ, ประเทศไทย',
+    copyright_year: new Date().getFullYear().toString()
+  });
   const tripsScrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    fetch('/api/settings').then(res => res.json()).then(data => {
+      if (data.success && data.settings) {
+        setSettings(prev => ({...prev, ...data.settings}));
+      }
+    }).catch(console.error);
+  }, []);
 
   const scrollTripsLeft = () => {
     if (tripsScrollRef.current) {
@@ -477,7 +492,7 @@ export default function LandingPage({ onLoginClick, showHelpCenter, trips = [], 
               <span className="text-white font-extrabold text-base sm:text-lg">ด่าไป เดินไป</span>
             </div>
             <p className="text-xxs sm:text-xs text-slate-500 max-w-sm leading-relaxed font-bold">
-              กลุ่มเดินป่าและเดินทางสายผจญภัย มุ่งสร้างสรรค์ทริปท่องเที่ยวธรรมชาติที่คุ้มค่า สนุกสนาน มิตรภาพที่ยั่งยืน และปลอดภัยทุกก้าวเดิน
+              {settings.footer_description}
             </p>
           </div>
 
@@ -509,15 +524,15 @@ export default function LandingPage({ onLoginClick, showHelpCenter, trips = [], 
             <ul className="space-y-2 text-xxs sm:text-xs font-bold text-slate-500">
               <li className="flex items-center gap-2">
                 <Phone className="w-3.5 h-3.5 text-purple-400" />
-                <span>+66 89 123 4567</span>
+                <span>{settings.contact_phone}</span>
               </li>
               <li className="flex items-center gap-2">
                 <Mail className="w-3.5 h-3.5 text-purple-400" />
-                <span>support@dapaidernpai.com</span>
+                <span>{settings.contact_email}</span>
               </li>
               <li className="flex items-center gap-2">
                 <MapPin className="w-3.5 h-3.5 text-purple-400" />
-                <span>เชียงใหม่ / กรุงเทพฯ, ประเทศไทย</span>
+                <span>{settings.contact_location}</span>
               </li>
             </ul>
           </div>
@@ -526,7 +541,7 @@ export default function LandingPage({ onLoginClick, showHelpCenter, trips = [], 
 
         {/* Bottom copyright */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 pt-6 border-t border-slate-800/80 text-center text-xxs text-slate-600 flex flex-col sm:flex-row items-center justify-between gap-4 font-bold">
-          <p>© 2026 ด่าไป เดินไป (DAPAI DERNPAI) All Rights Reserved.</p>
+          <p>© {settings.copyright_year} ด่าไป เดินไป (DAPAI DERNPAI) All Rights Reserved.</p>
           <div className="flex gap-4">
             <a href="#" className="hover:underline">นโยบายความเป็นส่วนตัว</a>
             <a href="#" className="hover:underline">เงื่อนไขการให้บริการ</a>

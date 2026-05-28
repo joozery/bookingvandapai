@@ -23,6 +23,7 @@ import UsersTab, { type UserRecord } from '../components/UsersTab';
 import AdminsTab from '../components/AdminsTab';
 import InsuranceTab from '../components/InsuranceTab';
 import ProfileTab from '../components/ProfileTab';
+import SettingsTab from '../components/SettingsTab';
 import type { Trip, Van, Booking } from '../components/types';
 
 // ── Nav structure ─────────────────────────────────────────────────────────────
@@ -41,10 +42,11 @@ const NAV = [
   { id: 'checkin', label: 'Check-in QR', icon: QrCode },
   { id: 'staff',   label: 'ทีมงาน / ผู้จัด', icon: Lock },
   { id: 'insurance', label: 'ประกันการเดินทาง', icon: Shield },
+  { id: 'settings',  label: 'ตั้งค่าเว็บไซต์', icon: Settings },
   { id: 'profile',   label: 'โปรไฟล์ของฉัน', icon: User },
 ] as const;
 
-type TabId = 'dashboard' | 'bookings' | 'trips' | 'vans' | 'checkin' | 'pending' | 'users' | 'staff' | 'insurance' | 'profile';
+type TabId = 'dashboard' | 'bookings' | 'trips' | 'vans' | 'checkin' | 'pending' | 'users' | 'staff' | 'insurance' | 'profile' | 'settings';
 
 export default function AdminPage() {
   const { data: session, status } = useSession();
@@ -666,6 +668,7 @@ export default function AdminPage() {
               {activeTab === 'users'     && <UsersTab users={users} onRefresh={() => fetchAll()} />}
               {activeTab === 'staff'     && <AdminsTab />}
               {activeTab === 'insurance' && <InsuranceTab trips={trips} bookings={bookings} onRefresh={() => fetchAll()} />}
+              {activeTab === 'settings'  && <SettingsTab />}
               {activeTab === 'profile'   && <ProfileTab />}
               {activeTab === 'checkin' && (
                 <CheckinTab trips={trips} bookings={bookings} onCheckIn={handleCheckIn} />
