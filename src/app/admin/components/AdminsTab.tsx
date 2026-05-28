@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Lock, ShieldAlert, Trash2, Edit, Save, X, RefreshCw, 
-  UserPlus, UserCog, UserX, AlertCircle, Key, User
+  UserPlus, UserCog, UserX, AlertCircle, Key, User, Eye, EyeOff
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -44,6 +44,7 @@ export default function AdminsTab() {
   const [formName, setFormName] = useState('');
   const [formBlocked, setFormBlocked] = useState(false);
   const [formPermissions, setFormPermissions] = useState<string[]>([]);
+  const [showPassword, setShowPassword] = useState(false);
 
   const fetchAdmins = async () => {
     setLoading(true);
@@ -252,13 +253,20 @@ export default function AdminsTab() {
                 <div className="relative">
                   <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     required={!editingId}
                     value={formPassword}
                     onChange={e => setFormPassword(e.target.value)}
                     placeholder={editingId ? 'ปล่อยว่างไว้หากไม่ต้องการเปลี่ยน' : '••••••••'}
-                    className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-violet-500"
+                    className="w-full pl-9 pr-10 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-violet-500"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-violet-600 transition"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
 
