@@ -60,6 +60,21 @@ function daysSince(iso: string) {
 /* ─── User Detail Drawer ─────────────────────────────────────────────────── */
 function UserDrawer({ user, onClose }: { user: UserRecord | null; onClose: () => void }) {
   const [copied, setCopied] = useState<string | null>(null);
+  const [history, setHistory] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  React.useEffect(() => {
+    if (!user) return;
+    setLoadingHistory(true);
+    fetch(`/api/users/${user.lineUserId}/history`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) setHistory(data.bookings);
+        setLoadingHistory(false);
+      })
+      .catch(() => setLoadingHistory(false));
+  }, [user]);
+
   if (!user) return null;
 
   const copy = (text: string, key: string) => {
@@ -164,7 +179,7 @@ function UserDrawer({ user, onClose }: { user: UserRecord | null; onClose: () =>
 
           {/* Timeline */}
           <div className="space-y-2">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ประวัติ</p>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ประวัติการเข้าใช้งาน</p>
             <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100 space-y-2">
               <div className="flex justify-between text-xs">
                 <span className="text-slate-400 font-medium">เข้าใช้ครั้งแรก</span>
@@ -174,6 +189,40 @@ function UserDrawer({ user, onClose }: { user: UserRecord | null; onClose: () =>
                 <span className="text-slate-400 font-medium">ใช้งานล่าสุด</span>
                 <span className="font-semibold text-slate-700">{fmtDate(user.lastSeen)} {fmtTime(user.lastSeen)}</span>
               </div>
+            </div>
+          </div>
+
+          {/* Travel History */}
+          <div className="space-y-2">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ประวัติการเดินทาง</p>
+            <div className="bg-slate-50 rounded-xl border border-slate-100 overflow-hidden">
+              {loadingHistory ? (
+                <div className="p-5 flex justify-center"><RefreshCw className="w-5 h-5 text-slate-300 animate-spin" /></div>
+              ) : history.length === 0 ? (
+                <div className="p-5 text-center text-xs text-slate-400">ไม่มีประวัติการจอง</div>
+              ) : (
+                <div className="divide-y divide-slate-100 max-h-48 overflow-y-auto scrollbar-thin">
+                  {history.map(b => (
+                    <div key={b.id} className="p-3 text-xs hover:bg-slate-100/50 transition">
+                      <div className="flex justify-between items-start mb-1">
+                        <span className="font-bold text-slate-800">{b.trips?.name || 'ไม่ทราบชื่อทริป'}</span>
+                        <span className={cn(
+                          "text-[9px] font-bold px-1.5 py-0.5 rounded-full border",
+                          b.status === 'approved' ? "bg-emerald-50 text-emerald-600 border-emerald-200" :
+                          b.status === 'pending' ? "bg-amber-50 text-amber-600 border-amber-200" :
+                          "bg-rose-50 text-rose-600 border-rose-200"
+                        )}>
+                          {b.status === 'approved' ? 'ยืนยัน' : b.status === 'pending' ? 'รออนุมัติ' : 'ยกเลิก'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 text-slate-500 text-[10px]">
+                        <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {fmtDate(b.trips?.departureDate)}</span>
+                        <span className="flex items-center gap-1">ที่นั่ง: <b className="text-slate-700">{b.seatLabel}</b></span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
