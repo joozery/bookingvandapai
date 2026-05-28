@@ -8,6 +8,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import DigitalTicket from '@/components/DigitalTicket';
 import { supabase } from '@/lib/supabase';
 import { toPng } from 'html-to-image';
+import { cn } from '@/lib/utils';
 import {
   Compass,
   Calendar,
