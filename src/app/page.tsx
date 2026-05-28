@@ -1401,29 +1401,57 @@ function CustomerPageContent() {
                         setSelectedTrip(trip);
                         setSelectedSeat(null);
                       }}
-                      className={`w-full text-left relative rounded-xl border transition-all duration-200 overflow-hidden block ${
+                      className={`w-full text-left relative rounded-xl border-2 transition-all duration-200 overflow-hidden ${
                         isSelected
-                          ? 'border-[#4c1d95] ring-2 ring-[#4c1d95]/30 shadow-md shadow-purple-100'
+                          ? 'border-[#4c1d95] shadow-lg shadow-purple-200'
                           : userBookedThisTrip
-                            ? 'border-slate-200 opacity-60 cursor-not-allowed bg-slate-50 grayscale-[50%]'
+                            ? 'border-slate-300 opacity-60 cursor-not-allowed grayscale-[40%]'
                             : isDisabled
-                              ? 'border-slate-200 opacity-50 cursor-not-allowed bg-slate-50'
-                              : 'border-slate-200 hover:border-purple-200 hover:shadow-sm bg-white cursor-pointer'
+                              ? 'border-slate-200 opacity-50 cursor-not-allowed'
+                              : 'border-transparent hover:border-purple-300 cursor-pointer'
                       }`}
+                      style={{ height: '130px' }}
                     >
-                      {/* Image header strip */}
-                      <div className="relative w-full h-24 overflow-hidden rounded-t-xl">
-                        <img
-                          src={trip.image || 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=400&auto=format&fit=crop&q=80'}
-                          alt={trip.name}
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                        {/* Trip name overlaid on image */}
-                        <div className="absolute bottom-0 left-0 right-0 px-3 pb-3 flex items-end justify-between gap-2">
-                          <h3 className="text-white font-bold text-sm leading-tight drop-shadow-md flex-1 line-clamp-2">{trip.name}</h3>
-                          {/* Seat badge */}
-                          <div className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-bold border ${
+                      {/* Full bleed background image */}
+                      <img
+                        src={trip.image || 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=400&auto=format&fit=crop&q=80'}
+                        alt={trip.name}
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                      {/* Gradient overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-black/20" />
+
+                      {/* Content on top of gradient */}
+                      <div className="relative h-full flex items-center justify-between px-3 py-3 gap-2">
+                        {/* Left: trip info */}
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <h3 className="text-white font-black text-sm leading-tight drop-shadow line-clamp-1">{trip.name}</h3>
+                          <div className="flex items-center gap-1.5">
+                            <Calendar className="w-3 h-3 text-purple-300 shrink-0" />
+                            <span className="text-white/90 text-[10px] font-bold">
+                              {durationText}
+                              {period && <span className="text-white/60 font-normal ml-1">({period})</span>}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <div className="flex items-center gap-1">
+                              <MapPin className="w-3 h-3 text-white/50 shrink-0" />
+                              <span className="text-white/70 text-[10px] font-semibold">ออก {trip.departureDate}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-white/50 shrink-0" />
+                              <span className="text-white/70 text-[10px] font-semibold">{trip.departureTime} น.</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-yellow-300 text-xs font-black">฿{trip.cost?.toLocaleString('th-TH') || '0'}</span>
+                            <span className="text-white/50 text-[9px]">/ ท่าน</span>
+                          </div>
+                        </div>
+
+                        {/* Right: seat badge + check circle */}
+                        <div className="flex flex-col items-center gap-2 shrink-0">
+                          <div className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${
                             userBookedThisTrip
                               ? 'bg-purple-600/90 text-white border-purple-500'
                               : seatsLeft > 0
@@ -1432,50 +1460,11 @@ function CustomerPageContent() {
                           }`}>
                             {userBookedThisTrip ? 'จองแล้ว' : seatsLeft > 0 ? `ว่าง ${seatsLeft} ที่` : 'เต็ม'}
                           </div>
-                        </div>
-                      </div>
-
-                      {/* Details section */}
-                      <div className={`px-3 py-2.5 flex items-center gap-2 ${isSelected ? 'bg-purple-50/50' : 'bg-white'}`}>
-                        <div className="flex-1 min-w-0 space-y-1">
-                          {/* Duration row */}
-                          <div className="flex items-center gap-1.5">
-                            <Calendar className="w-3 h-3 text-[#4c1d95] shrink-0" />
-                            <span className="text-[10px] font-bold text-slate-700">
-                              {durationText}
-                              {period && (
-                                <span className="font-normal text-slate-500 ml-1">({period})</span>
-                              )}
-                            </span>
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-all ${
+                            isSelected ? 'bg-[#4c1d95] border-[#4c1d95] text-white' : 'border-white/60 bg-white/20'
+                          }`}>
+                            {isSelected && <Check className="w-3.5 h-3.5" />}
                           </div>
-                          {/* Departure date + time row */}
-                          <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-1">
-                              <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
-                              <span className="text-[10px] text-slate-500 font-semibold">ออก {trip.departureDate}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Clock className="w-3 h-3 text-slate-400 shrink-0" />
-                              <span className="text-[10px] text-slate-500 font-semibold">{trip.departureTime} น.</span>
-                            </div>
-                          </div>
-                          {/* Cost / Price row */}
-                          <div className="flex items-center gap-1 pt-0.5">
-                            <span className="text-[10px] font-bold text-[#4c1d95]">ราคาทริป:</span>
-                            <span className="text-xs font-black text-[#4c1d95] font-mono">
-                              ฿{trip.cost?.toLocaleString('th-TH') || '0'}
-                            </span>
-                            <span className="text-[9px] text-slate-400 font-semibold">/ ท่าน</span>
-                          </div>
-                        </div>
-
-                        {/* Selected check */}
-                        <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 border-2 transition-all duration-200 ${
-                          isSelected
-                            ? 'bg-[#4c1d95] border-[#4c1d95] text-white'
-                            : 'border-slate-300 bg-white'
-                        }`}>
-                          {isSelected && <Check className="w-3 h-3" />}
                         </div>
                       </div>
                     </div>
