@@ -20,8 +20,11 @@ export default function CheckinTab({ trips, bookings, onCheckIn }: Props) {
   const [manualId, setManualId] = useState('');
   const [scanned, setScanned] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
+  const [selectedTripId, setSelectedTripId] = useState<string>('all');
 
-  const waitingList = bookings.filter(b => b.status === 'approved' && !b.checkedIn);
+  const tripBookings = bookings.filter(b => b.status === 'approved' && (selectedTripId === 'all' || b.tripId === selectedTripId));
+  const waitingList = tripBookings.filter(b => !b.checkedIn);
+  const checkedInList = tripBookings.filter(b => b.checkedIn);
 
   const handleScan = async (id: string) => {
     if (!id.trim()) return;
@@ -68,6 +71,21 @@ export default function CheckinTab({ trips, bookings, onCheckIn }: Props) {
             {scannerOpen ? <><X className="w-4 h-4" /> ปิด Scanner</> : <><QrCode className="w-4 h-4" /> เปิด Scanner</>}
           </button>
 
+          {/* Trip Filter */}
+          <div className="flex flex-col gap-1.5 animate-in fade-in duration-200">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">กรองตามทริป:</label>
+            <select
+              value={selectedTripId}
+              onChange={(e) => setSelectedTripId(e.target.value)}
+              className="w-full h-9 rounded-lg border border-slate-200 bg-slate-50 text-xs px-3 focus:outline-none focus:border-violet-500 font-semibold text-slate-700"
+            >
+              <option value="all">ทุกทริป (ทั้งหมด)</option>
+              {trips.map(t => (
+                <option key={t.id} value={t.id}>{t.name} ({t.departureDate})</option>
+              ))}
+            </select>
+          </div>
+
           {scannerOpen && (
             <div className="space-y-3 animate-in fade-in duration-200">
               {/* Real scanner viewfinder */}
@@ -98,30 +116,63 @@ export default function CheckinTab({ trips, bookings, onCheckIn }: Props) {
             </div>
           )}
 
-          {/* Waiting list */}
-          {waitingList.length > 0 && (
+          {/* Lists */}
+          <div className="space-y-4 pt-2 border-t border-slate-100">
+            {/* Waiting list */}
             <div>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-                รายการรอเช็คอิน ({waitingList.length})
+              <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                ยังไม่เช็คอิน ({waitingList.length})
               </p>
-              <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
-                {waitingList.map(b => (
-                  <button
-                    key={b.id}
-                    onClick={() => handleScan(b.id)}
-                    className="w-full flex items-center gap-2.5 p-2.5 bg-white border border-slate-200 rounded-xl hover:border-violet-300 hover:bg-violet-50/50 transition text-left group"
-                  >
-                    <img src={b.lineUserProfilePic} alt="" className="w-7 h-7 rounded-full border border-slate-100 object-cover shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs font-bold text-slate-700 truncate">{b.fullName} ({b.nickname})</div>
-                      <div className="text-[9px] text-slate-400 truncate">{b.tripName} · เบาะ {b.seatLabel}</div>
-                    </div>
-                    <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-violet-500 transition shrink-0" />
-                  </button>
-                ))}
-              </div>
+              {waitingList.length > 0 ? (
+                <div className="space-y-1.5 max-h-[250px] overflow-y-auto pr-1 scrollbar-thin">
+                  {waitingList.map(b => (
+                    <button
+                      key={b.id}
+                      onClick={() => handleScan(b.id)}
+                      className="w-full flex items-center gap-2.5 p-2 bg-white border border-slate-200 rounded-lg hover:border-violet-300 hover:bg-violet-50/50 transition text-left group"
+                    >
+                      <img src={b.lineUserProfilePic} alt="" className="w-7 h-7 rounded-full border border-slate-100 object-cover shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[11px] font-bold text-slate-700 truncate">{b.fullName} ({b.nickname})</div>
+                        <div className="text-[9px] text-slate-400 truncate">{b.tripName} · เบาะ {b.seatLabel}</div>
+                      </div>
+                      <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-violet-500 transition shrink-0" />
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-xs text-slate-400 italic py-2">ไม่มีลูกทริปที่รอเช็คอิน</div>
+              )}
             </div>
-          )}
+
+            {/* Checked-in list */}
+            <div>
+              <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <Check className="w-3 h-3" />
+                เช็คอินแล้ว ({checkedInList.length})
+              </p>
+              {checkedInList.length > 0 ? (
+                <div className="space-y-1.5 max-h-[200px] overflow-y-auto pr-1 scrollbar-thin">
+                  {checkedInList.map(b => (
+                    <div
+                      key={b.id}
+                      className="w-full flex items-center gap-2.5 p-2 bg-emerald-50/30 border border-emerald-100 rounded-lg text-left"
+                    >
+                      <img src={b.lineUserProfilePic} alt="" className="w-7 h-7 rounded-full border border-emerald-200 object-cover shrink-0 opacity-80" />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[11px] font-bold text-emerald-800 truncate">{b.fullName} ({b.nickname})</div>
+                        <div className="text-[9px] text-emerald-600/70 truncate">{b.tripName} · เบาะ {b.seatLabel}</div>
+                      </div>
+                      <span className="text-[9px] font-bold text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded">✓ แล้ว</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-xs text-slate-400 italic py-2">ยังไม่มีผู้เช็คอิน</div>
+              )}
+            </div>
+          </div>
         </CardContent>
       </Card>
 
