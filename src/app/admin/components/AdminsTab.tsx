@@ -6,6 +6,7 @@ import {
   UserPlus, UserCog, UserX, AlertCircle, Key, User, Eye, EyeOff
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/lib/supabase';
 
 export interface AdminUser {
   id: string;
@@ -45,6 +46,8 @@ export default function AdminsTab() {
   const [formBlocked, setFormBlocked] = useState(false);
   const [formPermissions, setFormPermissions] = useState<string[]>([]);
   const [showPassword, setShowPassword] = useState(false);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
   const fetchAdmins = async () => {
     setLoading(true);
@@ -78,6 +81,8 @@ export default function AdminsTab() {
     setFormBlocked(false);
     setFormPermissions([]);
     setEditingId(null);
+    setAvatarFile(null);
+    setAvatarPreview(null);
     setShowForm(false);
   };
 
@@ -88,6 +93,8 @@ export default function AdminsTab() {
     setFormPermissions(admin.permissions || []);
     setFormBlocked(admin.isBlocked);
     setEditingId(admin.id);
+    setAvatarFile(null);
+    setAvatarPreview(admin.avatar_url || null);
     setShowForm(true);
   };
 
@@ -104,13 +111,30 @@ export default function AdminsTab() {
     if (!editingId && !formPassword) return alert('กรุณากรอกรหัสผ่าน');
 
     try {
+      let finalAvatarUrl = avatarPreview;
+      if (avatarFile) {
+        const fileExt = avatarFile.name.split('.').pop();
+        const fileName = `admin-${Date.now()}.${fileExt}`;
+        const filePath = `avatars/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('images')
+          .upload(filePath, avatarFile);
+
+        if (!uploadError) {
+          const { data: urlData } = supabase.storage.from('images').getPublicUrl(filePath);
+          finalAvatarUrl = urlData.publicUrl;
+        }
+      }
+
       const url = editingId ? `/api/admins/${editingId}` : '/api/admins';
       const method = editingId ? 'PUT' : 'POST';
       
       const body: any = { 
         name: formName.trim(), 
         permissions: formPermissions,
-        isBlocked: formBlocked
+        isBlocked: formBlocked,
+        avatar_url: finalAvatarUrl
       };
 
       if (!editingId) {
@@ -220,6 +244,32 @@ export default function AdminsTab() {
             <div className="space-y-4">
               <h4 className="text-sm font-bold text-slate-700 border-b pb-2">ข้อมูลผู้ใช้</h4>
               
+              <div className="space-y-1.5 flex flex-col items-center sm:items-start">
+                <label className="text-xs font-bold text-slate-600">รูปโปรไฟล์ (ตัวเลือก)</label>
+                <label className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-2 border-dashed border-slate-300 flex items-center justify-center bg-slate-50 hover:bg-slate-100 cursor-pointer overflow-hidden relative group transition-colors">
+                  {avatarPreview ? (
+                    <img src={avatarPreview} alt="Avatar Preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="w-8 h-8 text-slate-400 group-hover:text-slate-500 transition-colors" />
+                  )}
+                  <input
+                    type="file"
+                    accept="image/png, image/jpeg, image/webp"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setAvatarFile(file);
+                        setAvatarPreview(URL.createObjectURL(file));
+                      }
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="text-white text-[10px] font-bold">เปลี่ยนรูป</span>
+                  </div>
+                </label>
+              </div>
+
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-600">Username <span className="text-rose-500">*</span></label>
                 <div className="relative">

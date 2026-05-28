@@ -26,7 +26,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { username, password, name, permissions } = body;
+    const { username, password, name, permissions, avatar_url } = body;
 
     if (!username || !password || !name) {
       return NextResponse.json({ success: false, error: 'กรุณากรอกข้อมูลให้ครบถ้วน' }, { status: 400 });
@@ -41,9 +41,10 @@ export async function POST(request: Request) {
         password: hashedPassword,
         name,
         permissions: permissions || [],
-        isBlocked: false
+        isBlocked: false,
+        avatar_url: avatar_url || null
       }])
-      .select('id, username, name, permissions, isBlocked, createdAt')
+      .select('id, username, name, avatar_url, permissions, isBlocked, createdAt')
       .single();
 
     if (error) throw error;

@@ -14,6 +14,7 @@ export async function PUT(request: Request, props: RouteParams) {
     if (body.name !== undefined) updates.name = body.name;
     if (body.permissions !== undefined) updates.permissions = body.permissions;
     if (body.isBlocked !== undefined) updates.isBlocked = body.isBlocked;
+    if (body.avatar_url !== undefined) updates.avatar_url = body.avatar_url;
     
     if (body.password) {
       updates.password = await bcrypt.hash(body.password, 10);
