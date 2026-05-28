@@ -10,7 +10,8 @@ export default function SettingsTab() {
     contact_phone: '',
     contact_email: '',
     contact_location: '',
-    copyright_year: ''
+    copyright_year: '',
+    line_url: ''
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -135,6 +136,20 @@ export default function SettingsTab() {
               className="w-32 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-violet-500"
             />
           </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5 md:col-span-2">
+              <label className="text-xs font-bold text-slate-600">ลิ้งก์ติดต่อ LINE (LINE Official URL)</label>
+              <input
+                type="url"
+                required
+                value={settings.line_url}
+                onChange={e => setSettings({...settings, line_url: e.target.value})}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-violet-500"
+                placeholder="https://line.me/ti/p/..."
+              />
+            </div>
+          </div>
+
         </div>
 
         <div className="flex justify-end pt-4 border-t border-slate-100">

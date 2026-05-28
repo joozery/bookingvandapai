@@ -9,7 +9,8 @@ const defaultSettings = {
   contact_phone: '+66 89 123 4567',
   contact_email: 'support@dapaidernpai.com',
   contact_location: 'เชียงใหม่ / กรุงเทพฯ, ประเทศไทย',
-  copyright_year: new Date().getFullYear().toString()
+  copyright_year: new Date().getFullYear().toString(),
+  line_url: 'https://line.me'
 };
 
 export async function GET() {

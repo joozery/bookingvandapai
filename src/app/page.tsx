@@ -199,9 +199,14 @@ function CustomerPageContent() {
   const [medicalConditions, setMedicalConditions] = useState('');
   const [consentInsurance, setConsentInsurance] = useState(false);
 
+  const [settings, setSettings] = useState({ line_url: 'https://line.me' });
+
   // Initial fetch
   useEffect(() => {
     fetchTrips();
+    fetch('/api/settings').then(res => res.json()).then(data => {
+      if (data.success && data.settings) setSettings(data.settings);
+    }).catch(console.error);
   }, []);
 
   // Handle URL parameter changes for soft navigation (e.g. returning from tickets page)
@@ -2320,7 +2325,7 @@ function CustomerPageContent() {
                 </p>
                 <div className="flex flex-col gap-2 pt-1">
                   <a
-                    href="https://line.me"
+                    href={settings.line_url || "https://line.me"}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="bg-[#06C755] hover:bg-[#05b34c] text-white py-2.5 px-4 rounded-xl font-bold flex items-center justify-center gap-2 transition"

@@ -101,6 +101,7 @@ export default function AdminPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [users, setUsers]     = useState<UserRecord[]>([]);
   const [loading, setLoading]  = useState(true);
+  const [settings, setSettings] = useState({ line_url: 'https://line.me' });
   const [toast, setToast]      = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const showToast = (type: 'success' | 'error', text: string) => {
@@ -119,14 +120,15 @@ export default function AdminPage() {
   const fetchAll = async (silent = false) => {
     try {
       if (!silent) setLoading(true);
-      const [tr, vr, br, ur] = await Promise.all([fetch('/api/trips'), fetch('/api/vans'), fetch('/api/bookings'), fetch('/api/users')]);
-      const [td, vd, bd, ud] = await Promise.all([tr.json(), vr.json(), br.json(), ur.json()]);
+      const [tr, vr, br, ur, sr] = await Promise.all([fetch('/api/trips'), fetch('/api/vans'), fetch('/api/bookings'), fetch('/api/users'), fetch('/api/settings')]);
+      const [td, vd, bd, ud, sd] = await Promise.all([tr.json(), vr.json(), br.json(), ur.json(), sr.json()]);
       const t = td.success ? td.trips : trips;
       const v = vd.success ? vd.vans  : vans;
       if (td.success) setTrips(t);
       if (vd.success) setVans(v);
       if (bd.success) setBookings(buildEnriched(bd.bookings, t, v));
       if (ud.success) setUsers(ud.users);
+      if (sd.success && sd.settings) setSettings(sd.settings);
     } catch { if (!silent) showToast('error', 'โหลดข้อมูลไม่สำเร็จ'); }
     finally   { if (!silent) setLoading(false); }
   };
@@ -455,7 +457,7 @@ export default function AdminPage() {
                 พบปัญหาหรือต้องการสอบถามเพิ่มเติม ติดต่อฝ่ายเทคนิคได้ตลอดเวลา
               </p>
               <a 
-                href="https://line.me" 
+                href={settings.line_url || "https://line.me"} 
                 target="_blank" 
                 rel="noreferrer"
                 className="w-full flex items-center justify-center gap-1.5 bg-white text-violet-700 text-xs font-bold py-2 rounded-xl hover:bg-slate-50 transition active:scale-[0.98] shadow-sm text-center"
