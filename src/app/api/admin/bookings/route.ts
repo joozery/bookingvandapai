@@ -52,6 +52,10 @@ export async function GET() {
         vanNumber: vanMap.get(booking.vanId) || 1,
         nationalId: booking.nationalId || profile?.nationalId || null,
         birthDate: booking.birthDate || profile?.birthDate || null,
+        emergencyName: booking.emergencyName || profile?.emergencyName || null,
+        emergencyPhone: booking.emergencyPhone || profile?.emergencyPhone || null,
+        allergies: booking.allergies || profile?.allergies || null,
+        medicalConditions: booking.medicalConditions || profile?.medicalConditions || null,
         profile: profile || null
       };
     });

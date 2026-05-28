@@ -41,11 +41,7 @@ const NAV = [
   { id: 'checkin', label: 'Check-in QR', icon: QrCode },
   { id: 'staff',   label: 'ทีมงาน / ผู้จัด', icon: Lock },
   { id: 'insurance', label: 'ประกันการเดินทาง', icon: Shield },
-  { id: 'reports',   label: 'รายงาน', icon: FileText, children: [
-    { id: 'reports-finance', label: 'รายงานการเงิน' },
-    { id: 'reports-trip',    label: 'รายงานทริป' },
-  ]},
-  { id: 'settings', label: 'ตั้งค่า', icon: Settings },
+  { id: 'profile',   label: 'โปรไฟล์ของฉัน', icon: User },
 ] as const;
 
 type TabId = 'dashboard' | 'bookings' | 'trips' | 'vans' | 'checkin' | 'pending' | 'users' | 'staff' | 'insurance' | 'profile';
@@ -627,46 +623,6 @@ export default function AdminPage() {
                 หน้าบ้าน <ChevronRight className="w-3 h-3" />
               </a>
             </div>
-          </div>
-
-          {/* ── Stat Cards (always visible) ─────────────────────────────── */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            {[
-              { label: 'ทริปทั้งหมด',   value: stats.trips,    icon: Compass,    unit: 'ทริป',   color: 'violet',  sub: `ใช้งานอยู่ ${trips.filter(t=>t.status==='active').length} ทริป` },
-              { label: 'รถทั้งหมด',      value: stats.vans,     icon: Bus,        unit: 'คัน',    color: 'blue',    sub: `ใช้งานอยู่ ${vans.length} คัน` },
-              { label: 'การจองทั้งหมด', value: stats.bookings, icon: Users,      unit: 'ที่นั่ง', color: 'amber',   sub: `รออนุมัติ ${stats.pending} รายการ`, pulse: stats.pending > 0 },
-              { label: 'ที่นั่งว่าง',    value: vacantSeats,    icon: Activity,   unit: 'ที่นั่ง', color: 'emerald', sub: `จากทั้งหมด ${allSeats.length} ที่นั่ง` },
-            ].map(s => {
-              const Icon = s.icon;
-              const palettes: Record<string, { bg: string; icon: string; text: string; border: string }> = {
-                violet:  { bg: 'bg-violet-50',  icon: 'text-violet-600',  text: 'text-violet-700', border: 'border-violet-100' },
-                blue:    { bg: 'bg-blue-50',     icon: 'text-blue-600',    text: 'text-blue-700',   border: 'border-blue-100' },
-                amber:   { bg: 'bg-amber-50',    icon: 'text-amber-600',   text: 'text-amber-700',  border: 'border-amber-100' },
-                emerald: { bg: 'bg-emerald-50',  icon: 'text-emerald-600', text: 'text-emerald-700',border: 'border-emerald-100' },
-              };
-              const pal = palettes[s.color];
-              return (
-                <div key={s.label} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{s.label}</p>
-                      <p className="text-3xl font-black text-slate-800 mt-1 leading-none">
-                        {s.value}
-                        <span className="text-sm font-bold text-slate-400 ml-1">{s.unit}</span>
-                      </p>
-                      <p className="text-[10px] text-slate-400 mt-1.5 flex items-center gap-1">
-                        <TrendingUp className="w-2.5 h-2.5 text-emerald-500" />
-                        {s.sub}
-                      </p>
-                    </div>
-                    <div className={cn('w-10 h-10 rounded-xl border flex items-center justify-center relative', pal.bg, pal.border)}>
-                      <Icon className={cn('w-5 h-5', pal.icon)} />
-                      {(s as any).pulse && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-500 animate-ping" />}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
           </div>
 
           {/* ── Tab Content ─────────────────────────────────────────────── */}

@@ -99,29 +99,43 @@ export default function InsuranceTab({ trips, onRefresh }: Props) {
 
   // Export to CSV
   const handleExport = () => {
-    // ดึงเฉพาะคนที่มีเลขบัตรประชาชน (ถือว่าทำประกัน) ไม่สนใจตัวกรองบนหน้าเว็บ
-    const exportData = bookings.filter(b => b.nationalId && b.nationalId.trim() !== '');
+    // ดึงผู้โดยสารทั้งหมดที่ยืนยันแล้วของทริปที่เลือก (เพื่อให้เห็นว่าใครยังไม่กรอกข้อมูลบ้าง)
+    const exportData = bookings
+      .filter(b => b.status === 'approved' || b.checkedIn)
+      .filter(b => selectedTripId === 'all' || b.tripId === selectedTripId);
+
     if (exportData.length === 0) {
-      alert('ไม่มีข้อมูลลูกทริปที่กรอกประกันการเดินทาง');
+      alert('ไม่มีข้อมูลลูกทริปสำหรับการส่งออก');
       return;
     }
     
     const BOM = '\uFEFF';
-    const headers = ['ชื่อลูกทริป', 'ชื่อเล่น', 'เบอร์โทรศัพท์', 'ทริป', 'รถคันที่', 'ที่นั่ง', 'เลขบัตรประชาชน', 'วันเดือนปีเกิด'];
+    const headers = [
+      'ชื่อลูกทริป', 'ชื่อเล่น', 'เบอร์โทรศัพท์', 'ทริป', 'รถคันที่', 'ที่นั่ง',
+      'เลขบัตรประชาชน', 'วันเดือนปีเกิด', 'ผู้ติดต่อฉุกเฉิน', 'เบอร์โทรฉุกเฉิน',
+      'แพ้อาหาร', 'โรคประจำตัว'
+    ];
     const csvRows = [];
     csvRows.push(headers.join(','));
     
     for (const p of exportData) {
+      const nid = p.nationalId || p.profile?.nationalId || '';
+      const dob = p.birthDate || p.profile?.birthDate || '';
+      
       const row = [
         `"${p.fullName || ''}"`,
         `"${p.profile?.nickname || p.nickname || ''}"`,
-        `"${p.phone || ''}"`,
+        p.phone ? `="${p.phone}"` : '""',
         `"${p.tripName || ''}"`,
         `"${p.vanNumber || 1}"`,
         `"${p.seatLabel || ''}"`,
-        // ใช้ format =\"เลขบัตร\" เพื่อบังคับให้ Excel มองเป็นข้อความและไม่ปัดเป็นเลขยกกำลัง โดยไม่มีตัวอักษรขยะนำหน้า
-        p.nationalId ? `="${p.nationalId}"` : '""',
-        `"${p.birthDate ? new Date(p.birthDate).toLocaleDateString('th-TH') : ''}"`
+        // ใช้ format ="เลขบัตร" เพื่อบังคับให้ Excel มองเป็นข้อความและไม่ปัดเป็นเลขยกกำลัง
+        nid ? `="${nid}"` : '""',
+        `"${dob ? new Date(dob).toLocaleDateString('th-TH') : ''}"`,
+        `"${p.emergencyName || p.profile?.emergencyName || ''}"`,
+        (p.emergencyPhone || p.profile?.emergencyPhone) ? `="${p.emergencyPhone || p.profile?.emergencyPhone}"` : '""',
+        `"${p.allergies || p.profile?.allergies || ''}"`,
+        `"${p.medicalConditions || p.profile?.medicalConditions || ''}"`
       ];
       csvRows.push(row.join(','));
     }
