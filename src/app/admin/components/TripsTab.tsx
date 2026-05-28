@@ -316,7 +316,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
                     </div>
                     <div>
                       <label className="text-xs font-bold text-slate-700 block mb-1.5">ค่าบริการ (บาท) <span className="text-rose-500">*</span></label>
-                      <Input required type="number" min={0} value={editForm.cost} onChange={e => setEditForm({ ...editForm, cost: Number(e.target.value) })} className="h-10 text-sm font-bold text-violet-700" />
+                      <Input required type="number" min={0} value={editForm.cost === 0 ? '' : editForm.cost} onChange={e => setEditForm({ ...editForm, cost: e.target.value === '' ? ('' as any) : Number(e.target.value) })} className="h-10 text-sm font-bold text-violet-700" />
                     </div>
                   </div>
 
@@ -431,7 +431,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
                     </div>
                     <div>
                       <label className="text-xs font-bold text-slate-700 block mb-1.5">ค่าบริการ (บาท) <span className="text-rose-500">*</span></label>
-                      <Input required type="number" min={0} value={form.cost} onChange={e => setForm({ ...form, cost: Number(e.target.value) })} className="h-10 text-sm font-bold text-violet-700" />
+                      <Input required type="number" min={0} value={form.cost === 0 ? '' : form.cost} onChange={e => setForm({ ...form, cost: e.target.value === '' ? ('' as any) : Number(e.target.value) })} className="h-10 text-sm font-bold text-violet-700" />
                     </div>
                   </div>
 
