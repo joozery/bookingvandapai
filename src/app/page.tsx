@@ -1400,7 +1400,7 @@ function CustomerPageContent() {
                         setSelectedSeat(null);
                       }}
                       disabled={isDisabled}
-                      className={`w-full text-left relative rounded-xl border transition-all duration-200 overflow-hidden flex flex-col ${
+                      className={`w-full text-left relative rounded-xl border transition-all duration-200 overflow-hidden block ${
                         isSelected
                           ? 'border-[#4c1d95] ring-2 ring-[#4c1d95]/30 shadow-md shadow-purple-100'
                           : userBookedThisTrip
