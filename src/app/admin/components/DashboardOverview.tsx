@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Bus, Users, Check, TrendingUp, ChevronRight, QrCode } from 'lucide-react';
+import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import type { Trip, Van, Booking } from './types';
 
@@ -37,6 +38,8 @@ export default function DashboardOverview({ trips, vans, bookings }: Props) {
   const todayStr = new Date().toDateString();
   const todayCheckIns = bookings.filter(b => b.checkedIn && b.checkedInAt && new Date(b.checkedInAt).toDateString() === todayStr);
 
+
+
   // Donut SVG
   const DonutChart = () => {
     const r = 40, cx = 50, cy = 50, circumference = 2 * Math.PI * r;
@@ -67,11 +70,13 @@ export default function DashboardOverview({ trips, vans, bookings }: Props) {
       return path;
     });
     return (
-      <svg viewBox="0 0 100 100" className="w-28 h-28 -rotate-90">
+      <svg viewBox="0 0 100 100" className="w-28 h-28">
         <circle cx={cx} cy={cy} r={r} fill="none" stroke="#f1f5f9" strokeWidth="12" />
-        {paths}
-        <text x={cx} y={cy + 4} textAnchor="middle" fontSize="14" fontWeight="bold" fill="#1e293b" className="rotate-90 origin-center" style={{transform:'rotate(90deg)',transformOrigin:'50px 50px'}}>{total}</text>
-        <text x={cx} y={cy + 14} textAnchor="middle" fontSize="5" fill="#94a3b8" style={{transform:'rotate(90deg)',transformOrigin:'50px 50px'}}>ทั้งหมด</text>
+        <g style={{ transform: 'rotate(-90deg)', transformOrigin: '50px 50px' }}>
+          {paths}
+        </g>
+        <text x={cx} y={cy + 4} textAnchor="middle" fontSize="14" fontWeight="bold" fill="#1e293b">{total}</text>
+        <text x={cx} y={cy + 14} textAnchor="middle" fontSize="5" fill="#94a3b8">ทั้งหมด</text>
       </svg>
     );
   };
@@ -110,7 +115,7 @@ export default function DashboardOverview({ trips, vans, bookings }: Props) {
         <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-bold text-slate-800">ทริปที่มีผู้จองมากที่สุด</h3>
-            <button className="text-[10px] text-violet-600 font-bold hover:underline flex items-center gap-0.5">ดูทั้งหมด <ChevronRight className="w-3 h-3" /></button>
+            <Link href="/admin/trips" className="text-[10px] text-violet-600 font-bold hover:underline flex items-center gap-0.5">ดูทั้งหมด <ChevronRight className="w-3 h-3" /></Link>
           </div>
           {tripBookingCounts.length === 0 ? (
             <p className="text-xs text-slate-400 text-center py-6">ยังไม่มีข้อมูลทริป</p>
@@ -146,7 +151,7 @@ export default function DashboardOverview({ trips, vans, bookings }: Props) {
         <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-bold text-slate-800">การเช็คอินวันนี้</h3>
-            <button className="text-[10px] text-violet-600 font-bold hover:underline flex items-center gap-0.5">ดูทั้งหมด <ChevronRight className="w-3 h-3" /></button>
+            <Link href="/admin/checkin" className="text-[10px] text-violet-600 font-bold hover:underline flex items-center gap-0.5">ดูทั้งหมด <ChevronRight className="w-3 h-3" /></Link>
           </div>
           {todayCheckIns.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-6 text-slate-300">
