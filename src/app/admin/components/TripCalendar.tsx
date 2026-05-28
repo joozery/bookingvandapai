@@ -26,24 +26,29 @@ const parseTripDate = (dateStr: string): Date | null => {
   return null;
 };
 
+// Format YYYY-MM-DD key from a Date object
+const dateKey = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+// Get end date from departure date + durationDays
+const getTripEndDate = (trip: Trip): Date | null => {
+  const start = parseTripDate(trip.departureDate);
+  if (!start || !trip.durationDays) return start;
+  const end = new Date(start);
+  end.setDate(start.getDate() + (trip.durationDays - 1));
+  return end;
+};
+
 export default function TripCalendar({ trips, vans }: { trips: Trip[]; vans: Van[] }) {
   const today = new Date();
   
-  // Find the most relevant month to show initially (closest upcoming trip)
   const initialDate = useMemo(() => {
     if (!trips.length) return new Date(today.getFullYear(), today.getMonth(), 1);
-    
-    // Parse all trip dates
     const parsedTrips = trips.map(t => ({ ...t, dateObj: parseTripDate(t.departureDate) })).filter(t => t.dateObj);
     if (!parsedTrips.length) return new Date(today.getFullYear(), today.getMonth(), 1);
-    
-    // Sort by date
     parsedTrips.sort((a, b) => a.dateObj!.getTime() - b.dateObj!.getTime());
-    
-    // Find first upcoming trip, or fallback to the latest trip if all are in the past
     const upcoming = parsedTrips.find(t => t.dateObj! >= new Date(today.getFullYear(), today.getMonth(), 1));
     const targetTrip = upcoming || parsedTrips[parsedTrips.length - 1];
-    
     return new Date(targetTrip.dateObj!.getFullYear(), targetTrip.dateObj!.getMonth(), 1);
   }, [trips]);
 
@@ -55,26 +60,40 @@ export default function TripCalendar({ trips, vans }: { trips: Trip[]; vans: Van
 
   const monthName = currentDate.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
 
-  // Map trips to dates
+  // Build a map: dateKey -> {trip, span info}
+  // For each day a trip is active, we record it
+  // For multi-day rendering: we mark "start", "middle", "end"
   const tripsByDate = useMemo(() => {
-    const map = new Map<string, Trip[]>();
+    // map: dateKey -> array of { trip, position: 'start' | 'middle' | 'end' | 'single', spanDays }
+    const map = new Map<string, Array<{ trip: Trip; position: string; spanDays: number }>>();
+    
     trips.forEach(trip => {
-      const d = parseTripDate(trip.departureDate);
-      if (d) {
-        // Normalize to YYYY-MM-DD local string
-        const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        const existing = map.get(dateKey) || [];
-        existing.push(trip);
-        map.set(dateKey, existing);
+      const start = parseTripDate(trip.departureDate);
+      if (!start) return;
+      const end = getTripEndDate(trip);
+      if (!end) return;
+
+      const totalDays = Math.round((end.getTime() - start.getTime()) / 86400000) + 1;
+      const isSingle = totalDays <= 1;
+
+      // Iterate each day of the trip
+      for (let i = 0; i < totalDays; i++) {
+        const d = new Date(start);
+        d.setDate(start.getDate() + i);
+        const key = dateKey(d);
+        const position = isSingle ? 'single' : i === 0 ? 'start' : i === totalDays - 1 ? 'end' : 'middle';
+        const existing = map.get(key) || [];
+        existing.push({ trip, position, spanDays: totalDays });
+        map.set(key, existing);
       }
     });
+
     return map;
   }, [trips]);
 
   const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
   const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay();
   
-  // Fill blanks for calendar
   const blanks = Array.from({ length: firstDayOfMonth }, (_, i) => i);
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
@@ -127,8 +146,10 @@ export default function TripCalendar({ trips, vans }: { trips: Trip[]; vans: Van
 
         {/* Days */}
         {days.map(day => {
-          const dateKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-          const dayTrips = tripsByDate.get(dateKey) || [];
+          const key = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          const dayEntries = tripsByDate.get(key) || [];
+          // Count unique trips that START on this day (for the badge count)
+          const startingTrips = dayEntries.filter(e => e.position === 'start' || e.position === 'single');
           
           const isToday = 
             day === today.getDate() && 
@@ -143,45 +164,70 @@ export default function TripCalendar({ trips, vans }: { trips: Trip[]; vans: Van
                 isToday && "bg-violet-50/30"
               )}
             >
-              <div className="flex items-start justify-between mb-2">
+              <div className="flex items-start justify-between mb-1.5">
                 <span className={cn(
                   "w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold",
                   isToday ? "bg-violet-600 text-white shadow-sm" : "text-slate-700 group-hover:bg-slate-100"
                 )}>
                   {day}
                 </span>
-                {dayTrips.length > 0 && (
+                {startingTrips.length > 0 && (
                   <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
-                    {dayTrips.length} ทริป
+                    {startingTrips.length} ทริป
                   </span>
                 )}
               </div>
 
-              <div className="flex-1 flex flex-col gap-1.5">
-                {dayTrips.map((trip, i) => {
+              <div className="flex-1 flex flex-col gap-1">
+                {dayEntries.map(({ trip, position }, i) => {
                   const tripVans = vans.filter(v => v.tripId === trip.id);
                   const seats = tripVans.flatMap(v => v.seats.filter(s => s.type === 'customer'));
                   const vacant = seats.filter(s => s.status === 'available').length;
                   
+                  const isStart = position === 'start' || position === 'single';
+                  const isEnd = position === 'end' || position === 'single';
+                  const isMiddle = position === 'middle';
+
                   return (
-                    <div 
-                      key={trip.id} 
-                      className="p-1.5 rounded-md border text-left bg-white border-slate-200 shadow-sm hover:border-violet-300 hover:shadow-md transition cursor-pointer"
+                    <div
+                      key={`${trip.id}-${i}`}
                       title={`${trip.name} (${trip.departureTime} น.)`}
+                      className={cn(
+                        "text-left overflow-hidden cursor-pointer transition",
+                        // Color coding by position
+                        isStart || position === 'single'
+                          ? "bg-violet-100 border border-violet-300 text-violet-800 hover:bg-violet-200"
+                          : "bg-violet-50 border-t border-b border-violet-200 text-violet-700",
+                        // Rounding based on position
+                        isStart && !isEnd && "rounded-l-md pl-1.5 pr-0",
+                        isEnd && !isStart && "rounded-r-md pr-1.5 pl-0",
+                        isMiddle && "rounded-none px-0",
+                        (position === 'single') && "rounded-md px-1.5",
+                      )}
+                      style={{
+                        marginLeft: isStart || position === 'single' ? undefined : '-2px',
+                        marginRight: isEnd || position === 'single' ? undefined : '-2px',
+                      }}
                     >
-                      <div className="text-[10px] font-bold text-slate-800 truncate mb-0.5">
-                        {trip.name}
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="text-[9px] font-semibold text-slate-500 flex items-center gap-0.5">
-                          <MapIcon className="w-2.5 h-2.5" />
-                          {trip.departureTime}
+                      {/* Only show content on start day */}
+                      {isStart ? (
+                        <div className="p-1">
+                          <div className="text-[10px] font-bold truncate mb-0.5">{trip.name}</div>
+                          <div className="flex items-center justify-between">
+                            <div className="text-[9px] font-semibold flex items-center gap-0.5 opacity-70">
+                              <MapIcon className="w-2.5 h-2.5" />
+                              {trip.departureTime}
+                            </div>
+                            <div className="text-[9px] font-bold flex items-center gap-0.5 bg-violet-200/60 px-1 rounded">
+                              <Users className="w-2.5 h-2.5" />
+                              ว่าง {vacant}
+                            </div>
+                          </div>
                         </div>
-                        <div className="text-[9px] font-bold text-violet-600 flex items-center gap-0.5 bg-violet-50 px-1 rounded">
-                          <Users className="w-2.5 h-2.5" />
-                          ว่าง {vacant}
-                        </div>
-                      </div>
+                      ) : (
+                        // Middle/end: just a thin colored bar
+                        <div className="h-6 w-full" />
+                      )}
                     </div>
                   );
                 })}
@@ -189,6 +235,18 @@ export default function TripCalendar({ trips, vans }: { trips: Trip[]; vans: Van
             </div>
           );
         })}
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div className="mt-3 flex items-center gap-4 text-[10px] text-slate-500">
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded bg-violet-100 border border-violet-300" />
+          <span>วันออกเดินทาง</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded bg-violet-50 border-t border-b border-violet-200" />
+          <span>ระหว่างทริป</span>
         </div>
       </div>
     </div>
