@@ -537,8 +537,8 @@ export default function LandingPage({ onLoginClick, showHelpCenter, trips = [], 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 pt-6 border-t border-slate-800/80 text-center text-xxs text-slate-600 flex flex-col sm:flex-row items-center justify-between gap-4 font-bold">
           <p>© {settings.copyright_year} ด่าไป เดินไป (DAPAI DERNPAI) All Rights Reserved.</p>
           <div className="flex gap-4">
-            <a href="#" className="hover:underline">นโยบายความเป็นส่วนตัว</a>
-            <a href="#" className="hover:underline">เงื่อนไขการให้บริการ</a>
+            <a href="/privacy-policy" className="hover:underline">นโยบายความเป็นส่วนตัว</a>
+            <a href="/terms-of-service" className="hover:underline">เงื่อนไขการให้บริการ</a>
           </div>
         </div>
       </footer>

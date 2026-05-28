@@ -11,7 +11,9 @@ export default function SettingsTab() {
     contact_email: '',
     contact_location: '',
     copyright_year: '',
-    line_url: ''
+    line_url: '',
+    privacy_policy: '',
+    terms_of_service: ''
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -146,6 +148,28 @@ export default function SettingsTab() {
                 onChange={e => setSettings({...settings, line_url: e.target.value})}
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-violet-500"
                 placeholder="https://line.me/ti/p/..."
+              />
+            </div>
+            
+            <div className="space-y-1.5 md:col-span-2 pt-4 border-t border-slate-100">
+              <h3 className="font-bold text-slate-800 pb-2">หน้านโยบายและเงื่อนไข (รองรับ HTML/Text)</h3>
+              <label className="text-xs font-bold text-slate-600 mt-2 block">นโยบายความเป็นส่วนตัว (Privacy Policy)</label>
+              <textarea
+                rows={6}
+                value={settings.privacy_policy || ''}
+                onChange={e => setSettings({...settings, privacy_policy: e.target.value})}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-violet-500 font-mono text-xs"
+                placeholder="<h1>นโยบายความเป็นส่วนตัว</h1>..."
+              />
+            </div>
+            <div className="space-y-1.5 md:col-span-2">
+              <label className="text-xs font-bold text-slate-600">เงื่อนไขการให้บริการ (Terms of Service)</label>
+              <textarea
+                rows={6}
+                value={settings.terms_of_service || ''}
+                onChange={e => setSettings({...settings, terms_of_service: e.target.value})}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-violet-500 font-mono text-xs"
+                placeholder="<h1>เงื่อนไขการให้บริการ</h1>..."
               />
             </div>
           </div>
