@@ -232,9 +232,18 @@ export default function CustomerPage() {
       if (data.success) {
         setTrips(data.trips);
         if (data.trips.length > 0) {
-          // We intentionally do not auto-select the trip here.
-          // This ensures the user starts at Step 1 and can review the trip details before proceeding.
-          setSelectedTrip(null);
+          const params = new URLSearchParams(window.location.search);
+          const tripIdParam = params.get('tripId');
+          const stepParam = params.get('step');
+          
+          if (tripIdParam && stepParam === '5') {
+            const trip = data.trips.find((t: Trip) => t.id === tripIdParam);
+            setSelectedTrip(trip || null);
+          } else {
+            // We intentionally do not auto-select the trip here.
+            // This ensures the user starts at Step 1 and can review the trip details before proceeding.
+            setSelectedTrip(null);
+          }
         }
       }
     } catch (err) {
