@@ -248,15 +248,6 @@ export default function TripCalendar({ trips, vans }: { trips: Trip[]; vans: Van
         </div>
       </div>
 
-      {/* Legend */}
-      <div className="flex flex-wrap items-center gap-3 px-4 sm:px-6 py-3 border-t border-slate-100 bg-white text-[10px] text-slate-500">
-        {processedTrips.slice(0, 6).map((pt, i) => (
-          <div key={pt.trip.id} className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length].dot }} />
-            <span className="font-semibold truncate max-w-[100px]">{pt.trip.name}</span>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
