@@ -845,7 +845,7 @@ function CustomerPageContent() {
           <div className="flex items-center space-x-3 sm:space-x-4 min-w-0">
             {/* Real Brand Logo */}
             <div className="shrink-0 flex items-center justify-center">
-              <img src="/logo/logo.png" alt="DAPAIDERNPAI Logo" className="w-10 h-10 sm:w-14 sm:h-14 object-contain" />
+              <img src="/logo/logov2.png" alt="DAPAIDERNPAI Logo" className="w-10 h-10 sm:w-14 sm:h-14 object-contain" />
             </div>
             <div className="flex-1 min-w-0 flex items-center">
               <h1 className="text-base sm:text-2xl font-extrabold text-slate-800 tracking-tight leading-tight truncate">

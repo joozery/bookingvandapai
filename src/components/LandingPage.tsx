@@ -154,7 +154,7 @@ export default function LandingPage({ onLoginClick, showHelpCenter, trips = [], 
           {/* Logo & Brand */}
           <div className="flex items-center gap-3">
             <div className="shrink-0 flex items-center justify-center">
-              <img src="/logo/logo.png" alt="DAPAIDERNPAI Logo" className="w-12 h-12 object-contain" />
+              <img src="/logo/logov2.png" alt="DAPAIDERNPAI Logo" className="w-12 h-12 object-contain" />
             </div>
             <div>
               <span className="text-[#4c1d95] font-black text-base sm:text-xl tracking-tight leading-none block">ด่าไป เดินไป</span>
@@ -502,7 +502,7 @@ export default function LandingPage({ onLoginClick, showHelpCenter, trips = [], 
           <div className="space-y-4 col-span-1 md:col-span-2">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl overflow-hidden bg-white p-1 border border-slate-700 flex items-center justify-center shrink-0">
-                <img src="/logo/logo.png" alt="DAPAIDERNPAI Logo" className="w-8 h-8 object-contain" />
+                <img src="/logo/logov2.png" alt="DAPAIDERNPAI Logo" className="w-8 h-8 object-contain" />
               </div>
               <span className="text-white font-extrabold text-base sm:text-lg">ด่าไป เดินไป</span>
             </div>
