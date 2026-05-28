@@ -45,6 +45,21 @@ const getReturnDate = (depDate: string, days: number) => {
 };
 
 export const DigitalTicket = forwardRef<HTMLDivElement, Props>(({ booking, htmlId }, ref) => {
+  const [coverUrl, setCoverUrl] = React.useState<string>('/cover.png');
+
+  React.useEffect(() => {
+    fetch('/cover.png')
+      .then(r => r.blob())
+      .then(blob => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setCoverUrl(reader.result as string);
+        };
+        reader.readAsDataURL(blob);
+      })
+      .catch(console.error);
+  }, []);
+
   return (
     <div id={htmlId} ref={ref} className="relative w-full max-w-[380px] mx-auto bg-white overflow-hidden shadow-xl border border-slate-100 flex flex-col font-sans select-none">
                 
@@ -52,7 +67,7 @@ export const DigitalTicket = forwardRef<HTMLDivElement, Props>(({ booking, htmlI
                 <div 
                   className="relative w-full h-[120px] overflow-hidden shrink-0 bg-[#250A4E]"
                   style={{
-                    backgroundImage: `url(${typeof window !== 'undefined' ? window.location.origin : ''}/cover.png)`,
+                    backgroundImage: `url(${coverUrl})`,
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
                     backgroundRepeat: 'no-repeat'
