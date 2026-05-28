@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { Shield, Search, Save, Check, RefreshCw, X } from 'lucide-react';
+import { Shield, Search, Save, Check, RefreshCw, X, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Booking, Trip } from './types';
 
@@ -97,6 +97,41 @@ export default function InsuranceTab({ trips, onRefresh }: Props) {
     }
   };
 
+  // Export to CSV
+  const handleExport = () => {
+    if (passengers.length === 0) return;
+    
+    const BOM = '\uFEFF';
+    const headers = ['ชื่อลูกทริป', 'ชื่อเล่น', 'เบอร์โทรศัพท์', 'ทริป', 'รถคันที่', 'ที่นั่ง', 'เลขบัตรประชาชน', 'วันเดือนปีเกิด'];
+    const csvRows = [];
+    csvRows.push(headers.join(','));
+    
+    for (const p of passengers) {
+      const row = [
+        `"${p.fullName || ''}"`,
+        `"${p.profile?.nickname || p.nickname || ''}"`,
+        `"${p.phone || ''}"`,
+        `"${p.tripName || ''}"`,
+        `"${p.vanNumber || 1}"`,
+        `"${p.seatLabel || ''}"`,
+        `"${p.nationalId || ''}"`,
+        `"${p.birthDate ? new Date(p.birthDate).toLocaleDateString('th-TH') : ''}"`
+      ];
+      csvRows.push(row.join(','));
+    }
+    
+    const csvContent = BOM + csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `insurance_export_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // Show admin personal info at top of page
   const { data: session, status: sessionStatus } = useSession();
   const adminName = session?.user?.name || 'Admin';
@@ -124,6 +159,15 @@ export default function InsuranceTab({ trips, onRefresh }: Props) {
         </div>
 
         <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
+          <button
+            onClick={handleExport}
+            disabled={passengers.length === 0}
+            className="w-full sm:w-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+          >
+            <Download className="w-4 h-4" />
+            ส่งออก (CSV)
+          </button>
+          
           <select
             value={selectedTripId}
             onChange={(e) => setSelectedTripId(e.target.value)}
