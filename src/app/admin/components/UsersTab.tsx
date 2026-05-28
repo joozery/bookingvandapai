@@ -5,7 +5,7 @@ import {
   Users, Search, Filter, ChevronDown, User, Phone,
   Calendar, CheckCircle2, XCircle, ShieldAlert, ShieldCheck,
   MessageSquare, MoreHorizontal, Clock, TrendingUp, Eye,
-  Copy, Check, X, AlertTriangle, Star, SlidersHorizontal,
+  Copy, Check, X, AlertTriangle, Star, SlidersHorizontal, RefreshCw
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
