@@ -170,6 +170,50 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
     );
   }, [trips, search]);
 
+  const cropperModal = showCropper && originalImage && (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between p-4 border-b border-slate-100">
+          <h3 className="font-bold text-slate-800">ครอปรูปภาพหน้าปก</h3>
+          <button onClick={() => setShowCropper(false)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-500 transition">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        
+        <div className="relative w-full h-[400px] bg-slate-900">
+          <Cropper
+            image={originalImage}
+            crop={crop}
+            zoom={zoom}
+            aspect={16 / 9}
+            onCropChange={setCrop}
+            onCropComplete={onCropComplete}
+            onZoomChange={setZoom}
+          />
+        </div>
+        
+        <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-4">
+          <div className="flex-1 flex items-center gap-3">
+            <span className="text-xs font-bold text-slate-500">ซูม:</span>
+            <input
+              type="range"
+              value={zoom}
+              min={1}
+              max={3}
+              step={0.1}
+              aria-labelledby="Zoom"
+              onChange={(e) => setZoom(Number(e.target.value))}
+              className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-violet-600"
+            />
+          </div>
+          <Button type="button" onClick={handleCroppedImage} className="bg-violet-600 hover:bg-violet-700 text-white font-bold px-6 h-10 gap-2 shadow-sm">
+            <Check className="w-4 h-4" /> ใช้รูปภาพนี้
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+
   if (editingTrip) {
     return (
       <div className="w-full space-y-6 animate-in slide-in-from-bottom-4 duration-300">
@@ -282,6 +326,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
             </form>
           </CardContent>
         </Card>
+        {cropperModal}
       </div>
     );
   }
@@ -422,6 +467,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
             </form>
           </CardContent>
         </Card>
+        {cropperModal}
       </div>
     );
   }
@@ -560,49 +606,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
         </div>
       )}
 
-      {showCropper && originalImage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between p-4 border-b border-slate-100">
-              <h3 className="font-bold text-slate-800">ครอปรูปภาพหน้าปก</h3>
-              <button onClick={() => setShowCropper(false)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-500 transition">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <div className="relative w-full h-[400px] bg-slate-900">
-              <Cropper
-                image={originalImage}
-                crop={crop}
-                zoom={zoom}
-                aspect={16 / 9}
-                onCropChange={setCrop}
-                onCropComplete={onCropComplete}
-                onZoomChange={setZoom}
-              />
-            </div>
-            
-            <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-4">
-              <div className="flex-1 flex items-center gap-3">
-                <span className="text-xs font-bold text-slate-500">ซูม:</span>
-                <input
-                  type="range"
-                  value={zoom}
-                  min={1}
-                  max={3}
-                  step={0.1}
-                  aria-labelledby="Zoom"
-                  onChange={(e) => setZoom(Number(e.target.value))}
-                  className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-violet-600"
-                />
-              </div>
-              <Button onClick={handleCroppedImage} className="bg-violet-600 hover:bg-violet-700 text-white font-bold px-6 h-10 gap-2 shadow-sm">
-                <Check className="w-4 h-4" /> ใช้รูปภาพนี้
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {cropperModal}
     </div>
   );
 }
