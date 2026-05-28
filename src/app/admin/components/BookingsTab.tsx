@@ -221,11 +221,11 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
                           <div className="flex items-center gap-1">
                             <span className="text-[9px] font-bold text-slate-400">จาก</span>
                             <span className="inline-flex items-center text-[10px] font-black px-2 py-0.5 rounded bg-slate-100 text-slate-500 font-mono line-through">
-                              A{originalBooking.seatLabel}
+                              {originalBooking.seatLabel}
                             </span>
                             <ArrowRight className="w-3 h-3 text-amber-400" />
                             <span className="inline-flex items-center text-[10px] font-black px-2 py-0.5 rounded bg-amber-100 text-amber-700 font-mono">
-                              A{b.seatLabel}
+                              {b.seatLabel}
                             </span>
                           </div>
                         </div>
@@ -235,7 +235,7 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
                             <Bus className="w-2.5 h-2.5" /> คันที่ {b.vanNumber}
                           </span>
                           <span className="inline-flex items-center text-[10px] font-black px-2 py-0.5 rounded bg-violet-100 text-violet-700 font-mono">
-                            A{b.seatLabel}
+                            {b.seatLabel}
                           </span>
                         </div>
                       )}
