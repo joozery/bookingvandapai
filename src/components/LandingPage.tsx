@@ -106,44 +106,7 @@ export default function LandingPage({ onLoginClick, showHelpCenter, trips = [], 
           reviews: reviews
         };
       })
-    : [
-        {
-          title: "ทริปแม่ฮ่องสอน - ปาย 3 วัน 2 คืน",
-          pickupPoint: "ปั๊ม ปตท. วิภาวดี",
-          departureDate: "15 ธ.ค. 67",
-          departureTime: "06:00",
-          price: "2,500",
-          availableSeats: 4,
-          seatsText: "เหลือ 4 ที่นั่ง",
-          img: "/logo/scenic_van_trip.png",
-          rating: 4.9,
-          reviews: "128 รีวิว"
-        },
-        {
-          title: "ทริปเชียงดาว - อ่างขาง 2 วัน 1 คืน",
-          pickupPoint: "ปั๊ม ปตท. วิภาวดี",
-          departureDate: "22 ธ.ค. 67",
-          departureTime: "06:00",
-          price: "1,800",
-          availableSeats: 2,
-          seatsText: "เหลือ 2 ที่นั่ง",
-          img: "/logo/scenic_van_trip.png",
-          rating: 4.8,
-          reviews: "94 รีวิว"
-        },
-        {
-          title: "ทริปสะปัน - บ่อเกลือ - น่าน",
-          pickupPoint: "ปั๊ม ปตท. วิภาวดี",
-          departureDate: "29 ธ.ค. 67",
-          departureTime: "06:00",
-          price: "2,200",
-          availableSeats: 5,
-          seatsText: "เหลือ 5 ที่นั่ง",
-          img: "/logo/scenic_van_trip.png",
-          rating: 4.9,
-          reviews: "112 รีวิว"
-        }
-      ];
+    : [];
 
   return (
     <div className="flex-1 w-full bg-[#f8fafc] text-slate-800 flex flex-col font-sans">
@@ -322,8 +285,15 @@ export default function LandingPage({ onLoginClick, showHelpCenter, trips = [], 
               className="flex gap-4 sm:gap-6 overflow-x-auto snap-x snap-mandatory pb-6 sm:pb-8 pt-2 sm:pt-4 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 [&::-webkit-scrollbar]:hidden"
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
-              {destinations.map((dest, idx) => (
-                <div 
+              {destinations.length === 0 ? (
+                <div className="w-full shrink-0 flex flex-col items-center justify-center text-center py-16 px-4 bg-slate-50/50 border border-slate-100 rounded-3xl mx-auto max-w-xl">
+                  <Compass className="w-12 h-12 text-slate-300 mb-4" />
+                  <h3 className="text-lg font-black text-slate-700">ยังไม่มีทริปเปิดให้จองในขณะนี้</h3>
+                  <p className="text-sm text-slate-400 mt-2">โปรดติดตามอัปเดตทริปใหม่ๆ ได้เร็วๆ นี้ หรือติดต่อแอดมินเพื่อสอบถามข้อมูลเพิ่มเติม</p>
+                </div>
+              ) : (
+                destinations.map((dest, idx) => (
+                  <div 
                   key={idx} 
                   className="w-[85vw] max-w-[340px] sm:w-[360px] md:w-[380px] shrink-0 snap-center sm:snap-start bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.03)] hover:shadow-[0_20px_50px_rgb(76,29,149,0.07)] transition-all duration-350 hover:-translate-y-1.5 flex flex-col group"
                 >
@@ -405,7 +375,7 @@ export default function LandingPage({ onLoginClick, showHelpCenter, trips = [], 
                     </div>
                   </div>
                 </div>
-              ))}
+              )))}
             </div>
 
             {/* Left Floating Arrow Button (Reveals on Hover, Hidden on Mobile Touch) */}
