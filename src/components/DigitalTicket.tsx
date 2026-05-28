@@ -52,9 +52,15 @@ export const DigitalTicket = forwardRef<HTMLDivElement, Props>(({ booking, htmlI
     <div id={htmlId} ref={ref} className="relative w-full max-w-[380px] mx-auto bg-white overflow-hidden shadow-xl border border-slate-100 flex flex-col font-sans select-none">
                 
                 {/* 1. Header Section (Gradient purple with climber silhouette moon & birds) */}
-                <div className="relative w-full h-[120px] overflow-hidden shrink-0 bg-[#250A4E]">
-                  <img src={coverBase64} alt="Cover Background" className="absolute inset-0 w-full h-full object-cover" />
-                </div>
+                <div 
+                  className="relative w-full h-[120px] overflow-hidden shrink-0 bg-[#250A4E]"
+                  style={{
+                    backgroundImage: `url(${coverBase64})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat'
+                  }}
+                />
 
                 {/* Perforation 1 (Header to Body) */}
                 <div className="relative flex items-center justify-center w-full bg-[#f3effa] select-none h-4">
