@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { QrCode, Check, X, Clock, UserCheck, ArrowRight, ScanLine } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Scanner } from '@yudiel/react-qr-scanner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -69,16 +70,17 @@ export default function CheckinTab({ trips, bookings, onCheckIn }: Props) {
 
           {scannerOpen && (
             <div className="space-y-3 animate-in fade-in duration-200">
-              {/* Fake scanner viewfinder */}
-              <div className="bg-slate-900 rounded-xl p-6 text-center relative overflow-hidden">
-                <div className="w-32 h-32 border-2 border-violet-500 rounded-xl mx-auto relative flex items-center justify-center">
-                  <QrCode className="w-10 h-10 text-slate-600" />
-                  <span className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-violet-400 rounded-tl-sm" />
-                  <span className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-violet-400 rounded-tr-sm" />
-                  <span className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-violet-400 rounded-bl-sm" />
-                  <span className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-violet-400 rounded-br-sm" />
-                </div>
-                <p className="text-slate-400 text-xs mt-3 font-semibold">กำลังรอสแกน QR Code...</p>
+              {/* Real scanner viewfinder */}
+              <div className="bg-black relative aspect-square w-full rounded-xl overflow-hidden border-2 border-slate-800">
+                <Scanner 
+                  onScan={(detected) => {
+                    if (detected.length > 0 && !loading) {
+                      const value = detected[0].rawValue;
+                      if (value) handleScan(value);
+                    }
+                  }}
+                  formats={['qr_code']}
+                />
               </div>
               {/* Manual ID input */}
               <div className="flex gap-2">
