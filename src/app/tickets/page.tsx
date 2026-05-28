@@ -5,7 +5,6 @@ import { useSession } from 'next-auth/react';
 import DigitalTicket from '@/components/DigitalTicket';
 import { Armchair, Download, RefreshCw, ChevronLeft, User } from 'lucide-react';
 import Link from 'next/link';
-import { toPng } from 'html-to-image';
 
 export default function TicketsPage() {
   const { data: session } = useSession();
@@ -63,9 +62,11 @@ export default function TicketsPage() {
     
     setDownloadingTicketId(ticketId);
     try {
-      const dataUrl = await toPng(ele, {
-        backgroundColor: '#ffffff',
-        pixelRatio: 4
+      // @ts-ignore
+      const domtoimage = (await import('dom-to-image-more')).default;
+      const dataUrl = await domtoimage.toPng(ele, {
+        bgcolor: '#ffffff',
+        scale: 4
       });
       const filename = `BookingTicket-Seat${seatLabel || 'X'}.png`;
 
