@@ -219,11 +219,6 @@ export default function LandingPage({ onLoginClick, showHelpCenter, trips = [], 
         {/* Removed Bottom Fade overlay per user request */}        {/* Foreground Content Card - Glassmorphism & Minimal Text */}
         <div className="relative z-20 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center space-y-6 sm:space-y-8 animate-in fade-in zoom-in-95 duration-1000 mt-[-40px] sm:mt-0">
           
-          {/* Active slide's floating tag / badge */}
-          <div className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/15 border border-white/20 rounded-full py-1.5 px-4 text-[10px] sm:text-xs font-black text-white shadow-xl backdrop-blur-md transition-all duration-500">
-            <Compass className="w-3.5 h-3.5 text-purple-400 animate-spin-slow shrink-0" />
-            <span className="tracking-widest uppercase">{slides[currentSlide].tag}</span>
-          </div>
 
           {/* Headline - Big & Elegant yet minimal */}
           <div className="space-y-3 sm:space-y-4 max-w-3xl">
@@ -251,13 +246,7 @@ export default function LandingPage({ onLoginClick, showHelpCenter, trips = [], 
               <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 group-hover:translate-x-1 transition-transform" />
             </button>
 
-            <button
-              onClick={showHelpCenter}
-              className="w-full sm:w-auto bg-white/10 hover:bg-white/15 border border-white/20 text-white py-3.5 sm:py-4 px-8 rounded-2xl font-extrabold text-[13px] sm:text-base backdrop-blur-md transition-all duration-300 flex items-center justify-center gap-2 active:scale-97 shadow-lg"
-            >
-              <MessageSquare className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-slate-300 shrink-0" />
-              <span>พูดคุยสอบถามแอดมิน</span>
-            </button>
+
           </div>
 
         </div>
