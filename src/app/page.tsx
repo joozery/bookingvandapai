@@ -1412,7 +1412,7 @@ function CustomerPageContent() {
                       }`}
                     >
                       {/* Image header strip */}
-                      <div className="relative w-full h-44 sm:h-48 shrink-0 overflow-hidden">
+                      <div className="relative w-full h-24 overflow-hidden rounded-t-xl">
                         <img
                           src={trip.image || 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=400&auto=format&fit=crop&q=80'}
                           alt={trip.name}
