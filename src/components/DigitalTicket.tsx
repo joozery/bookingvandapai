@@ -220,37 +220,42 @@ export const DigitalTicket = forwardRef<HTMLDivElement, Props>(({ booking, htmlI
                       <polygon points="22,69 18,78 26,78" />
                     </g>
 
-                    {/* White Van Illustration */}
-                    <g transform="translate(35, 38) scale(0.85)">
+                    {/* Modern Commuter Van Illustration */}
+                    <g transform="translate(25, 30) scale(0.9)">
                       {/* Shadow */}
-                      <ellipse cx="60" cy="38" rx="55" ry="5.5" fill="#1C063C" opacity="0.3" />
+                      <ellipse cx="65" cy="45" rx="58" ry="6" fill="#1C063C" opacity="0.3" />
                       
                       {/* Van Body */}
-                      <path d="M8,12 C8,8 14,4 25,3 L90,3 C102,3 108,6 110,12 L114,24 C115,26 114,35 111,35 L8,35 C5,35 5,28 6,24 Z" fill="#F8FAFC" />
-                      <path d="M8,12 C8,8 14,4 25,3 L90,3 C102,3 108,6 110,12 L114,24" stroke="#CBD5E1" strokeWidth="0.8" fill="none" />
+                      <path d="M5,15 C5,8 12,3 25,3 L95,3 C110,3 118,12 120,24 L123,34 C124,40 120,44 115,44 L8,44 C4,44 3,40 3,34 Z" fill="#F8FAFC" />
+                      <path d="M5,15 C5,8 12,3 25,3 L95,3 C110,3 118,12 120,24" stroke="#CBD5E1" strokeWidth="1" fill="none" />
                       
-                      {/* Windshield & Windows */}
-                      <path d="M92,5 L106,6 L104,18 L90,18 Z" fill="#2E1A47" />
-                      <path d="M60,5 L88,5 L88,18 L60,18 Z" fill="#2E1A47" />
-                      <path d="M32,5 L56,5 L56,18 L32,18 Z" fill="#2E1A47" />
-                      <path d="M11,6 C13,5 20,5 28,5 L28,18 L10,18 C9,15 9,10 11,6 Z" fill="#2E1A47" />
+                      {/* Windows */}
+                      <path d="M101,6 C110,6 115,13 116,21 L105,21 L101,6 Z" fill="#2E1A47" />
+                      <rect x="75" y="6" width="24" height="15" rx="1.5" fill="#2E1A47" />
+                      <rect x="49" y="6" width="24" height="15" rx="1.5" fill="#2E1A47" />
+                      <path d="M22,6 L47,6 L47,21 L22,21 C18,21 16,19 16,15 L16,11 C16,8 18,6 22,6 Z" fill="#2E1A47" />
                       
-                      {/* Bumper, Lights */}
-                      <path d="M108,22 L114,24 C115,26 114,35 111,35 L98,35 Z" fill="#E2E8F0" />
-                      <rect x="105" y="27" width="7" height="4.5" rx="1.5" fill="#475569" />
-                      <rect x="107" y="29" width="4.5" height="2.5" rx="1" fill="#FEF08A" />
+                      {/* Front Bumper & Headlights */}
+                      <path d="M116,30 L122,32 C123,35 120,44 115,44 L105,44 C107,40 108,35 109,30 Z" fill="#E2E8F0" />
+                      <rect x="119" y="32" width="4" height="6" rx="1.5" fill="#FEF08A" />
+                      <line x1="117" y1="26" x2="120" y2="28" stroke="#475569" strokeWidth="1.5" strokeLinecap="round" />
                       
+                      {/* Taillights */}
+                      <rect x="2" y="30" width="3" height="8" rx="1" fill="#EF4444" />
+                      
+                      {/* Details & Lines */}
+                      <line x1="10" y1="28" x2="114" y2="28" stroke="#E2E8F0" strokeWidth="1.5" />
+                      <line x1="10" y1="32" x2="98" y2="32" stroke="#CBD5E1" strokeWidth="0.8" />
+                      <rect x="78" y="24" width="4" height="1.5" rx="0.5" fill="#94A3B8" />
+                      <rect x="52" y="24" width="4" height="1.5" rx="0.5" fill="#94A3B8" />
+
                       {/* Wheels */}
-                      <circle cx="92" cy="35" r="9.5" fill="#1e1b4b" />
-                      <circle cx="92" cy="35" r="7.5" fill="#475569" />
-                      <circle cx="92" cy="35" r="3.5" fill="#94A3B8" />
-                      <circle cx="28" cy="35" r="9.5" fill="#1e1b4b" />
-                      <circle cx="28" cy="35" r="7.5" fill="#475569" />
-                      <circle cx="28" cy="35" r="3.5" fill="#94A3B8" />
-                      
-                      {/* Side Lines */}
-                      <line x1="10" y1="24" x2="90" y2="24" stroke="#CBD5E1" strokeWidth="1" />
-                      <rect x="5" y="21" width="3" height="4.5" fill="#EF4444" />
+                      <circle cx="98" cy="42" r="10.5" fill="#1e1b4b" />
+                      <circle cx="98" cy="42" r="7.5" fill="#475569" />
+                      <circle cx="98" cy="42" r="3.5" fill="#CBD5E1" />
+                      <circle cx="30" cy="42" r="10.5" fill="#1e1b4b" />
+                      <circle cx="30" cy="42" r="7.5" fill="#475569" />
+                      <circle cx="30" cy="42" r="3.5" fill="#CBD5E1" />
                     </g>
                   </svg>
 
