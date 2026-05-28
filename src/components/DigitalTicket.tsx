@@ -47,13 +47,27 @@ const getReturnDate = (depDate: string, days: number) => {
 };
 
 export const DigitalTicket = forwardRef<HTMLDivElement, Props>(({ booking, htmlId }, ref) => {
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
+
+  React.useEffect(() => {
+    if (!canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    const img = new Image();
+    img.onload = () => {
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    };
+    img.src = coverBase64;
+  }, []);
 
   return (
     <div id={htmlId} ref={ref} className="relative w-full max-w-[380px] mx-auto bg-white overflow-hidden shadow-xl border border-slate-100 flex flex-col font-sans select-none">
                 
                 {/* 1. Header Section (Gradient purple with climber silhouette moon & birds) */}
                 <div className="relative w-full h-[120px] overflow-hidden shrink-0 bg-[#250A4E]">
-                  <img src={coverBase64} alt="Cover Background" className="absolute inset-0 w-full h-full object-cover" />
+                  <canvas ref={canvasRef} width={760} height={240} className="absolute inset-0 w-full h-full object-cover" />
                 </div>
 
                 {/* Perforation 1 (Header to Body) */}
