@@ -122,6 +122,16 @@ export default function InsuranceTab({ trips, onRefresh }: Props) {
       const nid = p.nationalId || p.profile?.nationalId || '';
       const dob = p.birthDate || p.profile?.birthDate || '';
       
+      const formatThaiDateString = (iso: string) => {
+        if (!iso) return '';
+        const d = new Date(iso);
+        const day = String(d.getDate()).padStart(2, '0');
+        const months = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+        const month = months[d.getMonth()];
+        const year = d.getFullYear() + 543;
+        return `${day}/${month}/${year}`;
+      };
+
       const row = [
         `"${p.fullName || ''}"`,
         `"${p.profile?.nickname || p.nickname || ''}"`,
@@ -131,7 +141,7 @@ export default function InsuranceTab({ trips, onRefresh }: Props) {
         `"${p.seatLabel || ''}"`,
         // ใช้ format ="เลขบัตร" เพื่อบังคับให้ Excel มองเป็นข้อความและไม่ปัดเป็นเลขยกกำลัง
         nid ? `="${nid}"` : '""',
-        `"${dob ? new Date(dob).toLocaleDateString('th-TH') : ''}"`,
+        `"${formatThaiDateString(dob)}"`,
         `"${p.emergencyName || p.profile?.emergencyName || ''}"`,
         (p.emergencyPhone || p.profile?.emergencyPhone) ? `="${p.emergencyPhone || p.profile?.emergencyPhone}"` : '""',
         `"${p.allergies || p.profile?.allergies || ''}"`,
