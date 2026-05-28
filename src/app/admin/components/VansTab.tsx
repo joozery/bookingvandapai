@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Bus, Plus, Trash2, Edit2, Save, X, Users, Phone } from 'lucide-react';
+import { Bus, Plus, Trash2, Edit2, Save, X, Users, Phone, LayoutGrid, ChevronDown, ChevronUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import type { Trip, Van } from './types';
+import type { Trip, Van, Seat } from './types';
+import { cn } from '@/lib/utils';
 
 interface Props {
   trips: Trip[];
@@ -21,6 +22,26 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
   const [editingVanId, setEditingVanId] = useState<string | null>(null);
   const [vanForm, setVanForm] = useState({ plateNumber: '', driverName: '', driverPhone: '' });
   const [editingStaff, setEditingStaff] = useState<{ vanId: string; seatId: string; staffName: string } | null>(null);
+  const [viewSeatVanId, setViewSeatVanId] = useState<string | null>(null);
+
+  const renderAdminSeat = (s: Seat | undefined) => {
+    if (!s) return <div className="w-8 h-8" />;
+    const isDriver = s.type === 'driver';
+    const isStaff = s.type === 'staff';
+    const isAvail = s.status === 'available';
+    let bg = 'bg-slate-200 border-slate-300';
+    let label = s.label;
+    if (isDriver) { bg = 'bg-slate-800 text-white border-slate-950'; label = 'D'; }
+    else if (isStaff) { bg = 'bg-violet-200 text-violet-800 border-violet-400'; }
+    else if (isAvail) { bg = 'bg-emerald-100 text-emerald-700 border-emerald-400 shadow-sm'; }
+    else { bg = 'bg-slate-200 text-slate-400 border-slate-300 line-through'; }
+
+    return (
+      <div key={s.id} title={s.type === 'staff' ? s.staffName : ''} className={cn("w-8 h-8 rounded border flex items-center justify-center text-[11px] font-black select-none", bg)}>
+        {label}
+      </div>
+    );
+  };
 
   const startEdit = (van: Van) => {
     setEditingVanId(van.id);
@@ -182,6 +203,42 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
                             <Edit2 className="w-2.5 h-2.5 ml-auto opacity-0 group-hover:opacity-100 transition" />
                           </button>
                         )}
+                      </div>
+                    )}
+
+                    {/* View Seats Button */}
+                    <div className="pt-2 border-t border-slate-100 mt-2">
+                      <button
+                        onClick={() => setViewSeatVanId(viewSeatVanId === van.id ? null : van.id)}
+                        className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 text-[10px] font-bold hover:bg-slate-50 transition shadow-sm"
+                      >
+                        <LayoutGrid className="w-3.5 h-3.5" /> 
+                        {viewSeatVanId === van.id ? 'ซ่อนผังที่นั่ง' : 'ดูผังที่นั่ง'}
+                        {viewSeatVanId === van.id ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                      </button>
+                    </div>
+
+                    {/* Mini Seat Map */}
+                    {viewSeatVanId === van.id && (
+                      <div className="pt-3 pb-1 animate-in slide-in-from-top-2 duration-200">
+                        <div className="flex flex-col gap-1.5 w-[116px] mx-auto bg-slate-50 p-2.5 rounded-xl border border-slate-200 shadow-sm">
+                          <div className="flex gap-1.5">
+                            {renderAdminSeat(van.seats.find(s=>s.row===1&&s.col===1))}
+                            <div className="w-8 h-8" />
+                            {renderAdminSeat(van.seats.find(s=>s.row===1&&s.col===3))}
+                          </div>
+                          {[2,3,4].map(r => (
+                            <div key={r} className="flex gap-1.5">
+                              {[1,2,3].map(c => renderAdminSeat(van.seats.find(s=>s.row===r&&s.col===c)))}
+                            </div>
+                          ))}
+                        </div>
+                        
+                        <div className="mt-4 flex flex-wrap justify-center gap-3 text-[9px] font-bold text-slate-500">
+                          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-emerald-100 border border-emerald-400" /> ว่าง</span>
+                          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-slate-200 border border-slate-300" /> จองแล้ว</span>
+                          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-violet-200 border border-violet-400" /> ผู้จัด</span>
+                        </div>
                       </div>
                     )}
                   </div>
