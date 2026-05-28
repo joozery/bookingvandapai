@@ -19,6 +19,32 @@ interface Props {
 
 const DEFAULT_FORM = { name: '', departureDate: '', durationDays: 3, cost: 1500, pickupPoint: '', departureTime: '06:00', tripPeriod: '', plateNumber: '', driverName: '', driverPhone: '' };
 
+const generatePeriod = (dateStr: string, days: number) => {
+  if (!dateStr || !days) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  
+  const d2 = new Date(d);
+  d2.setDate(d.getDate() + (Number(days) - 1));
+  
+  const startDay = d.getDate();
+  const endDay = d2.getDate();
+  const month = d.toLocaleDateString('th-TH', { month: 'short' });
+  const year = d.getFullYear() + 543;
+  
+  if (d.getMonth() === d2.getMonth() && d.getFullYear() === d2.getFullYear()) {
+    return `${startDay}-${endDay} ${month} ${year}`;
+  } else {
+    const endMonth = d2.toLocaleDateString('th-TH', { month: 'short' });
+    const endYear = d2.getFullYear() + 543;
+    if (d.getFullYear() === d2.getFullYear()) {
+      return `${startDay} ${month} - ${endDay} ${endMonth} ${year}`;
+    } else {
+      return `${startDay} ${month} ${year} - ${endDay} ${endMonth} ${endYear}`;
+    }
+  }
+};
+
 export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: Props) {
   const [form, setForm] = useState(DEFAULT_FORM);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -128,7 +154,10 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs font-bold text-slate-700 block mb-1.5">วันออกเดินทาง <span className="text-rose-500">*</span></label>
-                      <Input required type="date" value={editForm.departureDate} onChange={e => setEditForm({ ...editForm, departureDate: e.target.value })} className="h-10 text-sm" />
+                      <Input required type="date" value={editForm.departureDate} onChange={e => {
+                        const date = e.target.value;
+                        setEditForm({ ...editForm, departureDate: date, tripPeriod: generatePeriod(date, editForm.durationDays) });
+                      }} className="h-10 text-sm" />
                     </div>
                     <div>
                       <label className="text-xs font-bold text-slate-700 block mb-1.5">เวลาออกเดินทาง <span className="text-rose-500">*</span></label>
@@ -139,7 +168,10 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs font-bold text-slate-700 block mb-1.5">ระยะเวลา (วัน) <span className="text-rose-500">*</span></label>
-                      <Input required type="number" min={1} max={30} value={editForm.durationDays} onChange={e => setEditForm({ ...editForm, durationDays: Number(e.target.value) })} className="h-10 text-sm" />
+                      <Input required type="number" min={1} max={30} value={editForm.durationDays} onChange={e => {
+                        const days = Number(e.target.value);
+                        setEditForm({ ...editForm, durationDays: days, tripPeriod: generatePeriod(editForm.departureDate, days) });
+                      }} className="h-10 text-sm" />
                     </div>
                     <div>
                       <label className="text-xs font-bold text-slate-700 block mb-1.5">ค่าบริการ (บาท) <span className="text-rose-500">*</span></label>
@@ -233,7 +265,10 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs font-bold text-slate-700 block mb-1.5">วันออกเดินทาง <span className="text-rose-500">*</span></label>
-                      <Input required type="date" value={form.departureDate} onChange={e => setForm({ ...form, departureDate: e.target.value })} className="h-10 text-sm" />
+                      <Input required type="date" value={form.departureDate} onChange={e => {
+                        const date = e.target.value;
+                        setForm({ ...form, departureDate: date, tripPeriod: generatePeriod(date, form.durationDays) });
+                      }} className="h-10 text-sm" />
                     </div>
                     <div>
                       <label className="text-xs font-bold text-slate-700 block mb-1.5">เวลาออกเดินทาง <span className="text-rose-500">*</span></label>
@@ -244,7 +279,10 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs font-bold text-slate-700 block mb-1.5">ระยะเวลา (วัน) <span className="text-rose-500">*</span></label>
-                      <Input required type="number" min={1} max={30} value={form.durationDays} onChange={e => setForm({ ...form, durationDays: Number(e.target.value) })} className="h-10 text-sm" />
+                      <Input required type="number" min={1} max={30} value={form.durationDays} onChange={e => {
+                        const days = Number(e.target.value);
+                        setForm({ ...form, durationDays: days, tripPeriod: generatePeriod(form.departureDate, days) });
+                      }} className="h-10 text-sm" />
                     </div>
                     <div>
                       <label className="text-xs font-bold text-slate-700 block mb-1.5">ค่าบริการ (บาท) <span className="text-rose-500">*</span></label>
