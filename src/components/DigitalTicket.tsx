@@ -48,7 +48,9 @@ export const DigitalTicket = forwardRef<HTMLDivElement, Props>(({ booking, htmlI
   const [coverUrl, setCoverUrl] = React.useState<string>('/cover.png');
 
   React.useEffect(() => {
-    fetch('/cover.png')
+    if (typeof window === 'undefined') return;
+    const url = `${window.location.origin}/cover.png`;
+    fetch(url)
       .then(r => r.blob())
       .then(blob => {
         const reader = new FileReader();
@@ -64,15 +66,8 @@ export const DigitalTicket = forwardRef<HTMLDivElement, Props>(({ booking, htmlI
     <div id={htmlId} ref={ref} className="relative w-full max-w-[380px] mx-auto bg-white overflow-hidden shadow-xl border border-slate-100 flex flex-col font-sans select-none">
                 
                 {/* 1. Header Section (Gradient purple with climber silhouette moon & birds) */}
-                <div 
-                  className="relative w-full h-[120px] overflow-hidden shrink-0 bg-[#250A4E]"
-                  style={{
-                    backgroundImage: `url(${coverUrl})`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    backgroundRepeat: 'no-repeat'
-                  }}
-                >
+                <div className="relative w-full h-[120px] overflow-hidden shrink-0 bg-[#250A4E]">
+                  {coverUrl && <img src={coverUrl} alt="Cover Background" className="absolute inset-0 w-full h-full object-cover" />}
                 </div>
 
                 {/* Perforation 1 (Header to Body) */}
