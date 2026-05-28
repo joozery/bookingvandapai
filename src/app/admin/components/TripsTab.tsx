@@ -465,10 +465,22 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
                   </label>
                   
                   <div className="bg-violet-50 border border-violet-100 rounded-xl p-5 mt-6">
-                    <h4 className="text-sm font-bold text-violet-800 mb-3 flex items-center gap-1.5">
-                      <Info className="w-4 h-4" /> ข้อมูลรถตู้คันแรก (คันที่ 1)
-                    </h4>
-                    <p className="text-[11px] text-violet-600 mb-4">ระบบจะสร้างรถตู้คันที่ 1 ให้ทันที คุณสามารถใส่ข้อมูลคนขับไว้ล่วงหน้าได้ (แก้ทีหลังได้ในเมนูจัดการรถ)</p>
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-sm font-bold text-violet-800 flex items-center gap-1.5">
+                        <Info className="w-4 h-4" /> ตั้งค่ารถตู้เริ่มต้น
+                      </h4>
+                      <div className="flex items-center gap-2 bg-white px-2 py-1 rounded-lg border border-violet-200 shadow-sm">
+                        <label className="text-xs font-bold text-violet-700">จำนวนรถตู้:</label>
+                        <select 
+                          value={form.vansCount} 
+                          onChange={e => setForm({ ...form, vansCount: Number(e.target.value) })}
+                          className="bg-transparent text-sm font-bold text-violet-900 focus:outline-none"
+                        >
+                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => <option key={n} value={n}>{n} คัน</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-violet-600 mb-4">ระบบจะสร้างรถตู้ตามจำนวนที่ระบุให้ทันที คุณสามารถใส่ข้อมูลรถคันที่ 1 ไว้ล่วงหน้าได้ (แก้ทีหลังได้ในเมนูจัดการรถ)</p>
                     
                     <div className="space-y-3">
                       <div>
