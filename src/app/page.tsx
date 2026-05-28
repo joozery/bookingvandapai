@@ -2304,7 +2304,7 @@ export default function CustomerPage() {
       {/* Modern Footer matching clean light style */}
       <footer className="border-t border-slate-200 bg-white py-6 mt-auto">
         <div className="max-w-7xl mx-auto px-4 text-center text-[10px] sm:text-xs text-slate-400 font-bold space-y-1">
-          <p>© {new Date().getFullYear()} BookingVan Inc. ย่ำไป เดินไป. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} ด่าไป เดินไป. All rights reserved.</p>
           <div className="flex justify-center items-center gap-1.5 text-slate-300">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             <span className="text-[10px] text-slate-400">ระบบซิงค์ข้อมูลเบาะรถตู้แบบเรียลไทม์ความเสถียรสูง</span>

@@ -510,7 +510,7 @@ export default function AdminPage() {
           </button>
 
           <div className="flex-1 min-w-0">
-            <span className="font-bold text-slate-800 text-sm">BookingVan Admin</span>
+            <span className="font-bold text-slate-800 text-sm">ด่าไป เดินไป Admin</span>
           </div>
 
           <div className="flex items-center gap-2.5">
