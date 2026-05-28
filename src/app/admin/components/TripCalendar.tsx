@@ -1,9 +1,9 @@
 'use client';
 import React, { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, List, Grid, MapPin, Clock, Users } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
 import type { Trip, Van } from './types';
 
-// ---- helpers ----
+// ── helpers ──────────────────────────────────────────────
 const parseTripDate = (dateStr: string): Date | null => {
   if (!dateStr) return null;
   if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
@@ -24,27 +24,25 @@ const parseTripDate = (dateStr: string): Date | null => {
 };
 
 const toMidnight = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+const fmtShort = (d: Date) =>
+  d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
 
 const COLORS = [
-  { bg: '#7c3aed', hex: '#7c3aed', light: '#ede9fe' },
-  { bg: '#0284c7', hex: '#0284c7', light: '#e0f2fe' },
-  { bg: '#059669', hex: '#059669', light: '#d1fae5' },
-  { bg: '#e11d48', hex: '#e11d48', light: '#ffe4e6' },
-  { bg: '#d97706', hex: '#d97706', light: '#fef3c7' },
-  { bg: '#0891b2', hex: '#0891b2', light: '#cffafe' },
+  { dot: '#7c3aed', hatch: 'rgba(124,58,237,0.10)' },
+  { dot: '#0284c7', hatch: 'rgba(2,132,199,0.10)'  },
+  { dot: '#059669', hatch: 'rgba(5,150,105,0.10)'  },
+  { dot: '#e11d48', hatch: 'rgba(225,29,72,0.10)'  },
+  { dot: '#d97706', hatch: 'rgba(217,119,6,0.10)'  },
+  { dot: '#0891b2', hatch: 'rgba(8,145,178,0.10)'  },
 ];
 
 interface ProcessedTrip {
-  trip: Trip;
-  startDate: Date;
-  endDate: Date;
-  colorIdx: number;
-  vacant: number;
+  trip: Trip; startDate: Date; endDate: Date; colorIdx: number; vacant: number;
 }
 
+// ── Component ─────────────────────────────────────────────
 export default function TripCalendar({ trips, vans }: { trips: Trip[]; vans: Van[] }) {
   const today = toMidnight(new Date());
-  const [view, setView] = useState<'month' | 'list'>('month');
 
   const initialDate = useMemo(() => {
     if (!trips.length) return new Date(today.getFullYear(), today.getMonth(), 1);
@@ -78,236 +76,186 @@ export default function TripCalendar({ trips, vans }: { trips: Trip[]; vans: Van
     }).filter(Boolean) as ProcessedTrip[];
   }, [trips, vans]);
 
-  // Sort for list view by start date ascending
-  const sortedUpcoming = useMemo(() => {
-    return [...processedTrips]
-      .filter(pt => pt.endDate >= today)
-      .sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
-  }, [processedTrips]);
-
+  // Build weeks
   const weeks = useMemo(() => {
     const firstDay = new Date(year, month, 1);
     const lastDay  = new Date(year, month + 1, 0);
-    const start = new Date(firstDay);
-    start.setDate(firstDay.getDate() - firstDay.getDay());
-    const end = new Date(lastDay);
-    end.setDate(lastDay.getDate() + (6 - lastDay.getDay()));
+    const start = new Date(firstDay); start.setDate(firstDay.getDate() - firstDay.getDay());
+    const end   = new Date(lastDay);  end.setDate(lastDay.getDate() + (6 - lastDay.getDay()));
     const result: Date[][] = [];
     const cur = new Date(start);
     while (cur <= end) {
       const week: Date[] = [];
-      for (let i = 0; i < 7; i++) {
-        week.push(new Date(cur));
-        cur.setDate(cur.getDate() + 1);
-      }
+      for (let i = 0; i < 7; i++) { week.push(new Date(cur)); cur.setDate(cur.getDate() + 1); }
       result.push(week);
     }
     return result;
   }, [year, month]);
 
-  const weekTrips = useMemo(() => {
+  // For each week, compute events that appear
+  const weekEvents = useMemo(() => {
     return weeks.map(week => {
-      const weekStart = week[0];
-      const weekEnd   = week[6];
-      const rows: Array<{ trip: ProcessedTrip; startCol: number; endCol: number }> = [];
-      processedTrips.forEach(pt => {
-        if (pt.endDate < weekStart || pt.startDate > weekEnd) return;
-        const startCol = pt.startDate < weekStart ? 0 : pt.startDate.getDay();
-        const endCol   = pt.endDate   > weekEnd   ? 6 : pt.endDate.getDay();
-        rows.push({ trip: pt, startCol, endCol });
-      });
-      return rows;
+      const ws = week[0], we = week[6];
+      return processedTrips
+        .filter(pt => pt.endDate >= ws && pt.startDate <= we)
+        .map(pt => {
+          const startCol = pt.startDate < ws ? 0 : pt.startDate.getDay();
+          const endCol   = pt.endDate   > we ? 6 : pt.endDate.getDay();
+          const isStart  = pt.startDate >= ws;
+          const isEnd    = pt.endDate   <= we;
+          return { pt, startCol, endCol, isStart, isEnd };
+        });
     });
   }, [weeks, processedTrips]);
 
   const DAY_HEADERS = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-      {/* ── Header ── */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+    <div className="bg-[#fafaf8] border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 sm:px-6 py-4 bg-white border-b border-slate-100">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-violet-50 flex items-center justify-center shrink-0">
-            <CalendarIcon className="w-4 h-4 text-violet-600" />
+          <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center">
+            <CalendarIcon className="w-4.5 h-4.5 text-amber-500" style={{ width: 18, height: 18 }} />
           </div>
           <div>
-            <h3 className="text-sm font-black text-slate-800 leading-tight">แพลนการเดินทาง</h3>
+            <h3 className="text-sm font-black text-slate-800">แพลนการเดินทาง</h3>
             <p className="text-[10px] text-slate-400 hidden sm:block">ตารางทริปทั้งหมดของระบบ</p>
           </div>
         </div>
-
         <div className="flex items-center gap-1.5">
-          {/* View toggle (mobile) */}
-          <div className="flex sm:hidden bg-slate-100 rounded-lg p-0.5 gap-0.5">
-            <button
-              onClick={() => setView('month')}
-              className={`p-1.5 rounded-md transition ${view === 'month' ? 'bg-white shadow-sm text-violet-600' : 'text-slate-400'}`}
-            >
-              <Grid className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={() => setView('list')}
-              className={`p-1.5 rounded-md transition ${view === 'list' ? 'bg-white shadow-sm text-violet-600' : 'text-slate-400'}`}
-            >
-              <List className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          <button
-            onClick={goToday}
-            className="px-2.5 py-1 text-[11px] font-bold text-slate-600 border border-slate-200 hover:bg-slate-50 rounded-lg transition hidden sm:block"
-          >
+          <button onClick={goToday} className="hidden sm:block px-3 py-1.5 text-[11px] font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition">
             วันนี้
           </button>
-          <button onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-slate-100 transition text-slate-500">
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <span className="text-xs font-bold text-slate-800 min-w-[100px] sm:min-w-[130px] text-center">{monthName}</span>
-          <button onClick={nextMonth} className="p-1.5 rounded-lg hover:bg-slate-100 transition text-slate-500">
-            <ChevronRight className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button onClick={prevMonth} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 transition text-slate-500">
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="text-sm font-black text-slate-800 min-w-[110px] sm:min-w-[130px] text-center">{monthName}</span>
+            <button onClick={nextMonth} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 transition text-slate-500">
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* ── MOBILE: List View ── */}
-      {view === 'list' && (
-        <div className="sm:hidden divide-y divide-slate-100">
-          {sortedUpcoming.length === 0 ? (
-            <div className="py-10 text-center text-slate-400 text-sm">ไม่มีทริปที่กำลังจะมาถึง</div>
-          ) : (
-            sortedUpcoming.map((pt, i) => {
-              const c = COLORS[pt.colorIdx];
-              const nights = (pt.trip.durationDays ?? 1) - 1;
-              const durationLabel = nights > 0 ? `${pt.trip.durationDays} วัน ${nights} คืน` : 'ไปเช้าเย็นกลับ';
-              return (
-                <div key={pt.trip.id} className="flex items-stretch gap-0">
-                  {/* Color stripe */}
-                  <div className="w-1 shrink-0 rounded-l" style={{ backgroundColor: c.hex }} />
-                  <div className="flex-1 px-4 py-3 flex items-start gap-3">
-                    <div
-                      className="w-10 h-10 rounded-xl shrink-0 flex items-center justify-center text-white text-xs font-black"
-                      style={{ backgroundColor: c.hex }}
-                    >
-                      {pt.startDate.getDate()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-bold text-slate-800 text-sm leading-tight truncate">{pt.trip.name}</div>
-                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
-                        <div className="flex items-center gap-1 text-[10px] text-slate-500">
-                          <CalendarIcon className="w-3 h-3" />
-                          <span>{durationLabel}</span>
-                        </div>
-                        <div className="flex items-center gap-1 text-[10px] text-slate-500">
-                          <Clock className="w-3 h-3" />
-                          <span>{pt.trip.departureTime} น.</span>
-                        </div>
-                        <div className="flex items-center gap-1 text-[10px] text-slate-500">
-                          <MapPin className="w-3 h-3" />
-                          <span>{pt.trip.pickupPoint}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <div className="text-xs font-black text-violet-700">
-                        ว่าง {pt.vacant}
-                      </div>
-                      <div className="text-[10px] text-slate-400">ที่นั่ง</div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-      )}
-
-      {/* ── MONTH Grid (desktop always, mobile when view=month) ── */}
-      <div className={`${view === 'list' ? 'hidden sm:block' : 'block'}`}>
-        {/* Day-of-week headers */}
-        <div className="grid grid-cols-7 border-b border-slate-100">
-          {DAY_HEADERS.map((d, i) => (
-            <div key={d} className={`py-2 text-center text-[11px] font-black tracking-wide
-              ${i === 0 ? 'text-rose-400' : i === 6 ? 'text-sky-400' : 'text-slate-400'}`}>
-              {d}
-            </div>
-          ))}
-        </div>
-
-        <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
-          <div style={{ minWidth: 480 }}>
-            {weeks.map((week, wi) => {
-              const wt = weekTrips[wi];
-              const rowMinH = 80 + wt.length * 22;
-              return (
-                <div key={wi} className="relative border-b border-slate-100 last:border-b-0">
-                  <div className="grid grid-cols-7">
-                    {week.map((day, di) => {
-                      const isCurrentMonth = day.getMonth() === month;
-                      const isToday = day.getTime() === today.getTime();
-                      return (
-                        <div
-                          key={di}
-                          style={{ minHeight: rowMinH }}
-                          className={`relative border-r border-slate-100 last:border-r-0 px-1 sm:px-2 pt-2 pb-1
-                            ${!isCurrentMonth ? 'bg-slate-50/60' : 'bg-white'}`}
-                        >
-                          <span className={`inline-flex w-6 h-6 items-center justify-center rounded-full text-xs font-bold
-                            ${isToday
-                              ? 'bg-violet-600 text-white'
-                              : isCurrentMonth
-                                ? di === 0 ? 'text-rose-400' : di === 6 ? 'text-sky-400' : 'text-slate-700'
-                                : 'text-slate-300'
-                            }`}>
-                            {day.getDate()}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Event bars */}
-                  <div className="absolute left-0 right-0 pointer-events-none" style={{ top: 30 }}>
-                    {wt.map(({ trip: pt, startCol, endCol }, ei) => {
-                      const c = COLORS[pt.colorIdx];
-                      const isStart = pt.startDate >= week[0];
-                      const isEnd   = pt.endDate <= week[6];
-                      const spanCols = endCol - startCol + 1;
-                      const leftPct  = (startCol / 7) * 100;
-                      const widthPct = (spanCols / 7) * 100;
-                      return (
-                        <div
-                          key={`${pt.trip.id}-${wi}-${ei}`}
-                          className="absolute pointer-events-auto cursor-pointer"
-                          style={{
-                            left: `calc(${leftPct}% + ${isStart ? 3 : 0}px)`,
-                            width: `calc(${widthPct}% - ${(isStart ? 3 : 0) + (isEnd ? 3 : 0)}px)`,
-                            top: ei * 23,
-                            height: 20,
-                          }}
-                          title={`${pt.trip.name} • ${pt.trip.departureTime} น. • ว่าง ${pt.vacant} ที่`}
-                        >
-                          <div
-                            className={`h-full flex items-center text-[10px] font-bold text-white overflow-hidden
-                              ${isStart ? 'rounded-l-full pl-2' : 'pl-1'}
-                              ${isEnd   ? 'rounded-r-full pr-1' : 'pr-0'}`}
-                            style={{ backgroundColor: c.hex }}
-                          >
-                            {isStart && (
-                              <span className="truncate leading-none">
-                                {pt.trip.name}
-                                <span className="ml-1 opacity-70 font-normal hidden sm:inline">· ว่าง {pt.vacant}</span>
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
+      {/* Scrollable calendar body */}
+      <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <div style={{ minWidth: 380 }}>
+          {/* Day headers */}
+          <div className="grid grid-cols-7 px-2 sm:px-3 pt-3 pb-1 gap-1 sm:gap-2">
+            {DAY_HEADERS.map((d, i) => (
+              <div key={d} className={`text-center text-[10px] sm:text-xs font-black tracking-wide py-1
+                ${i === 0 ? 'text-rose-400' : i === 6 ? 'text-sky-400' : 'text-slate-400'}`}>
+                {d}
+              </div>
+            ))}
           </div>
+
+          {/* Weeks */}
+          {weeks.map((week, wi) => {
+            const events = weekEvents[wi];
+            return (
+              <div key={wi} className="px-2 sm:px-3 pb-2 sm:pb-3">
+                {/* Day cells row */}
+                <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-1">
+                  {week.map((day, di) => {
+                    const isCurrentMonth = day.getMonth() === month;
+                    const isToday = day.getTime() === today.getTime();
+                    const isSat = di === 6;
+                    const isSun = di === 0;
+
+                    // Hatching for out-of-month
+                    const cellStyle: React.CSSProperties = !isCurrentMonth ? {
+                      backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(0,0,0,0.04) 4px, rgba(0,0,0,0.04) 7px)',
+                    } : {};
+
+                    return (
+                      <div
+                        key={di}
+                        style={{ ...cellStyle, ...(isToday ? { backgroundColor: '#FDE047' } : {}) }}
+                        className={`aspect-square sm:aspect-auto sm:min-h-[56px] rounded-xl flex flex-col items-start justify-start p-1.5 sm:p-2 transition
+                          ${isCurrentMonth && !isToday ? 'bg-white hover:bg-slate-50' : ''}
+                          ${!isCurrentMonth ? 'bg-slate-100/60' : ''}
+                          ${isToday ? 'shadow-sm' : 'border border-slate-100'}
+                        `}
+                      >
+                        <span className={`text-[11px] sm:text-xs font-bold leading-none
+                          ${isToday ? 'text-slate-800' : isCurrentMonth ? isSun ? 'text-rose-400' : isSat ? 'text-sky-500' : 'text-slate-700' : 'text-slate-300'}
+                        `}>
+                          {day.getDate()}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Event rows */}
+                {events.map(({ pt, startCol, endCol, isStart, isEnd }, ei) => {
+                  const c = COLORS[pt.colorIdx];
+                  const spanCols = endCol - startCol + 1;
+                  // The event row is laid out using CSS grid trick
+                  return (
+                    <div
+                      key={`${pt.trip.id}-${wi}-${ei}`}
+                      className="grid grid-cols-7 gap-1 sm:gap-2 mb-1"
+                      title={`${pt.trip.name} • ว่าง ${pt.vacant} ที่`}
+                    >
+                      {/* Empty cols before event */}
+                      {Array.from({ length: startCol }).map((_, i) => (
+                        <div key={i} />
+                      ))}
+
+                      {/* Event pill spanning multiple cols */}
+                      <div
+                        className="rounded-xl overflow-hidden flex items-center px-2 cursor-pointer"
+                        style={{
+                          gridColumn: `span ${spanCols}`,
+                          height: 26,
+                          backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 4px, ${c.hatch} 4px, ${c.hatch} 8px)`,
+                          backgroundColor: c.hatch,
+                          borderRadius: isStart && isEnd ? 8 : isStart ? '8px 0 0 8px' : isEnd ? '0 8px 8px 0' : 0,
+                        }}
+                      >
+                        {isStart && (
+                          <>
+                            <span
+                              className="w-2 h-2 rounded-full shrink-0 mr-1.5"
+                              style={{ backgroundColor: c.dot, minWidth: 8 }}
+                            />
+                            <span className="text-[10px] sm:text-[11px] font-bold text-slate-700 truncate flex-1">
+                              {pt.trip.name}
+                            </span>
+                          </>
+                        )}
+                        {isEnd && isStart && (
+                          <span className="text-[9px] sm:text-[10px] font-semibold text-slate-400 shrink-0 ml-1 hidden sm:block">
+                            {fmtShort(pt.startDate)} – {fmtShort(pt.endDate)}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Empty cols after event */}
+                      {Array.from({ length: 6 - endCol }).map((_, i) => (
+                        <div key={i} />
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
         </div>
+      </div>
+
+      {/* Legend */}
+      <div className="flex flex-wrap items-center gap-3 px-4 sm:px-6 py-3 border-t border-slate-100 bg-white text-[10px] text-slate-500">
+        {processedTrips.slice(0, 6).map((pt, i) => (
+          <div key={pt.trip.id} className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length].dot }} />
+            <span className="font-semibold truncate max-w-[100px]">{pt.trip.name}</span>
+          </div>
+        ))}
       </div>
     </div>
   );
