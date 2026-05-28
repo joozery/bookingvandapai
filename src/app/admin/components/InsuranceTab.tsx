@@ -99,14 +99,19 @@ export default function InsuranceTab({ trips, onRefresh }: Props) {
 
   // Export to CSV
   const handleExport = () => {
-    if (passengers.length === 0) return;
+    // ดึงเฉพาะคนที่มีเลขบัตรประชาชน (ถือว่าทำประกัน) ไม่สนใจตัวกรองบนหน้าเว็บ
+    const exportData = bookings.filter(b => b.nationalId && b.nationalId.trim() !== '');
+    if (exportData.length === 0) {
+      alert('ไม่มีข้อมูลลูกทริปที่กรอกประกันการเดินทาง');
+      return;
+    }
     
     const BOM = '\uFEFF';
     const headers = ['ชื่อลูกทริป', 'ชื่อเล่น', 'เบอร์โทรศัพท์', 'ทริป', 'รถคันที่', 'ที่นั่ง', 'เลขบัตรประชาชน', 'วันเดือนปีเกิด'];
     const csvRows = [];
     csvRows.push(headers.join(','));
     
-    for (const p of passengers) {
+    for (const p of exportData) {
       const row = [
         `"${p.fullName || ''}"`,
         `"${p.profile?.nickname || p.nickname || ''}"`,
@@ -114,7 +119,8 @@ export default function InsuranceTab({ trips, onRefresh }: Props) {
         `"${p.tripName || ''}"`,
         `"${p.vanNumber || 1}"`,
         `"${p.seatLabel || ''}"`,
-        `"${p.nationalId || ''}"`,
+        // ใช้ \t นำหน้าเพื่อให้ Excel มองเป็น Text และไม่แปลงเป็นเลขยกกำลัง
+        `"\t${p.nationalId || ''}"`,
         `"${p.birthDate ? new Date(p.birthDate).toLocaleDateString('th-TH') : ''}"`
       ];
       csvRows.push(row.join(','));
@@ -161,8 +167,7 @@ export default function InsuranceTab({ trips, onRefresh }: Props) {
         <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
           <button
             onClick={handleExport}
-            disabled={passengers.length === 0}
-            className="w-full sm:w-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+            className="w-full sm:w-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition shadow-sm shrink-0"
           >
             <Download className="w-4 h-4" />
             ส่งออก (CSV)
