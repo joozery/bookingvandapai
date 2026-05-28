@@ -259,7 +259,7 @@ export default function UsersTab({ users, onRefresh }: Props) {
       {/* ── Summary Cards ──────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: 'ผู้ใช้ทั้งหมด', value: stats.total,   icon: Users,      color: 'violet' },
+          { label: 'ลูกทริปทั้งหมด', value: stats.total,   icon: Users,      color: 'violet' },
           { label: 'VIP',          value: stats.vip,     icon: Star,       color: 'amber' },
           { label: 'Active วันนี้', value: stats.active,  icon: TrendingUp, color: 'emerald' },
           { label: 'ถูกบล็อก',    value: stats.blocked, icon: ShieldAlert, color: 'rose' },
@@ -379,7 +379,7 @@ export default function UsersTab({ users, onRefresh }: Props) {
 
         {/* Count row */}
         <div className="px-4 py-2 flex items-center justify-between text-xs text-slate-400 border-b border-slate-50">
-          <span>แสดง <strong className="text-slate-600">{filtered.length}</strong> จาก {users.length} ผู้ใช้</span>
+          <span>แสดง <strong className="text-slate-600">{filtered.length}</strong> จาก {users.length} ลูกทริป</span>
           {filtered.length > PER_PAGE && (
             <span>หน้า {page} / {totalPages}</span>
           )}
@@ -391,7 +391,7 @@ export default function UsersTab({ users, onRefresh }: Props) {
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/80">
                 <th className="text-left px-4 py-3 text-[11px] font-black text-slate-400 uppercase tracking-wider w-8">#</th>
-                <th className="text-left px-4 py-3 text-[11px] font-black text-slate-400 uppercase tracking-wider">ผู้ใช้</th>
+                <th className="text-left px-4 py-3 text-[11px] font-black text-slate-400 uppercase tracking-wider">ลูกทริป</th>
                 <th className="text-left px-4 py-3 text-[11px] font-black text-slate-400 uppercase tracking-wider hidden md:table-cell">ข้อมูลติดต่อ</th>
                 <th
                   className="text-center px-3 py-3 text-[11px] font-black text-slate-400 uppercase tracking-wider cursor-pointer hover:text-violet-600 transition select-none"
@@ -421,7 +421,7 @@ export default function UsersTab({ users, onRefresh }: Props) {
                   <td colSpan={8} className="text-center py-16 text-slate-400">
                     <div className="flex flex-col items-center gap-2">
                       <Users className="w-8 h-8 opacity-30" />
-                      <p className="text-sm font-medium">ไม่พบผู้ใช้</p>
+                      <p className="text-sm font-medium">ไม่พบลูกทริป</p>
                       <p className="text-xs">ลองเปลี่ยนคำค้นหา</p>
                     </div>
                   </td>
@@ -466,8 +466,8 @@ export default function UsersTab({ users, onRefresh }: Props) {
                           )}
                         </div>
                         <div className="min-w-0">
-                          <p className="font-bold text-slate-800 text-xs truncate">{u.nickname}</p>
-                          <p className="text-[11px] text-slate-400 truncate">{u.lineUserName}</p>
+                          <p className="font-bold text-slate-800 text-xs whitespace-normal break-words">{u.nickname}</p>
+                          <p className="text-[11px] text-slate-400 whitespace-normal break-words">{u.lineUserName}</p>
                         </div>
                       </div>
                     </td>
@@ -475,7 +475,7 @@ export default function UsersTab({ users, onRefresh }: Props) {
                     {/* Contact */}
                     <td className="px-4 py-3.5 hidden md:table-cell">
                       <div>
-                        <p className="text-xs font-medium text-slate-700 truncate max-w-[150px]">{u.fullName || '-'}</p>
+                        <p className="text-xs font-medium text-slate-700 whitespace-normal break-words">{u.fullName || '-'}</p>
                         <p className="text-[11px] text-slate-400">{u.phone || '-'}</p>
                       </div>
                     </td>

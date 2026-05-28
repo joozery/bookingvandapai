@@ -36,7 +36,7 @@ const NAV = [
       { id: 'pending',   label: 'รออนุมัติเปลี่ยนที่นั่ง' },
     ]
   },
-  { id: 'users',   label: 'จัดการสมาชิก', icon: UserCheck },
+  { id: 'users',   label: 'จัดการลูกทริป', icon: UserCheck },
   { id: 'checkin', label: 'Check-in QR', icon: QrCode },
   { id: 'staff',   label: 'ทีมงาน / ผู้จัด', icon: Shield },
   { id: 'insurance', label: 'ประกันการเดินทาง', icon: Lock },
@@ -598,14 +598,14 @@ export default function AdminPage() {
                  activeTab === 'pending'   ? 'รออนุมัติเปลี่ยนที่นั่ง' :
                  activeTab === 'trips'     ? 'จัดการทริป' :
                  activeTab === 'vans'      ? 'จัดการรถตู้' :
-                 activeTab === 'users'     ? 'จัดการสมาชิก' : 
+                 activeTab === 'users'     ? 'จัดการลูกทริป' : 
                  activeTab === 'staff'     ? 'ทีมงาน / ผู้จัด' : 
                  activeTab === 'insurance' ? 'ประกันการเดินทาง' : 'QR Check-in'}
               </h1>
               <p className="text-xs text-slate-400 mt-0.5">
                 {activeTab === 'dashboard' ? 'ภาพรวมการจองและการเดินทาง' :
                  activeTab === 'bookings'  ? 'จัดการคำขอจองและอนุมัติที่นั่ง' :
-                 activeTab === 'users'     ? 'ดูและจัดการข้อมูลสมาชิกทั้งหมด' : 
+                 activeTab === 'users'     ? 'ดูและจัดการข้อมูลลูกทริปทั้งหมด' : 
                  activeTab === 'insurance' ? 'จัดการข้อมูลและประวัติประกันการเดินทางของลูกทริป' : 
                  activeTab === 'staff'     ? 'จัดการสิทธิแอดมิน, ผู้จัด และกำหนดการบล็อก' : ''}
               </p>
