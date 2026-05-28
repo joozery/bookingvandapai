@@ -288,7 +288,7 @@ export const DigitalTicket = forwardRef<HTMLDivElement, Props>(({ booking, htmlI
 
                   {/* Bottom slogan centered exactly matching screenshot */}
                   <div className="absolute bottom-1.5 left-0 right-0 text-center text-[#2E1A47] text-[9.5px] font-black italic tracking-wide select-none">
-                    ด่าไป เดินไป • ไปด้วยกัน... สนุกกว่า
+                    “แล้วเจอกันวันเดินทางนะจ๊ะ อีพวกปากดี”
                   </div>
                 </div>
               </div>
