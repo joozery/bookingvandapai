@@ -1411,16 +1411,16 @@ function CustomerPageContent() {
                       }`}
                     >
                       {/* Image header strip */}
-                      <div className="relative w-full h-20 overflow-hidden">
+                      <div className="relative w-full h-28 sm:h-32 overflow-hidden">
                         <img
                           src={trip.image || 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=400&auto=format&fit=crop&q=80'}
                           alt={trip.name}
                           className="w-full h-full object-cover"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
                         {/* Trip name overlaid on image */}
-                        <div className="absolute bottom-0 left-0 right-0 px-3 pb-2 flex items-end justify-between">
-                          <h3 className="text-white font-bold text-xs leading-tight drop-shadow flex-1 pr-2">{trip.name}</h3>
+                        <div className="absolute bottom-0 left-0 right-0 px-3 pb-3 flex items-end justify-between gap-2">
+                          <h3 className="text-white font-bold text-sm leading-tight drop-shadow-md flex-1 line-clamp-2">{trip.name}</h3>
                           {/* Seat badge */}
                           <div className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-bold border ${
                             userBookedThisTrip
