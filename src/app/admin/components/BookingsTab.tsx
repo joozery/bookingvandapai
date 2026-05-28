@@ -190,7 +190,7 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
           <table className="min-w-full text-xs">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50">
-                {['ผู้โดยสาร', 'ทริป', 'รถ / เบาะที่นั่ง', 'เบอร์โทร', 'สถานะการจอง', 'การชำระเงิน', 'Check-in', 'จัดการ'].map(h => (
+                {['ผู้โดยสาร', 'ทริป', 'รถ / เบาะที่นั่ง', 'เบอร์โทร', 'สถานะการจอง', 'Check-in', 'จัดการ'].map(h => (
                   <th key={h} className="px-4 py-3 text-left font-bold text-[10px] uppercase tracking-wider text-slate-500 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -288,12 +288,6 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
                           {new Date(b.createdAt).toLocaleDateString('th-TH', {day:'numeric',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'})}
                         </div>
                       </div>
-                    </td>
-                    {/* Payment placeholder */}
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      {b.status === 'approved'
-                        ? <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200"><BadgeCheck className="w-3 h-3" />ชำระแล้ว</span>
-                        : <span className="text-[10px] text-slate-400 font-semibold">รอชำระ</span>}
                     </td>
                     {/* Checkin */}
                     <td className="px-4 py-3 whitespace-nowrap">
