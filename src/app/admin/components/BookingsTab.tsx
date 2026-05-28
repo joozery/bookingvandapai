@@ -55,6 +55,40 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
     setTripSel(''); setVanSel(''); setSeatSel('');
   };
 
+  const exportCSV = () => {
+    const headers = ['ผู้โดยสาร', 'ชื่อเล่น', 'เบอร์โทร', 'ทริป', 'รถคันที่', 'ที่นั่ง', 'สถานะ'];
+    
+    const rows = filtered.map(b => {
+      const trip = trips.find(t => t.id === b.tripId);
+      const vanNumber = b.vanNumber || 1;
+      let statusStr = '';
+      if (b.status === 'approved') statusStr = 'ยืนยันแล้ว';
+      else if (b.status === 'pending') statusStr = 'รออนุมัติ';
+      else if (b.status === 'cancel_pending') statusStr = 'ขอยกเลิก';
+      else if (b.status === 'rejected') statusStr = 'ยกเลิกแล้ว';
+      
+      return [
+        `"${b.fullName}"`,
+        `"${b.nickname}"`,
+        `"${b.phone}"`,
+        `"${trip?.name || b.tripName || ''}"`,
+        `"${vanNumber}"`,
+        `"${b.seatLabel}"`,
+        `"${statusStr}"`
+      ].join(',');
+    });
+    
+    const csvContent = "\uFEFF" + [headers.join(','), ...rows].join('\n'); // Add BOM for Excel UTF-8 support
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `bookings_export_${new Date().getTime()}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const statusBadge = (status: string) => {
     if (status === 'approved') return <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />ยืนยันแล้ว</span>;
     if (status === 'pending')  return <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />รออนุมัติ</span>;
@@ -145,7 +179,7 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
           <option value="cancel_pending">ขอยกเลิก</option>
           <option value="rejected">ยกเลิก</option>
         </select>
-        <button className="h-8 border border-slate-200 bg-white px-3 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-50 flex items-center gap-1.5 transition">
+        <button onClick={exportCSV} className="h-8 border border-slate-200 bg-white px-3 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-50 flex items-center gap-1.5 transition">
           <Download className="w-3.5 h-3.5" /> ส่งออก
         </button>
       </div>
