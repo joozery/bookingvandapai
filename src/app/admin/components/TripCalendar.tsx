@@ -28,7 +28,26 @@ const parseTripDate = (dateStr: string): Date | null => {
 
 export default function TripCalendar({ trips, vans }: { trips: Trip[]; vans: Van[] }) {
   const today = new Date();
-  const [currentDate, setCurrentDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
+  
+  // Find the most relevant month to show initially (closest upcoming trip)
+  const initialDate = useMemo(() => {
+    if (!trips.length) return new Date(today.getFullYear(), today.getMonth(), 1);
+    
+    // Parse all trip dates
+    const parsedTrips = trips.map(t => ({ ...t, dateObj: parseTripDate(t.departureDate) })).filter(t => t.dateObj);
+    if (!parsedTrips.length) return new Date(today.getFullYear(), today.getMonth(), 1);
+    
+    // Sort by date
+    parsedTrips.sort((a, b) => a.dateObj!.getTime() - b.dateObj!.getTime());
+    
+    // Find first upcoming trip, or fallback to the latest trip if all are in the past
+    const upcoming = parsedTrips.find(t => t.dateObj! >= new Date(today.getFullYear(), today.getMonth(), 1));
+    const targetTrip = upcoming || parsedTrips[parsedTrips.length - 1];
+    
+    return new Date(targetTrip.dateObj!.getFullYear(), targetTrip.dateObj!.getMonth(), 1);
+  }, [trips]);
+
+  const [currentDate, setCurrentDate] = useState(initialDate);
 
   const nextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
   const prevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
