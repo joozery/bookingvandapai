@@ -19,7 +19,7 @@ interface Props {
   onDelete: (tripId: string) => Promise<void>;
 }
 
-const DEFAULT_FORM = { name: '', departureDate: '', returnDate: '', durationDays: 3, cost: 1500, pickupPoint: '', departureTime: '06:00', tripPeriod: '', vansCount: 1, vansList: [{ plateNumber: '', driverName: '', driverPhone: '' }] };
+const DEFAULT_FORM = { name: '', departureDate: '', returnDate: '', durationDays: 3, cost: 1500, pickupPoint: '', departureTime: '06:00', tripPeriod: '', durationText: '', vansCount: 1, vansList: [{ plateNumber: '', driverName: '', driverPhone: '' }] };
 
 const calculateEndDate = (startDate: string, days: number) => {
   if (!startDate || !days) return '';
@@ -108,7 +108,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
 
   // Edit States
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
-  const [editForm, setEditForm] = useState({ name: '', departureDate: '', returnDate: '', durationDays: 3, cost: 1500, pickupPoint: '', departureTime: '06:00', tripPeriod: '' });
+  const [editForm, setEditForm] = useState({ name: '', departureDate: '', returnDate: '', durationDays: 3, cost: 1500, pickupPoint: '', departureTime: '06:00', tripPeriod: '', durationText: '' });
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
   const [editImagePreview, setEditImagePreview] = useState<string | null>(null);
 
@@ -144,6 +144,10 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
 
   const startEditing = (trip: Trip) => {
     setEditingTrip(trip);
+    const parts = (trip.tripPeriod || '').split('||');
+    const hasCustomDuration = parts.length > 1;
+    const period = hasCustomDuration ? parts[1] : parts[0];
+    const durationText = hasCustomDuration ? parts[0] : '';
     setEditForm({
       name: trip.name,
       departureDate: trip.departureDate,
@@ -152,7 +156,8 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
       cost: trip.cost,
       pickupPoint: trip.pickupPoint,
       departureTime: trip.departureTime || '06:00',
-      tripPeriod: trip.tripPeriod || '',
+      tripPeriod: period,
+      durationText,
     });
     setEditImageFile(null);
     setEditImagePreview(trip.image || null);
@@ -161,7 +166,8 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingTrip || !editForm.name || !editForm.departureDate || !editForm.pickupPoint) return;
-    await onUpdate(editingTrip.id, { ...editForm, imageFile: editImageFile });
+    const finalTripPeriod = editForm.durationText ? `${editForm.durationText}||${editForm.tripPeriod}` : editForm.tripPeriod;
+    await onUpdate(editingTrip.id, { ...editForm, tripPeriod: finalTripPeriod, imageFile: editImageFile });
     setEditingTrip(null);
     setEditImageFile(null);
     setEditImagePreview(null);
@@ -170,7 +176,8 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.departureDate || !form.pickupPoint) return;
-    await onCreate({ ...form, imageFile });
+    const finalTripPeriod = form.durationText ? `${form.durationText}||${form.tripPeriod}` : form.tripPeriod;
+    await onCreate({ ...form, tripPeriod: finalTripPeriod, imageFile });
     setForm(DEFAULT_FORM);
     setImageFile(null);
     setImagePreview(null);
@@ -289,7 +296,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
                         const date = val;
                         const returnDate = editForm.returnDate && editForm.returnDate >= date ? editForm.returnDate : calculateEndDate(date, editForm.durationDays);
                         const days = calculateDays(date, returnDate);
-                        setEditForm({ ...editForm, departureDate: date, returnDate, durationDays: days, tripPeriod: generatePeriod(date, days) });
+                        setEditForm({ ...editForm, departureDate: date, returnDate, durationDays: days });
                       }} />
                     </div>
                     <div>
@@ -304,7 +311,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
                       <ThaiDatePicker required min={editForm.departureDate} value={editForm.returnDate} onChange={val => {
                         const end = val;
                         const days = calculateDays(editForm.departureDate, end);
-                        setEditForm({ ...editForm, returnDate: end, durationDays: days, tripPeriod: generatePeriod(editForm.departureDate, days) });
+                        setEditForm({ ...editForm, returnDate: end, durationDays: days });
                       }} />
                     </div>
                     <div>
@@ -315,14 +322,12 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-xs font-bold text-slate-700 block mb-1.5">ระยะเวลา (คำนวณอัตโนมัติ)</label>
-                      <div className="h-10 text-sm flex items-center px-3 border border-slate-200 rounded-md bg-slate-50 text-slate-600">
-                        {editForm.durationDays} วัน {Math.max(0, editForm.durationDays - 1)} คืน
-                      </div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1.5">ระยะเวลา (ข้อความแสดงผล)</label>
+                      <Input value={editForm.durationText || ''} onChange={e => setEditForm({ ...editForm, durationText: e.target.value })} placeholder="เช่น 3 วัน 2 คืน" className="h-10 text-sm" />
                     </div>
                     <div>
                       <label className="text-xs font-bold text-slate-700 block mb-1.5">ช่วงเวลาทริป (แสดงผล)</label>
-                      <Input value={editForm.tripPeriod} onChange={e => setEditForm({ ...editForm, tripPeriod: e.target.value })} placeholder="เช่น 20-23 พ.ค. 2569 (ไม่บังคับ)" className="h-10 text-sm" />
+                      <Input value={editForm.tripPeriod} onChange={e => setEditForm({ ...editForm, tripPeriod: e.target.value })} placeholder="เช่น 20-23 พ.ค. 2569" className="h-10 text-sm" />
                     </div>
                   </div>
                   
@@ -406,7 +411,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
                         const date = val;
                         const returnDate = form.returnDate && form.returnDate >= date ? form.returnDate : calculateEndDate(date, form.durationDays);
                         const days = calculateDays(date, returnDate);
-                        setForm({ ...form, departureDate: date, returnDate, durationDays: days, tripPeriod: generatePeriod(date, days) });
+                        setForm({ ...form, departureDate: date, returnDate, durationDays: days });
                       }} />
                     </div>
                     <div>
@@ -421,7 +426,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
                       <ThaiDatePicker required min={form.departureDate} value={form.returnDate} onChange={val => {
                         const end = val;
                         const days = calculateDays(form.departureDate, end);
-                        setForm({ ...form, returnDate: end, durationDays: days, tripPeriod: generatePeriod(form.departureDate, days) });
+                        setForm({ ...form, returnDate: end, durationDays: days });
                       }} />
                     </div>
                     <div>
@@ -432,14 +437,12 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-xs font-bold text-slate-700 block mb-1.5">ระยะเวลา (คำนวณอัตโนมัติ)</label>
-                      <div className="h-10 text-sm flex items-center px-3 border border-slate-200 rounded-md bg-slate-50 text-slate-600">
-                        {form.durationDays} วัน {Math.max(0, form.durationDays - 1)} คืน
-                      </div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1.5">ระยะเวลา (ข้อความแสดงผล)</label>
+                      <Input value={form.durationText || ''} onChange={e => setForm({ ...form, durationText: e.target.value })} placeholder="เช่น 3 วัน 2 คืน" className="h-10 text-sm" />
                     </div>
                     <div>
                       <label className="text-xs font-bold text-slate-700 block mb-1.5">ช่วงเวลาทริป (แสดงผล)</label>
-                      <Input value={form.tripPeriod} onChange={e => setForm({ ...form, tripPeriod: e.target.value })} placeholder="เช่น 20-23 พ.ค. 2569 (ไม่บังคับ)" className="h-10 text-sm" />
+                      <Input value={form.tripPeriod} onChange={e => setForm({ ...form, tripPeriod: e.target.value })} placeholder="เช่น 20-23 พ.ค. 2569" className="h-10 text-sm" />
                     </div>
                   </div>
                   
@@ -616,7 +619,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
                         <h4 className="font-bold text-slate-800 text-base leading-tight group-hover:text-violet-700 transition">{trip.name}</h4>
                         <div className="text-[11px] text-slate-500 font-semibold flex items-center gap-1.5">
                           <Calendar className="w-3.5 h-3.5 text-slate-400" /> {trip.departureDate}
-                          {trip.tripPeriod && <span className="text-slate-400 font-normal">({trip.tripPeriod})</span>}
+                          {trip.tripPeriod && <span className="text-slate-400 font-normal">({trip.tripPeriod.split('||').pop()})</span>}
                         </div>
                       </div>
                       <div className="text-right shrink-0">

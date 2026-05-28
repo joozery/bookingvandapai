@@ -1386,6 +1386,11 @@ function CustomerPageContent() {
                   const seatsLeft = trip.availableSeats ?? 0;
                   const userBookedThisTrip = allUserBookings.some(b => b.tripId === trip.id && b.status !== 'cancelled');
                   const isDisabled = urlTripId !== trip.id || userBookedThisTrip;
+                  const parts = (trip.tripPeriod || '').split('||');
+                  const hasCustomDuration = parts.length > 1;
+                  const period = hasCustomDuration ? parts[1] : parts[0];
+                  const durationText = hasCustomDuration ? parts[0] : (nights > 0 ? `${trip.durationDays} วัน ${nights} คืน` : `ไปเช้าเย็นกลับ (1 วัน)`);
+
                   return (
                     <button
                       key={trip.id}
@@ -1436,9 +1441,9 @@ function CustomerPageContent() {
                           <div className="flex items-center gap-1.5">
                             <Calendar className="w-3 h-3 text-[#4c1d95] shrink-0" />
                             <span className="text-[10px] font-bold text-slate-700">
-                              {nights > 0 ? `${trip.durationDays} วัน ${nights} คืน` : `ไปเช้าเย็นกลับ (1 วัน)`}
-                              {trip.tripPeriod && (
-                                <span className="font-normal text-slate-500 ml-1">({trip.tripPeriod})</span>
+                              {durationText}
+                              {period && (
+                                <span className="font-normal text-slate-500 ml-1">({period})</span>
                               )}
                             </span>
                           </div>
