@@ -34,7 +34,8 @@ export default function LandingPage({ onLoginClick, showHelpCenter, trips = [], 
     contact_phone: '+66 89 123 4567',
     contact_email: 'support@dapaidernpai.com',
     contact_location: 'เชียงใหม่ / กรุงเทพฯ, ประเทศไทย',
-    copyright_year: new Date().getFullYear().toString()
+    copyright_year: new Date().getFullYear().toString(),
+    line_url: 'https://line.me'
   });
   const tripsScrollRef = useRef<HTMLDivElement>(null);
 
@@ -148,13 +149,15 @@ export default function LandingPage({ onLoginClick, showHelpCenter, trips = [], 
 
           {/* Right Action buttons */}
           <div className="flex items-center gap-2 sm:gap-3">
-            <button
-              onClick={showHelpCenter}
+            <a
+              href={settings.line_url || "https://line.me"}
+              target="_blank"
+              rel="noreferrer"
               className="flex items-center gap-1.5 hover:text-[#4c1d95] text-slate-600 transition px-3 py-2 rounded-xl text-xs font-bold hover:bg-slate-100/80"
             >
               <MessageSquare className="w-4 h-4 text-slate-400" />
               <span className="hidden sm:inline">ติดต่อแอดมิน</span>
-            </button>
+            </a>
             <button
               onClick={onLoginClick}
               className="bg-[#06C755] hover:bg-[#05b34c] text-white py-2 px-4 rounded-xl font-black text-xs transition-all duration-300 shadow-md shadow-[#06C755]/10 flex items-center gap-1.5 active:scale-97 group relative overflow-hidden"
@@ -453,14 +456,16 @@ export default function LandingPage({ onLoginClick, showHelpCenter, trips = [], 
             </div>
 
             <div className="relative z-10 pt-1 flex justify-center">
-              <button
-                onClick={showHelpCenter}
+              <a
+                href={settings.line_url || "https://line.me"}
+                target="_blank"
+                rel="noreferrer"
                 className="bg-[#06C755] hover:bg-[#05b34c] text-white py-3 px-8 rounded-xl font-black text-xxs sm:text-xs transition-all duration-300 shadow-md shadow-[#06C755]/10 flex items-center gap-2 active:scale-97 group relative overflow-hidden"
               >
                 <MessageSquare className="w-4 h-4 text-white" />
                 <span>ติดต่อแอดมินเพื่อขอลิ้งก์จองเลย</span>
                 <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-              </button>
+              </a>
             </div>
 
             <div className="relative z-10 flex justify-center items-center gap-5 text-purple-300/80 font-bold text-[9px] sm:text-[10px]">
