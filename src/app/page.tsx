@@ -1371,7 +1371,7 @@ function CustomerPageContent() {
             ) : trips.length === 0 ? (
               <p className="text-xs text-slate-400 text-center py-4">ไม่พบทริปเดินทางในขณะนี้</p>
             ) : (
-              <div className="flex flex-col gap-3 max-h-[640px] overflow-y-auto pr-1.5 scrollbar-thin">
+              <div className="flex flex-col gap-3 overflow-y-auto pr-1.5 scrollbar-thin" style={{ maxHeight: '60vh', WebkitOverflowScrolling: 'touch' }}>
                 {!urlTripId && (
                   <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl mb-1 flex items-start gap-2">
                     <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
@@ -1422,7 +1422,7 @@ function CustomerPageContent() {
                       <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-black/20" />
 
                       {/* Content on top of gradient */}
-                      <div className="relative h-full flex items-center justify-between px-3 py-3 gap-2">
+                      <div className="relative h-full flex items-center justify-between px-4 py-4 pb-5 gap-2">
                         {/* Left: trip info */}
                         <div className="flex-1 min-w-0 space-y-1">
                           <h3 className="text-white font-black text-sm leading-tight drop-shadow line-clamp-1">{trip.name}</h3>
