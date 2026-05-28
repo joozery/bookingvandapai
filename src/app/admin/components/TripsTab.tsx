@@ -624,7 +624,11 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
                       </div>
                       <div className="text-right shrink-0">
                         <div className="text-lg font-black text-violet-600 tracking-tight">฿{trip.cost.toLocaleString()}</div>
-                        <div className="text-[10px] text-slate-400 font-semibold">{trip.durationDays} วัน</div>
+                        <div className="text-[10px] text-slate-400 font-semibold">
+                          {(trip.tripPeriod || '').includes('||') 
+                            ? (trip.tripPeriod || '').split('||')[0] 
+                            : `${Math.max(1, trip.durationDays - 1)} วัน`}
+                        </div>
                       </div>
                     </div>
                     
