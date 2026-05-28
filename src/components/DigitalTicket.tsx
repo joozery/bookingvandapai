@@ -3,6 +3,8 @@ import React, { forwardRef } from 'react';
 import { Calendar, ArrowRight, User, Phone, RefreshCw, Compass, Armchair, MapPin, Clock } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 
+import { coverBase64 } from '@/lib/coverBase64';
+
 export interface BookingData {
   id: string;
   tripName?: string;
@@ -45,29 +47,13 @@ const getReturnDate = (depDate: string, days: number) => {
 };
 
 export const DigitalTicket = forwardRef<HTMLDivElement, Props>(({ booking, htmlId }, ref) => {
-  const [coverUrl, setCoverUrl] = React.useState<string>('/cover.png');
-
-  React.useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const url = `${window.location.origin}/cover.png`;
-    fetch(url)
-      .then(r => r.blob())
-      .then(blob => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setCoverUrl(reader.result as string);
-        };
-        reader.readAsDataURL(blob);
-      })
-      .catch(console.error);
-  }, []);
 
   return (
     <div id={htmlId} ref={ref} className="relative w-full max-w-[380px] mx-auto bg-white overflow-hidden shadow-xl border border-slate-100 flex flex-col font-sans select-none">
                 
                 {/* 1. Header Section (Gradient purple with climber silhouette moon & birds) */}
                 <div className="relative w-full h-[120px] overflow-hidden shrink-0 bg-[#250A4E]">
-                  {coverUrl && <img src={coverUrl} alt="Cover Background" className="absolute inset-0 w-full h-full object-cover" />}
+                  <img src={coverBase64} alt="Cover Background" className="absolute inset-0 w-full h-full object-cover" />
                 </div>
 
                 {/* Perforation 1 (Header to Body) */}
