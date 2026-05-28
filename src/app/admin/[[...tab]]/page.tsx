@@ -90,6 +90,7 @@ export default function AdminPage() {
 
   const handleSetTab = (tab: TabId) => {
     setActiveTab(tab);
+    setMobileSidebar(false);
     router.push(tab === 'dashboard' ? '/admin' : `/admin/${tab}`);
   };
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -503,8 +504,22 @@ export default function AdminPage() {
         {/* ── Top Header ───────────────────────────────────────────────────── */}
         <header className="h-14 bg-white border-b border-slate-200 shadow-sm flex items-center px-4 gap-3 shrink-0">
           <button
-            onClick={() => { setSidebarOpen(!sidebarOpen); setMobileSidebar(!mobileSidebar); }}
-            className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500 transition shrink-0"
+            onClick={() => {
+              if (window.innerWidth < 1024) {
+                setMobileSidebar(!mobileSidebar);
+                if (!mobileSidebar) setSidebarOpen(true);
+              } else {
+                setSidebarOpen(!sidebarOpen);
+              }
+            }}
+            className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500 transition shrink-0 lg:hidden"
+          >
+            <Menu className="w-4 h-4" />
+          </button>
+          
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="hidden lg:flex w-8 h-8 rounded-lg hover:bg-slate-100 items-center justify-center text-slate-500 transition shrink-0"
           >
             <Menu className="w-4 h-4" />
           </button>
