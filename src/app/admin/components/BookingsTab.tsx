@@ -369,11 +369,6 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
         {/* Footer */}
         <div className="border-t border-slate-100 px-4 py-3 flex items-center justify-between text-xs text-slate-500">
           <span>แสดง {filtered.length} จาก {bookings.length} รายการ</span>
-          <div className="flex items-center gap-2">
-            <select className="border border-slate-200 rounded-lg px-2 py-1 text-xs bg-white">
-              <option>แสดงหน้าละ 10</option>
-            </select>
-          </div>
         </div>
       </div>
     </div>
