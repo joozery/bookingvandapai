@@ -22,6 +22,7 @@ import DashboardOverview from '../components/DashboardOverview';
 import UsersTab, { type UserRecord } from '../components/UsersTab';
 import AdminsTab from '../components/AdminsTab';
 import InsuranceTab from '../components/InsuranceTab';
+import ProfileTab from '../components/ProfileTab';
 import type { Trip, Van, Booking } from '../components/types';
 
 // ── Nav structure ─────────────────────────────────────────────────────────────
@@ -47,7 +48,7 @@ const NAV = [
   { id: 'settings', label: 'ตั้งค่า', icon: Settings },
 ] as const;
 
-type TabId = 'dashboard' | 'bookings' | 'trips' | 'vans' | 'checkin' | 'pending' | 'users' | 'staff' | 'insurance';
+type TabId = 'dashboard' | 'bookings' | 'trips' | 'vans' | 'checkin' | 'pending' | 'users' | 'staff' | 'insurance' | 'profile';
 
 export default function AdminPage() {
   const { data: session, status } = useSession();
@@ -555,16 +556,26 @@ export default function AdminPage() {
 
             {/* User avatar */}
             <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
-              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-purple-700 flex items-center justify-center text-white text-[10px] font-black">
-                {session?.user?.name ? session.user.name.charAt(0).toUpperCase() : 'A'}
-              </div>
-              <div className="hidden sm:block">
-                <div className="text-[11px] font-bold text-slate-800 leading-none">{session?.user?.name || 'แอดมิน'}</div>
-                <div className="text-[9px] text-slate-400 font-semibold">{(session?.user as any)?.role === 'admin' ? 'Admin' : 'System'}</div>
-              </div>
+              <button 
+                onClick={() => handleSetTab('profile')}
+                className="flex items-center gap-2 hover:bg-slate-50 p-1 rounded-xl transition"
+                title="โปรไฟล์ส่วนตัว"
+              >
+                <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-violet-500 to-purple-700 flex items-center justify-center text-white text-[10px] font-black border border-slate-200 shadow-sm">
+                  {(session?.user as any)?.avatarUrl ? (
+                    <img src={(session?.user as any).avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    session?.user?.name ? session.user.name.charAt(0).toUpperCase() : 'A'
+                  )}
+                </div>
+                <div className="hidden sm:block text-left">
+                  <div className="text-[11px] font-bold text-slate-800 leading-none">{session?.user?.name || 'แอดมิน'}</div>
+                  <div className="text-[9px] text-slate-400 font-semibold mt-0.5">{(session?.user as any)?.role === 'admin' ? 'Admin' : 'System'}</div>
+                </div>
+              </button>
               <button 
                 onClick={() => signOut({ callbackUrl: '/' })} 
-                className="ml-2 w-7 h-7 rounded flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition" 
+                className="ml-2 w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition" 
                 title="ออกจากระบบ"
               >
                 <LogOut className="w-4 h-4" />
@@ -599,14 +610,16 @@ export default function AdminPage() {
                  activeTab === 'vans'      ? 'จัดการรถตู้' :
                  activeTab === 'users'     ? 'จัดการลูกทริป' : 
                  activeTab === 'staff'     ? 'ทีมงาน / ผู้จัด' : 
-                 activeTab === 'insurance' ? 'ประกันการเดินทาง' : 'QR Check-in'}
+                 activeTab === 'insurance' ? 'ประกันการเดินทาง' : 
+                 activeTab === 'profile'   ? 'โปรไฟล์ส่วนตัว' : 'QR Check-in'}
               </h1>
               <p className="text-xs text-slate-400 mt-0.5">
                 {activeTab === 'dashboard' ? 'ภาพรวมการจองและการเดินทาง' :
                  activeTab === 'bookings'  ? 'จัดการคำขอจองและอนุมัติที่นั่ง' :
                  activeTab === 'users'     ? 'ดูและจัดการข้อมูลลูกทริปทั้งหมด' : 
                  activeTab === 'insurance' ? 'จัดการข้อมูลและประวัติประกันการเดินทางของลูกทริป' : 
-                 activeTab === 'staff'     ? 'จัดการสิทธิแอดมิน, ผู้จัด และกำหนดการบล็อก' : ''}
+                 activeTab === 'staff'     ? 'จัดการสิทธิแอดมิน, ผู้จัด และกำหนดการบล็อก' : 
+                 activeTab === 'profile'   ? 'ตั้งค่าบัญชี รูปโปรไฟล์ และรหัสผ่าน' : ''}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -693,15 +706,10 @@ export default function AdminPage() {
                   onUpdateVan={handleUpdateVan} onUpdateStaff={handleUpdateStaff}
                 />
               )}
-              {activeTab === 'users' && (
-                <UsersTab users={users} onRefresh={() => fetchAll(true)} />
-              )}
-              {activeTab === 'staff' && (
-                <AdminsTab />
-              )}
-              {activeTab === 'insurance' && (
-                <InsuranceTab trips={trips} bookings={bookings} onRefresh={() => fetchAll(true)} />
-              )}
+              {activeTab === 'users'     && <UsersTab users={users} onRefresh={() => fetchAll()} />}
+              {activeTab === 'staff'     && <AdminsTab />}
+              {activeTab === 'insurance' && <InsuranceTab trips={trips} bookings={bookings} onRefresh={() => fetchAll()} />}
+              {activeTab === 'profile'   && <ProfileTab />}
               {activeTab === 'checkin' && (
                 <CheckinTab trips={trips} bookings={bookings} onCheckIn={handleCheckIn} />
               )}

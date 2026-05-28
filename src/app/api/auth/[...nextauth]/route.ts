@@ -41,21 +41,26 @@ const authOptions = {
           name: admin.name,
           username: admin.username,
           role: "admin",
-          permissions: admin.permissions || []
+          permissions: admin.permissions || [],
+          avatarUrl: admin.avatar_url
         };
       }
     })
   ],
   callbacks: {
-    async jwt({ token, account, user }: any) {
+    async jwt({ token, account, user, trigger, session }: any) {
+      if (trigger === "update" && session) {
+        token.name = session.name ?? token.name;
+        token.avatarUrl = session.avatarUrl ?? token.avatarUrl;
+      }
       if (account) {
         if (user) {
           token.id = user.id;
           token.role = user.role;
           token.permissions = user.permissions;
-          token.name = user.name; // expose name to JWT
-          token.username = user.username; // expose username to JWT
-          token.name = user.name; // <-- add name to JWT
+          token.name = user.name;
+          token.username = user.username;
+          token.avatarUrl = user.avatarUrl;
         }
         token.accessToken = account.access_token;
       }
@@ -66,9 +71,9 @@ const authOptions = {
         session.user.id = token.id;
         session.user.role = token.role;
         session.user.permissions = token.permissions || [];
-        session.user.name = token.name; // expose name to session
-        session.user.username = token.username; // expose username to session
-        session.user.name = token.name; // <-- expose name to session
+        session.user.name = token.name;
+        session.user.username = token.username;
+        session.user.avatarUrl = token.avatarUrl;
       }
       return session;
     },

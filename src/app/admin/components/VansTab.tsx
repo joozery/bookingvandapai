@@ -61,7 +61,7 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
   return (
     <div className="space-y-6">
       {/* ── Toolbar ────────────────────────────────────── */}
-      <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="bg-white rounded-xl shadow-sm p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div>
           <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
             <Bus className="w-5 h-5 text-violet-600" />
@@ -73,7 +73,7 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
         <select
           value={selectedTripId}
           onChange={(e) => setSelectedTripId(e.target.value)}
-          className="w-full sm:w-64 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-violet-500 font-medium text-slate-700"
+          className="w-full sm:w-64 px-3 py-2 bg-slate-50 border-0 ring-1 ring-slate-100 rounded-lg text-sm focus:outline-none focus:ring-violet-500 font-medium text-slate-700"
         >
           <option value="all">ทุกทริป (ทั้งหมด)</option>
           {trips.map(t => (
@@ -93,7 +93,7 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
         const tripVans = vans.filter(v => v.tripId === trip.id);
 
         return (
-          <Card key={trip.id} className="border-slate-200 shadow-sm">
+          <Card key={trip.id} className="border-none shadow-sm bg-white">
             <CardHeader className="border-b border-slate-100 pb-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -123,7 +123,7 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
                 const availableCount = customerSeats.filter(s => s.status === 'available').length;
 
                 return (
-                  <div key={van.id} className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3 hover:border-violet-100 transition">
+                  <div key={van.id} className="bg-slate-50/70 rounded-xl p-4 space-y-3 hover:bg-slate-100/50 transition">
 
                     {/* Van Header */}
                     <div className="flex items-start justify-between gap-2">

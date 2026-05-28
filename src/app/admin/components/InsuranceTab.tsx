@@ -119,8 +119,8 @@ export default function InsuranceTab({ trips, onRefresh }: Props) {
         `"${p.tripName || ''}"`,
         `"${p.vanNumber || 1}"`,
         `"${p.seatLabel || ''}"`,
-        // ใช้ \t นำหน้าเพื่อให้ Excel มองเป็น Text และไม่แปลงเป็นเลขยกกำลัง
-        `"\t${p.nationalId || ''}"`,
+        // ใช้ format =\"เลขบัตร\" เพื่อบังคับให้ Excel มองเป็นข้อความและไม่ปัดเป็นเลขยกกำลัง โดยไม่มีตัวอักษรขยะนำหน้า
+        p.nationalId ? `="${p.nationalId}"` : '""',
         `"${p.birthDate ? new Date(p.birthDate).toLocaleDateString('th-TH') : ''}"`
       ];
       csvRows.push(row.join(','));
