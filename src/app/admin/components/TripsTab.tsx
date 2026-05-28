@@ -64,6 +64,40 @@ const generatePeriod = (dateStr: string, days: number) => {
   }
 };
 
+const ThaiDatePicker = ({ value, onChange, required, min, max }: { value: string, onChange: (val: string) => void, required?: boolean, min?: string, max?: string }) => {
+  const displayValue = React.useMemo(() => {
+    if (!value) return '';
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return '';
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear() + 543;
+    return `${day}/${month}/${year}`;
+  }, [value]);
+
+  return (
+    <div className="relative w-full h-10">
+      {/* Background visual layer */}
+      <div className="absolute inset-0 flex items-center justify-between px-3 bg-white border border-slate-200 rounded-lg pointer-events-none z-0">
+        <span className={displayValue ? 'text-slate-800 text-sm' : 'text-slate-400 text-sm'}>
+          {displayValue || 'วว/ดด/ปปปป'}
+        </span>
+        <Calendar className="w-4 h-4 text-slate-400" />
+      </div>
+      {/* Invisible native date input on top */}
+      <input
+        type="date"
+        required={required}
+        min={min}
+        max={max}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+      />
+    </div>
+  );
+};
+
 export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: Props) {
   const [form, setForm] = useState(DEFAULT_FORM);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -251,12 +285,12 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs font-bold text-slate-700 block mb-1.5">วันออกเดินทาง <span className="text-rose-500">*</span></label>
-                      <Input required type="date" value={editForm.departureDate} onChange={e => {
-                        const date = e.target.value;
+                      <ThaiDatePicker required value={editForm.departureDate} onChange={val => {
+                        const date = val;
                         const returnDate = editForm.returnDate && editForm.returnDate >= date ? editForm.returnDate : calculateEndDate(date, editForm.durationDays);
                         const days = calculateDays(date, returnDate);
                         setEditForm({ ...editForm, departureDate: date, returnDate, durationDays: days, tripPeriod: generatePeriod(date, days) });
-                      }} className="h-10 text-sm" />
+                      }} />
                     </div>
                     <div>
                       <label className="text-xs font-bold text-slate-700 block mb-1.5">เวลาออกเดินทาง <span className="text-rose-500">*</span></label>
@@ -267,11 +301,11 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs font-bold text-slate-700 block mb-1.5">วันเดินทางกลับ <span className="text-rose-500">*</span></label>
-                      <Input required type="date" min={editForm.departureDate} value={editForm.returnDate} onChange={e => {
-                        const end = e.target.value;
+                      <ThaiDatePicker required min={editForm.departureDate} value={editForm.returnDate} onChange={val => {
+                        const end = val;
                         const days = calculateDays(editForm.departureDate, end);
                         setEditForm({ ...editForm, returnDate: end, durationDays: days, tripPeriod: generatePeriod(editForm.departureDate, days) });
-                      }} className="h-10 text-sm" />
+                      }} />
                     </div>
                     <div>
                       <label className="text-xs font-bold text-slate-700 block mb-1.5">ค่าบริการ (บาท) <span className="text-rose-500">*</span></label>
@@ -368,12 +402,12 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs font-bold text-slate-700 block mb-1.5">วันออกเดินทาง <span className="text-rose-500">*</span></label>
-                      <Input required type="date" value={form.departureDate} onChange={e => {
-                        const date = e.target.value;
+                      <ThaiDatePicker required value={form.departureDate} onChange={val => {
+                        const date = val;
                         const returnDate = form.returnDate && form.returnDate >= date ? form.returnDate : calculateEndDate(date, form.durationDays);
                         const days = calculateDays(date, returnDate);
                         setForm({ ...form, departureDate: date, returnDate, durationDays: days, tripPeriod: generatePeriod(date, days) });
-                      }} className="h-10 text-sm" />
+                      }} />
                     </div>
                     <div>
                       <label className="text-xs font-bold text-slate-700 block mb-1.5">เวลาออกเดินทาง <span className="text-rose-500">*</span></label>
@@ -384,11 +418,11 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs font-bold text-slate-700 block mb-1.5">วันเดินทางกลับ <span className="text-rose-500">*</span></label>
-                      <Input required type="date" min={form.departureDate} value={form.returnDate} onChange={e => {
-                        const end = e.target.value;
+                      <ThaiDatePicker required min={form.departureDate} value={form.returnDate} onChange={val => {
+                        const end = val;
                         const days = calculateDays(form.departureDate, end);
                         setForm({ ...form, returnDate: end, durationDays: days, tripPeriod: generatePeriod(form.departureDate, days) });
-                      }} className="h-10 text-sm" />
+                      }} />
                     </div>
                     <div>
                       <label className="text-xs font-bold text-slate-700 block mb-1.5">ค่าบริการ (บาท) <span className="text-rose-500">*</span></label>
