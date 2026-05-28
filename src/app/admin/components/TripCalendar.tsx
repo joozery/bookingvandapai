@@ -111,7 +111,8 @@ export default function TripCalendar({ trips, vans }: { trips: Trip[]; vans: Van
       </div>
 
       {/* Calendar Grid */}
-      <div className="grid grid-cols-7 gap-px bg-slate-100 border border-slate-200 rounded-xl overflow-hidden">
+      <div className="overflow-x-auto border border-slate-200 rounded-xl shadow-sm bg-slate-100">
+        <div className="grid grid-cols-7 gap-px min-w-[700px]">
         {/* Day headers */}
         {['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัส', 'ศุกร์', 'เสาร์'].map(day => (
           <div key={day} className="bg-slate-50 py-2.5 text-center text-[11px] font-black text-slate-500 uppercase tracking-wide">
@@ -188,6 +189,7 @@ export default function TripCalendar({ trips, vans }: { trips: Trip[]; vans: Van
             </div>
           );
         })}
+        </div>
       </div>
     </div>
   );
