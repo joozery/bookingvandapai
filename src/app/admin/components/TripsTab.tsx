@@ -1,7 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Compass, Plus, FileText, Trash2, Calendar, Clock, MapPin, Info, Link2, Check, ArrowLeft, Image as ImageIcon, Pencil, Search } from 'lucide-react';
+import React, { useState, useCallback } from 'react';
+import Cropper from 'react-easy-crop';
+import getCroppedImg from '@/lib/cropImage';
+import { Compass, Plus, FileText, Trash2, Calendar, Clock, MapPin, Info, Link2, Check, ArrowLeft, Image as ImageIcon, Pencil, Search, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,7 +19,24 @@ interface Props {
   onDelete: (tripId: string) => Promise<void>;
 }
 
-const DEFAULT_FORM = { name: '', departureDate: '', durationDays: 3, cost: 1500, pickupPoint: '', departureTime: '06:00', tripPeriod: '', plateNumber: '', driverName: '', driverPhone: '' };
+const DEFAULT_FORM = { name: '', departureDate: '', returnDate: '', durationDays: 3, cost: 1500, pickupPoint: '', departureTime: '06:00', tripPeriod: '', plateNumber: '', driverName: '', driverPhone: '' };
+
+const calculateEndDate = (startDate: string, days: number) => {
+  if (!startDate || !days) return '';
+  const d = new Date(startDate);
+  if (isNaN(d.getTime())) return '';
+  d.setDate(d.getDate() + (Number(days) - 1));
+  return d.toISOString().split('T')[0];
+};
+
+const calculateDays = (start: string, end: string) => {
+  if(!start || !end) return 0;
+  const d1 = new Date(start);
+  const d2 = new Date(end);
+  if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return 0;
+  const diffTime = d2.getTime() - d1.getTime();
+  return Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1); 
+};
 
 const generatePeriod = (dateStr: string, days: number) => {
   if (!dateStr || !days) return '';
@@ -55,15 +74,46 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
 
   // Edit States
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
-  const [editForm, setEditForm] = useState({ name: '', departureDate: '', durationDays: 3, cost: 1500, pickupPoint: '', departureTime: '06:00', tripPeriod: '' });
+  const [editForm, setEditForm] = useState({ name: '', departureDate: '', returnDate: '', durationDays: 3, cost: 1500, pickupPoint: '', departureTime: '06:00', tripPeriod: '' });
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
   const [editImagePreview, setEditImagePreview] = useState<string | null>(null);
+
+  // Cropper States
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+  const [showCropper, setShowCropper] = useState(false);
+  const [originalImage, setOriginalImage] = useState<string | null>(null);
+  const [originalFileName, setOriginalFileName] = useState<string>('');
+
+  const onCropComplete = useCallback((_croppedArea: any, croppedAreaPixels: any) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  }, []);
+
+  const handleCroppedImage = async () => {
+    try {
+      if (!originalImage || !croppedAreaPixels) return;
+      const croppedImageBlob = await getCroppedImg(originalImage, croppedAreaPixels);
+      const croppedFile = new File([croppedImageBlob], originalFileName || 'cover.jpg', { type: 'image/jpeg' });
+      if (editingTrip) {
+        setEditImageFile(croppedFile);
+        setEditImagePreview(URL.createObjectURL(croppedFile));
+      } else {
+        setImageFile(croppedFile);
+        setImagePreview(URL.createObjectURL(croppedFile));
+      }
+      setShowCropper(false);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const startEditing = (trip: Trip) => {
     setEditingTrip(trip);
     setEditForm({
       name: trip.name,
       departureDate: trip.departureDate,
+      returnDate: calculateEndDate(trip.departureDate, trip.durationDays),
       durationDays: trip.durationDays,
       cost: trip.cost,
       pickupPoint: trip.pickupPoint,
@@ -96,8 +146,11 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setImageFile(file);
-      setImagePreview(URL.createObjectURL(file));
+      setOriginalFileName(file.name);
+      setOriginalImage(URL.createObjectURL(file));
+      setShowCropper(true);
+      // Reset input so the same file can be selected again
+      e.target.value = '';
     }
   };
 
@@ -156,7 +209,9 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
                       <label className="text-xs font-bold text-slate-700 block mb-1.5">วันออกเดินทาง <span className="text-rose-500">*</span></label>
                       <Input required type="date" value={editForm.departureDate} onChange={e => {
                         const date = e.target.value;
-                        setEditForm({ ...editForm, departureDate: date, tripPeriod: generatePeriod(date, editForm.durationDays) });
+                        const returnDate = editForm.returnDate && editForm.returnDate >= date ? editForm.returnDate : calculateEndDate(date, editForm.durationDays);
+                        const days = calculateDays(date, returnDate);
+                        setEditForm({ ...editForm, departureDate: date, returnDate, durationDays: days, tripPeriod: generatePeriod(date, days) });
                       }} className="h-10 text-sm" />
                     </div>
                     <div>
@@ -167,10 +222,11 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-xs font-bold text-slate-700 block mb-1.5">ระยะเวลา (วัน) <span className="text-rose-500">*</span></label>
-                      <Input required type="number" min={1} max={30} value={editForm.durationDays} onChange={e => {
-                        const days = Number(e.target.value);
-                        setEditForm({ ...editForm, durationDays: days, tripPeriod: generatePeriod(editForm.departureDate, days) });
+                      <label className="text-xs font-bold text-slate-700 block mb-1.5">วันเดินทางกลับ <span className="text-rose-500">*</span></label>
+                      <Input required type="date" min={editForm.departureDate} value={editForm.returnDate} onChange={e => {
+                        const end = e.target.value;
+                        const days = calculateDays(editForm.departureDate, end);
+                        setEditForm({ ...editForm, returnDate: end, durationDays: days, tripPeriod: generatePeriod(editForm.departureDate, days) });
                       }} className="h-10 text-sm" />
                     </div>
                     <div>
@@ -179,9 +235,17 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
                     </div>
                   </div>
 
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 block mb-1.5">ช่วงเวลาทริป (แสดงผล)</label>
-                    <Input value={editForm.tripPeriod} onChange={e => setEditForm({ ...editForm, tripPeriod: e.target.value })} placeholder="เช่น 20-23 พ.ค. 2569 (ไม่บังคับ)" className="h-10 text-sm" />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1.5">ระยะเวลา (คำนวณอัตโนมัติ)</label>
+                      <div className="h-10 text-sm flex items-center px-3 border border-slate-200 rounded-md bg-slate-50 text-slate-600">
+                        {editForm.durationDays} วัน {Math.max(0, editForm.durationDays - 1)} คืน
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1.5">ช่วงเวลาทริป (แสดงผล)</label>
+                      <Input value={editForm.tripPeriod} onChange={e => setEditForm({ ...editForm, tripPeriod: e.target.value })} placeholder="เช่น 20-23 พ.ค. 2569 (ไม่บังคับ)" className="h-10 text-sm" />
+                    </div>
                   </div>
                   
                   <div>
@@ -193,13 +257,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
                 <div className="space-y-4">
                   <label className="text-xs font-bold text-slate-700 block mb-1.5">รูปภาพหน้าปกทริป</label>
                   <label className="w-full h-48 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50 flex flex-col items-center justify-center text-slate-400 hover:bg-slate-100 hover:border-violet-300 transition cursor-pointer group relative overflow-hidden">
-                    <input type="file" accept="image/jpeg, image/png, image/webp" className="hidden" onChange={e => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        setEditImageFile(file);
-                        setEditImagePreview(URL.createObjectURL(file));
-                      }
-                    }} />
+                    <input type="file" accept="image/jpeg, image/png, image/webp" className="hidden" onChange={handleFileChange} />
                     {editImagePreview ? (
                       <img src={editImagePreview} alt="Preview" className="w-full h-full object-cover absolute inset-0" />
                     ) : (
@@ -267,7 +325,9 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
                       <label className="text-xs font-bold text-slate-700 block mb-1.5">วันออกเดินทาง <span className="text-rose-500">*</span></label>
                       <Input required type="date" value={form.departureDate} onChange={e => {
                         const date = e.target.value;
-                        setForm({ ...form, departureDate: date, tripPeriod: generatePeriod(date, form.durationDays) });
+                        const returnDate = form.returnDate && form.returnDate >= date ? form.returnDate : calculateEndDate(date, form.durationDays);
+                        const days = calculateDays(date, returnDate);
+                        setForm({ ...form, departureDate: date, returnDate, durationDays: days, tripPeriod: generatePeriod(date, days) });
                       }} className="h-10 text-sm" />
                     </div>
                     <div>
@@ -278,10 +338,11 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-xs font-bold text-slate-700 block mb-1.5">ระยะเวลา (วัน) <span className="text-rose-500">*</span></label>
-                      <Input required type="number" min={1} max={30} value={form.durationDays} onChange={e => {
-                        const days = Number(e.target.value);
-                        setForm({ ...form, durationDays: days, tripPeriod: generatePeriod(form.departureDate, days) });
+                      <label className="text-xs font-bold text-slate-700 block mb-1.5">วันเดินทางกลับ <span className="text-rose-500">*</span></label>
+                      <Input required type="date" min={form.departureDate} value={form.returnDate} onChange={e => {
+                        const end = e.target.value;
+                        const days = calculateDays(form.departureDate, end);
+                        setForm({ ...form, returnDate: end, durationDays: days, tripPeriod: generatePeriod(form.departureDate, days) });
                       }} className="h-10 text-sm" />
                     </div>
                     <div>
@@ -290,9 +351,17 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
                     </div>
                   </div>
 
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 block mb-1.5">ช่วงเวลาทริป (แสดงผล)</label>
-                    <Input value={form.tripPeriod} onChange={e => setForm({ ...form, tripPeriod: e.target.value })} placeholder="เช่น 20-23 พ.ค. 2569 (ไม่บังคับ)" className="h-10 text-sm" />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1.5">ระยะเวลา (คำนวณอัตโนมัติ)</label>
+                      <div className="h-10 text-sm flex items-center px-3 border border-slate-200 rounded-md bg-slate-50 text-slate-600">
+                        {form.durationDays} วัน {Math.max(0, form.durationDays - 1)} คืน
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1.5">ช่วงเวลาทริป (แสดงผล)</label>
+                      <Input value={form.tripPeriod} onChange={e => setForm({ ...form, tripPeriod: e.target.value })} placeholder="เช่น 20-23 พ.ค. 2569 (ไม่บังคับ)" className="h-10 text-sm" />
+                    </div>
                   </div>
                   
                   <div>
@@ -488,6 +557,50 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
               </Card>
             );
           })}
+        </div>
+      )}
+
+      {showCropper && originalImage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between p-4 border-b border-slate-100">
+              <h3 className="font-bold text-slate-800">ครอปรูปภาพหน้าปก</h3>
+              <button onClick={() => setShowCropper(false)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-500 transition">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="relative w-full h-[400px] bg-slate-900">
+              <Cropper
+                image={originalImage}
+                crop={crop}
+                zoom={zoom}
+                aspect={16 / 9}
+                onCropChange={setCrop}
+                onCropComplete={onCropComplete}
+                onZoomChange={setZoom}
+              />
+            </div>
+            
+            <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-4">
+              <div className="flex-1 flex items-center gap-3">
+                <span className="text-xs font-bold text-slate-500">ซูม:</span>
+                <input
+                  type="range"
+                  value={zoom}
+                  min={1}
+                  max={3}
+                  step={0.1}
+                  aria-labelledby="Zoom"
+                  onChange={(e) => setZoom(Number(e.target.value))}
+                  className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-violet-600"
+                />
+              </div>
+              <Button onClick={handleCroppedImage} className="bg-violet-600 hover:bg-violet-700 text-white font-bold px-6 h-10 gap-2 shadow-sm">
+                <Check className="w-4 h-4" /> ใช้รูปภาพนี้
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -134,8 +134,19 @@ export default function AdminPage() {
 
   useEffect(() => {
     fetchAll();
-    const id = setInterval(() => fetchAll(true), 2500);
-    return () => clearInterval(id);
+    
+    if (status !== 'authenticated' || (session?.user as any)?.role !== 'admin') return;
+
+    const channel = supabase
+      .channel('admin-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'vans' }, () => fetchAll(true))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => fetchAll(true))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'trips' }, () => fetchAll(true))
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [session, status]);
 
   if (status === 'loading') {

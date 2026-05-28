@@ -6,6 +6,7 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { QRCodeSVG } from 'qrcode.react';
 import DigitalTicket from '@/components/DigitalTicket';
+import { supabase } from '@/lib/supabase';
 import { toPng } from 'html-to-image';
 import {
   Compass,
@@ -215,20 +216,34 @@ function CustomerPageContent() {
     }
   }, [lineUser, selectedTrip, hasProfile]);
 
-  // 3. Realtime polling for Seats & Bookings of the selected Van
+  // 3. Realtime subscription for Seats & Bookings of the selected Van
   useEffect(() => {
     if (!selectedTrip) return;
 
     fetchVans(selectedTrip.id);
 
-    const interval = setInterval(() => {
-      fetchVansSilent(selectedTrip.id);
-      if (lineUser) {
-        fetchUserBookingSilent();
-      }
-    }, 2000); // Poll every 2 seconds
+    const channel = supabase
+      .channel('frontend-vans')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'vans' },
+        () => {
+          fetchVansSilent(selectedTrip.id);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'bookings' },
+        () => {
+          fetchVansSilent(selectedTrip.id);
+          if (lineUser) fetchUserBookingSilent();
+        }
+      )
+      .subscribe();
 
-    return () => clearInterval(interval);
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [selectedTrip, selectedVan?.id, lineUser]);
 
   useEffect(() => {
