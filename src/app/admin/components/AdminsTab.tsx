@@ -111,7 +111,8 @@ export default function AdminsTab() {
     if (!editingId && !formPassword) return alert('กรุณากรอกรหัสผ่าน');
 
     try {
-      let finalAvatarUrl = avatarPreview;
+      let finalAvatarUrl = formUsername ? null : avatarPreview; // For edit, default to old url. Wait, avatarPreview might be a blob if not handled correctly. But if avatarFile is null, avatarPreview is the old string URL.
+
       if (avatarFile) {
         const fileExt = avatarFile.name.split('.').pop();
         const fileName = `admin-${Date.now()}.${fileExt}`;
@@ -121,10 +122,16 @@ export default function AdminsTab() {
           .from('images')
           .upload(filePath, avatarFile);
 
-        if (!uploadError) {
-          const { data: urlData } = supabase.storage.from('images').getPublicUrl(filePath);
-          finalAvatarUrl = urlData.publicUrl;
+        if (uploadError) {
+          return alert('อัปโหลดรูปภาพไม่สำเร็จ: ' + uploadError.message);
         }
+
+        const { data: urlData } = supabase.storage.from('images').getPublicUrl(filePath);
+        finalAvatarUrl = urlData.publicUrl;
+      } else {
+        // If no new file is selected, but we are editing, we keep the old URL (which is passed in admin.avatar_url).
+        // Since avatarPreview could be null (if cleared), we can just use avatarPreview.
+        finalAvatarUrl = avatarPreview;
       }
 
       const url = editingId ? `/api/admins/${editingId}` : '/api/admins';
@@ -262,6 +269,7 @@ export default function AdminsTab() {
                         setAvatarFile(file);
                         setAvatarPreview(URL.createObjectURL(file));
                       }
+                      e.target.value = '';
                     }}
                   />
                   <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">

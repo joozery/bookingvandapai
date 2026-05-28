@@ -45,6 +45,7 @@ export default function ProfileTab() {
       alert('อัปโหลดรูปภาพไม่สำเร็จ');
     } finally {
       setUploading(false);
+      e.target.value = '';
     }
   };
 
