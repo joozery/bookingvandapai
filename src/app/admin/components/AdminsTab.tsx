@@ -188,13 +188,7 @@ export default function AdminsTab() {
           <p className="text-xs text-slate-400 mt-1">กำหนดสิทธิแอดมินและการเข้าถึงเมนูต่างๆ</p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => fetchAdmins()}
-            className="w-10 h-10 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition"
-            title="รีเฟรช"
-          >
-            <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
-          </button>
+
           {!showForm && (
             <button
               onClick={() => setShowForm(true)}

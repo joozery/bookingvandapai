@@ -319,13 +319,6 @@ export default function UsersTab({ users, onRefresh }: Props) {
             )}
           </button>
 
-          <button
-            id="users-refresh-btn"
-            onClick={onRefresh}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-600 text-sm font-semibold hover:bg-slate-50 transition"
-          >
-            รีเฟรช
-          </button>
         </div>
 
         {/* Filter Panel */}
