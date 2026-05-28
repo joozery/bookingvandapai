@@ -30,7 +30,7 @@ const NAV = [
   { id: 'trips',     label: 'จัดการทริป', icon: Compass },
   { id: 'vans',      label: 'จัดการรถ', icon: Bus },
   {
-    id: 'bookings', label: 'การจองและผู้โดยสาร', icon: Users,
+    id: 'bookings', label: 'การจองและลูกทริป', icon: Users,
     children: [
       { id: 'bookings',  label: 'รายการจองทั้งหมด' },
       { id: 'pending',   label: 'รออนุมัติเปลี่ยนที่นั่ง' },
@@ -240,7 +240,7 @@ export default function AdminPage() {
     try {
       const res = await fetch('/api/bookings', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ...data, lineUserId:`line-manual-${Date.now()}`, lineUserName:`แอดมินสร้างแทน (${data.nickname})`, lineUserProfilePic:'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80' }) });
       const d   = await res.json();
-      if (d.success) { if (d.booking) await handleApprove(d.booking.id); showToast('success', 'เพิ่มผู้โดยสารสำเร็จ!'); fetchAll(true); }
+      if (d.success) { if (d.booking) await handleApprove(d.booking.id); showToast('success', 'เพิ่มลูกทริปสำเร็จ!'); fetchAll(true); }
       else showToast('error', d.error);
     } catch { showToast('error', 'เกิดข้อผิดพลาด'); }
   };
@@ -594,7 +594,7 @@ export default function AdminPage() {
             <div>
               <h1 className="text-lg font-black text-slate-800">
                 {activeTab === 'dashboard' ? 'แดชบอร์ด' :
-                 activeTab === 'bookings'  ? 'การจองและผู้โดยสาร' :
+                 activeTab === 'bookings'  ? 'การจองและลูกทริป' :
                  activeTab === 'pending'   ? 'รออนุมัติเปลี่ยนที่นั่ง' :
                  activeTab === 'trips'     ? 'จัดการทริป' :
                  activeTab === 'vans'      ? 'จัดการรถตู้' :
@@ -606,7 +606,7 @@ export default function AdminPage() {
                 {activeTab === 'dashboard' ? 'ภาพรวมการจองและการเดินทาง' :
                  activeTab === 'bookings'  ? 'จัดการคำขอจองและอนุมัติที่นั่ง' :
                  activeTab === 'users'     ? 'ดูและจัดการข้อมูลสมาชิกทั้งหมด' : 
-                 activeTab === 'insurance' ? 'จัดการข้อมูลและประวัติประกันการเดินทางของผู้โดยสาร' : 
+                 activeTab === 'insurance' ? 'จัดการข้อมูลและประวัติประกันการเดินทางของลูกทริป' : 
                  activeTab === 'staff'     ? 'จัดการสิทธิแอดมิน, ผู้จัด และกำหนดการบล็อก' : ''}
               </p>
             </div>

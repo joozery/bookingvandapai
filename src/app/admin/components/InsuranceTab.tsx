@@ -120,7 +120,7 @@ export default function InsuranceTab({ trips, onRefresh }: Props) {
             <Lock className="w-5 h-5 text-violet-600" />
             ข้อมูลประกันการเดินทาง
           </h2>
-          <p className="text-xs text-slate-400 mt-1">จัดการข้อมูลเลขบัตรประชาชนและวันเกิดของผู้โดยสาร</p>
+          <p className="text-xs text-slate-400 mt-1">จัดการข้อมูลเลขบัตรประชาชนและวันเกิดของลูกทริป</p>
         </div>
 
         <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
@@ -153,14 +153,14 @@ export default function InsuranceTab({ trips, onRefresh }: Props) {
         {passengers.length === 0 ? (
           <div className="py-20 flex flex-col items-center justify-center text-slate-400 gap-2">
             <Lock className="w-10 h-10 opacity-20" />
-            <p className="font-semibold text-sm">ไม่พบรายชื่อผู้โดยสาร</p>
+            <p className="font-semibold text-sm">ไม่พบรายชื่อลูกทริป</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-100">
-                  <th className="px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-wider">ชื่อผู้โดยสาร / ที่นั่ง</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-wider">ชื่อลูกทริป / ที่นั่ง</th>
                   <th className="px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-wider">ทริป & รถ</th>
                   <th className="px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-wider">เลขบัตรประชาชน (13 หลัก)</th>
                   <th className="px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-wider">วันเดือนปีเกิด (ค.ศ.)</th>

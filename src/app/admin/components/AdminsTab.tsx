@@ -20,7 +20,7 @@ const AVAILABLE_PERMISSIONS = [
   { id: 'dashboard', label: 'แดชบอร์ด (Dashboard)' },
   { id: 'trips', label: 'จัดการทริป (Trips)' },
   { id: 'vans', label: 'จัดการรถ (Vans)' },
-  { id: 'bookings', label: 'การจองและผู้โดยสาร (Bookings)' },
+  { id: 'bookings', label: 'การจองและลูกทริป (Bookings)' },
   { id: 'checkin', label: 'QR Check-in (Check-in)' },
   { id: 'users', label: 'จัดการสมาชิก (Users)' },
   { id: 'staff', label: 'ทีมงาน / ผู้จัด (Admin Roles)' },

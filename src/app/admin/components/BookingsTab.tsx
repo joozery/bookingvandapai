@@ -56,7 +56,7 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
   };
 
   const exportCSV = () => {
-    const headers = ['ผู้โดยสาร', 'ชื่อเล่น', 'เบอร์โทร', 'ทริป', 'รถคันที่', 'ที่นั่ง', 'สถานะ'];
+    const headers = ['ลูกทริป', 'ชื่อเล่น', 'เบอร์โทร', 'ทริป', 'รถคันที่', 'ที่นั่ง', 'สถานะ'];
     
     const rows = filtered.map(b => {
       const trip = trips.find(t => t.id === b.tripId);
@@ -103,19 +103,19 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
         <div>
           <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
             <Users className="w-4 h-4 text-violet-600" />
-            การจองและผู้โดยสารทั้งหมด
+            การจองและลูกทริปทั้งหมด
           </h2>
-          <p className="text-xs text-slate-500 mt-0.5">ดูข้อมูลผู้โดยสาร จัดการการจอง และตรวจสอบสถานะ</p>
+          <p className="text-xs text-slate-500 mt-0.5">ดูข้อมูลลูกทริป จัดการการจอง และตรวจสอบสถานะ</p>
         </div>
         <Button size="sm" onClick={() => { setShowForm(!showForm); if (trips.length > 0) setTripSel(trips[0].id); }} className="bg-violet-600 hover:bg-violet-700 text-white text-xs h-8 gap-1.5 shadow-sm">
-          <span className="text-base leading-none">+</span> เพิ่มผู้โดยสารใหม่
+          <span className="text-base leading-none">+</span> เพิ่มลูกทริปใหม่
         </Button>
       </div>
 
       {/* Manual Form */}
       {showForm && (
         <div className="bg-violet-50 border border-violet-200 rounded-xl p-5 animate-in slide-in-from-top-2 duration-200">
-          <h3 className="text-sm font-bold text-violet-800 mb-4">เพิ่มผู้โดยสารด้วยตนเอง</h3>
+          <h3 className="text-sm font-bold text-violet-800 mb-4">เพิ่มลูกทริปด้วยตนเอง</h3>
           <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="text-[10px] font-bold text-slate-500 block mb-1">ทริป</label>
@@ -148,7 +148,7 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
             </div>
             <div>
               <label className="text-[10px] font-bold text-slate-500 block mb-1">เบอร์โทร</label>
-              <Input required type="tel" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} placeholder="089-xxx-xxxx" className="h-8 text-xs" />
+              <Input required type="tel" maxLength={10} value={form.phone} onChange={e => setForm({...form, phone: e.target.value.replace(/\D/g, '')})} placeholder="089xxxxxxx" className="h-8 text-xs" />
             </div>
             <div className="sm:col-span-3">
               <label className="text-[10px] font-bold text-slate-500 block mb-1">หมายเหตุ</label>
@@ -190,7 +190,7 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
           <table className="min-w-full text-xs">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50">
-                {['ผู้โดยสาร', 'ทริป', 'รถ / เบาะที่นั่ง', 'เบอร์โทร', 'สถานะการจอง', 'Check-in', 'จัดการ'].map(h => (
+                {['ลูกทริป', 'ทริป', 'รถ / เบาะที่นั่ง', 'เบอร์โทร', 'สถานะการจอง', 'Check-in', 'จัดการ'].map(h => (
                   <th key={h} className="px-4 py-3 text-left font-bold text-[10px] uppercase tracking-wider text-slate-500 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -224,9 +224,9 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
                       <div className="flex items-center gap-2.5 min-w-0">
                         <img src={b.lineUserProfilePic} alt="" className="w-8 h-8 rounded-full border border-slate-200 object-cover shrink-0" />
                         <div className="min-w-0">
-                          <div className="font-bold text-slate-800 truncate max-w-[140px]">{b.fullName}</div>
+                          <div className="font-bold text-slate-800 whitespace-normal break-words">{b.fullName}</div>
                           <div className="text-[10px] text-slate-400 flex items-center gap-1">
-                            <span className="truncate max-w-[100px]">ชื่อเล่น: {b.nickname}</span>
+                            <span className="whitespace-normal break-words">ชื่อเล่น: {b.nickname}</span>
                             {isChange && (
                               <span className="inline-flex items-center gap-0.5 text-[9px] font-black px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200 shrink-0">
                                 <RefreshCw className="w-2.5 h-2.5" />
