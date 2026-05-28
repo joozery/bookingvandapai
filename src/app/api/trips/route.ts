@@ -53,19 +53,24 @@ export async function POST(request: Request) {
     const { error: tripError } = await supabase.from('trips').insert([newTrip]);
     if (tripError) throw tripError;
 
-    // Auto-create Van 1 for this trip
-    const newVanId = `van-${newTripId}-1`;
-    const newVan = {
-      id: newVanId,
-      tripId: newTripId,
-      vanNumber: 1,
-      plateNumber: plateNumber || 'ยังไม่ได้ระบุ',
-      driverName: driverName || 'ยังไม่ได้ระบุ',
-      driverPhone: driverPhone || 'ยังไม่ได้ระบุ',
-      seats: generateSeatsForVan(newVanId),
-    };
+    // Auto-create Vans for this trip
+    const vansCount = Math.max(1, Number(body.vansCount || 1));
+    const vansToInsert = [];
+    
+    for (let i = 1; i <= vansCount; i++) {
+      const newVanId = `van-${newTripId}-${i}`;
+      vansToInsert.push({
+        id: newVanId,
+        tripId: newTripId,
+        vanNumber: i,
+        plateNumber: i === 1 ? (plateNumber || 'ยังไม่ได้ระบุ') : 'ยังไม่ได้ระบุ',
+        driverName: i === 1 ? (driverName || 'ยังไม่ได้ระบุ') : 'ยังไม่ได้ระบุ',
+        driverPhone: i === 1 ? (driverPhone || 'ยังไม่ได้ระบุ') : 'ยังไม่ได้ระบุ',
+        seats: generateSeatsForVan(newVanId),
+      });
+    }
 
-    const { error: vanError } = await supabase.from('vans').insert([newVan]);
+    const { error: vanError } = await supabase.from('vans').insert(vansToInsert);
     if (vanError) throw vanError;
 
     return NextResponse.json({ success: true, trip: newTrip });

@@ -89,6 +89,41 @@ interface Booking {
   note?: string;
 }
 
+const ThaiDatePicker = ({ value, onChange, required, id, className }: { value: string, onChange: (val: string) => void, required?: boolean, id?: string, className?: string }) => {
+  const displayValue = React.useMemo(() => {
+    if (!value) return '';
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return '';
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear() + 543;
+    return `${day}/${month}/${year}`;
+  }, [value]);
+
+  return (
+    <div className="relative w-full">
+      {/* Background visual layer */}
+      <div className={cn("absolute inset-0 flex items-center justify-between px-3 pointer-events-none z-0", className)}>
+        <span className={displayValue ? 'text-slate-800' : 'text-slate-400'}>
+          {displayValue || 'วว/ดด/ปปปป'}
+        </span>
+        <Calendar className="w-4 h-4 text-slate-400" />
+      </div>
+      {/* Invisible native date input on top */}
+      <input
+        type="date"
+        id={id}
+        required={required}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+      />
+      {/* Placeholder div to maintain height based on className */}
+      <div className={cn("opacity-0 pointer-events-none", className)}>Placeholder</div>
+    </div>
+  );
+};
+
 const MOCK_LINE_USERS = [
   {
     userId: 'line-user-1',
@@ -1032,7 +1067,13 @@ function CustomerPageContent() {
                   <label htmlFor="birthDate" className="block text-[11px] font-bold text-slate-500 mb-1">
                     วันเดือนปีเกิด (Date of Birth) <span className="text-red-500">*</span>
                   </label>
-                  <input type="date" id="birthDate" required value={birthDate} onChange={(e) => setBirthDate(e.target.value)} className="w-full bg-slate-50 border border-slate-200 focus:border-[#4c1d95] rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200" />
+                  <ThaiDatePicker 
+                    id="birthDate" 
+                    required 
+                    value={birthDate} 
+                    onChange={setBirthDate} 
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-[#4c1d95] rounded-xl py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200" 
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">

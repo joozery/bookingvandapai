@@ -14,12 +14,12 @@ import type { Trip, Van } from './types';
 interface Props {
   trips: Trip[];
   vans: Van[];
-  onCreate: (form: { name: string; departureDate: string; durationDays: number; cost: number; pickupPoint: string; departureTime: string; tripPeriod: string; plateNumber: string; driverName: string; driverPhone: string; imageFile?: File | null }) => Promise<void>;
+  onCreate: (form: { name: string; departureDate: string; durationDays: number; cost: number; pickupPoint: string; departureTime: string; tripPeriod: string; plateNumber: string; driverName: string; driverPhone: string; vansCount: number; imageFile?: File | null }) => Promise<void>;
   onUpdate: (id: string, form: { name: string; departureDate: string; durationDays: number; cost: number; pickupPoint: string; departureTime: string; tripPeriod: string; imageFile?: File | null }) => Promise<void>;
   onDelete: (tripId: string) => Promise<void>;
 }
 
-const DEFAULT_FORM = { name: '', departureDate: '', returnDate: '', durationDays: 3, cost: 1500, pickupPoint: '', departureTime: '06:00', tripPeriod: '', plateNumber: '', driverName: '', driverPhone: '' };
+const DEFAULT_FORM = { name: '', departureDate: '', returnDate: '', durationDays: 3, cost: 1500, pickupPoint: '', departureTime: '06:00', tripPeriod: '', plateNumber: '', driverName: '', driverPhone: '', vansCount: 1 };
 
 const calculateEndDate = (startDate: string, days: number) => {
   if (!startDate || !days) return '';
