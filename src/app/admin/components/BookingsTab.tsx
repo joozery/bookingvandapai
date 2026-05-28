@@ -220,7 +220,7 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
                 return (
                   <tr key={b.id} className="hover:bg-slate-50/60 transition-colors group">
                     {/* Passenger */}
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 min-w-[200px]">
                       <div className="flex items-center gap-2.5 min-w-0">
                         <img src={b.lineUserProfilePic} alt="" className="w-8 h-8 rounded-full border border-slate-200 object-cover shrink-0" />
                         <div className="min-w-0">
@@ -238,7 +238,7 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
                       </div>
                     </td>
                     {/* Trip */}
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 min-w-[150px]">
                       <div className="font-semibold text-slate-700 max-w-[160px] truncate text-[11px]" title={b.tripName}>{b.tripName}</div>
                       <div className="text-[10px] text-slate-400">{trips.find(t=>t.id===b.tripId)?.departureDate || ''}{trips.find(t=>t.id===b.tripId)?.durationDays ? ` (${trips.find(t=>t.id===b.tripId)?.durationDays} วัน)` : ''}</div>
                     </td>
