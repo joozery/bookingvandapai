@@ -247,8 +247,8 @@ export default function LandingPage({ onLoginClick, showHelpCenter, trips = [], 
           {/* Headline - Big & Elegant yet minimal */}
           <div className="space-y-3 sm:space-y-4 max-w-3xl">
             <h1 className="text-2xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.25] sm:leading-[1.15] drop-shadow-md px-2 sm:px-0">
-              ก้าวสู่การเดินทางที่ง่ายดาย <br />
-              กับทริป <span className="bg-gradient-to-r from-purple-400 via-indigo-300 to-violet-300 bg-clip-text text-transparent drop-shadow-sm inline-block mt-1 sm:mt-0">“ด่าไป เดินไป”</span>
+              ก่อนกรอกข้อมูล อ่านให้มันดีก่อนนะอีห่าจิก <br />
+              <span className="bg-gradient-to-r from-purple-400 via-indigo-300 to-violet-300 bg-clip-text text-transparent drop-shadow-sm inline-block mt-1 sm:mt-0">กูขี้เกียจแก้</span>
             </h1>
             <p className="text-xs sm:text-base md:text-lg text-slate-200/90 leading-relaxed max-w-2xl mx-auto font-medium tracking-wide drop-shadow-sm px-4 sm:px-0 mt-2 sm:mt-4">
               {slides[currentSlide].subtitle}
