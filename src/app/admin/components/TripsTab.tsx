@@ -14,12 +14,12 @@ import type { Trip, Van } from './types';
 interface Props {
   trips: Trip[];
   vans: Van[];
-  onCreate: (form: { name: string; departureDate: string; durationDays: number; cost: number; pickupPoint: string; departureTime: string; tripPeriod: string; plateNumber: string; driverName: string; driverPhone: string; vansCount: number; imageFile?: File | null }) => Promise<void>;
+  onCreate: (form: { name: string; departureDate: string; durationDays: number; cost: number; pickupPoint: string; departureTime: string; tripPeriod: string; vansCount: number; vansList: { plateNumber: string; driverName: string; driverPhone: string; }[]; imageFile?: File | null }) => Promise<void>;
   onUpdate: (id: string, form: { name: string; departureDate: string; durationDays: number; cost: number; pickupPoint: string; departureTime: string; tripPeriod: string; imageFile?: File | null }) => Promise<void>;
   onDelete: (tripId: string) => Promise<void>;
 }
 
-const DEFAULT_FORM = { name: '', departureDate: '', returnDate: '', durationDays: 3, cost: 1500, pickupPoint: '', departureTime: '06:00', tripPeriod: '', plateNumber: '', driverName: '', driverPhone: '', vansCount: 1 };
+const DEFAULT_FORM = { name: '', departureDate: '', returnDate: '', durationDays: 3, cost: 1500, pickupPoint: '', departureTime: '06:00', tripPeriod: '', vansCount: 1, vansList: [{ plateNumber: '', driverName: '', driverPhone: '' }] };
 
 const calculateEndDate = (startDate: string, days: number) => {
   if (!startDate || !days) return '';
@@ -473,30 +473,56 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
                         <label className="text-xs font-bold text-violet-700">จำนวนรถตู้:</label>
                         <select 
                           value={form.vansCount} 
-                          onChange={e => setForm({ ...form, vansCount: Number(e.target.value) })}
+                          onChange={e => {
+                            const count = Number(e.target.value);
+                            const newList = [...form.vansList];
+                            if (count > newList.length) {
+                              for (let i = newList.length; i < count; i++) newList.push({ plateNumber: '', driverName: '', driverPhone: '' });
+                            } else {
+                              newList.length = count;
+                            }
+                            setForm({ ...form, vansCount: count, vansList: newList });
+                          }}
                           className="bg-transparent text-sm font-bold text-violet-900 focus:outline-none"
                         >
                           {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => <option key={n} value={n}>{n} คัน</option>)}
                         </select>
                       </div>
                     </div>
-                    <p className="text-[11px] text-violet-600 mb-4">ระบบจะสร้างรถตู้ตามจำนวนที่ระบุให้ทันที คุณสามารถใส่ข้อมูลรถคันที่ 1 ไว้ล่วงหน้าได้ (แก้ทีหลังได้ในเมนูจัดการรถ)</p>
+                    <p className="text-[11px] text-violet-600 mb-4">ระบบจะสร้างรถตู้ตามจำนวนที่ระบุ และคุณสามารถตั้งค่าป้ายทะเบียนหรือคนขับให้แต่ละคันได้เลย</p>
                     
-                    <div className="space-y-3">
-                      <div>
-                        <label className="text-[10px] font-bold text-violet-700 block mb-1">ป้ายทะเบียนรถ</label>
-                        <Input value={form.plateNumber} onChange={e => setForm({ ...form, plateNumber: e.target.value })} placeholder="เช่น นข 9999 กรุงเทพ" className="h-8 text-xs bg-white border-violet-200" />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="text-[10px] font-bold text-violet-700 block mb-1">ชื่อคนขับ</label>
-                          <Input value={form.driverName} onChange={e => setForm({ ...form, driverName: e.target.value })} placeholder="เช่น พี่ณัฐ" className="h-8 text-xs bg-white border-violet-200" />
+                    <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                      {form.vansList.map((van, idx) => (
+                        <div key={idx} className="p-3 bg-white border border-violet-100 rounded-lg space-y-3">
+                          <h5 className="text-[11px] font-bold text-violet-800 border-b border-violet-50 pb-1.5">รถคันที่ {idx + 1}</h5>
+                          <div>
+                            <label className="text-[10px] font-bold text-violet-700 block mb-1">ป้ายทะเบียนรถ</label>
+                            <Input value={van.plateNumber} onChange={e => {
+                              const newList = [...form.vansList];
+                              newList[idx].plateNumber = e.target.value;
+                              setForm({ ...form, vansList: newList });
+                            }} placeholder="เช่น นข 9999 กรุงเทพ" className="h-8 text-xs bg-slate-50 border-slate-200" />
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-[10px] font-bold text-violet-700 block mb-1">ชื่อคนขับ</label>
+                              <Input value={van.driverName} onChange={e => {
+                                const newList = [...form.vansList];
+                                newList[idx].driverName = e.target.value;
+                                setForm({ ...form, vansList: newList });
+                              }} placeholder="เช่น พี่ณัฐ" className="h-8 text-xs bg-slate-50 border-slate-200" />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-bold text-violet-700 block mb-1">เบอร์โทรคนขับ</label>
+                              <Input value={van.driverPhone} onChange={e => {
+                                const newList = [...form.vansList];
+                                newList[idx].driverPhone = e.target.value;
+                                setForm({ ...form, vansList: newList });
+                              }} placeholder="เช่น 081-234-5678" className="h-8 text-xs bg-slate-50 border-slate-200" />
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <label className="text-[10px] font-bold text-violet-700 block mb-1">เบอร์โทรคนขับ</label>
-                          <Input value={form.driverPhone} onChange={e => setForm({ ...form, driverPhone: e.target.value })} placeholder="เช่น 081-234-5678" className="h-8 text-xs bg-white border-violet-200" />
-                        </div>
-                      </div>
+                      ))}
                     </div>
                   </div>
                 </div>

@@ -55,17 +55,20 @@ export async function POST(request: Request) {
 
     // Auto-create Vans for this trip
     const vansCount = Math.max(1, Number(body.vansCount || 1));
+    const vansList = body.vansList || [];
     const vansToInsert = [];
     
     for (let i = 1; i <= vansCount; i++) {
       const newVanId = `van-${newTripId}-${i}`;
+      const vanData = vansList[i - 1] || {};
+      
       vansToInsert.push({
         id: newVanId,
         tripId: newTripId,
         vanNumber: i,
-        plateNumber: i === 1 ? (plateNumber || 'ยังไม่ได้ระบุ') : 'ยังไม่ได้ระบุ',
-        driverName: i === 1 ? (driverName || 'ยังไม่ได้ระบุ') : 'ยังไม่ได้ระบุ',
-        driverPhone: i === 1 ? (driverPhone || 'ยังไม่ได้ระบุ') : 'ยังไม่ได้ระบุ',
+        plateNumber: vanData.plateNumber || 'ยังไม่ได้ระบุ',
+        driverName: vanData.driverName || 'ยังไม่ได้ระบุ',
+        driverPhone: vanData.driverPhone || 'ยังไม่ได้ระบุ',
         seats: generateSeatsForVan(newVanId),
       });
     }
