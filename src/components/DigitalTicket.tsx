@@ -57,30 +57,9 @@ export const DigitalTicket = forwardRef<HTMLDivElement, Props>(({ booking, htmlI
     
     const img = new Image();
     img.onload = () => {
-      // Clear canvas with background color first
-      ctx.fillStyle = '#250A4E';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      
-      // Calculate object-contain dimensions
-      const canvasRatio = canvas.width / canvas.height;
-      const imgRatio = img.width / img.height;
-      let drawWidth, drawHeight, offsetX, offsetY;
-
-      if (imgRatio > canvasRatio) {
-        // Image is wider than canvas. Fit width.
-        drawWidth = canvas.width;
-        drawHeight = img.height * (canvas.width / img.width);
-        offsetX = 0;
-        offsetY = (canvas.height - drawHeight) / 2;
-      } else {
-        // Image is taller than canvas. Fit height.
-        drawHeight = canvas.height;
-        drawWidth = img.width * (canvas.height / img.height);
-        offsetX = (canvas.width - drawWidth) / 2;
-        offsetY = 0;
-      }
-
-      ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+      // Draw image to fill canvas completely. 
+      // Since canvas aspect ratio matches image, it will not distort or crop.
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
     };
     img.src = coverBase64;
   }, []);
@@ -89,8 +68,8 @@ export const DigitalTicket = forwardRef<HTMLDivElement, Props>(({ booking, htmlI
     <div id={htmlId} ref={ref} className="relative w-full max-w-[380px] mx-auto bg-white overflow-hidden shadow-xl border border-slate-100 flex flex-col font-sans select-none">
                 
                 {/* 1. Header Section (Gradient purple with climber silhouette moon & birds) */}
-                <div className="relative w-full h-[120px] overflow-hidden shrink-0 bg-[#250A4E]">
-                  <canvas ref={canvasRef} width={760} height={240} className="absolute inset-0 w-full h-full object-contain" />
+                <div className="relative w-full aspect-[800/296] overflow-hidden shrink-0 bg-[#250A4E]">
+                  <canvas ref={canvasRef} width={800} height={296} className="absolute inset-0 w-full h-full" />
                 </div>
 
                 {/* Perforation 1 (Header to Body) */}
