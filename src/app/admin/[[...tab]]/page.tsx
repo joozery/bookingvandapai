@@ -585,6 +585,7 @@ export default function AdminPage() {
           {/* Permission Check for Content */}
           {(session?.user as any)?.role === 'admin' && 
            (session?.user as any)?.username !== 'admin' && 
+           activeTab !== 'profile' && 
            !(activeTab === 'pending' 
              ? (session?.user as any)?.permissions?.includes('bookings') || (session?.user as any)?.permissions?.includes('pending')
              : (session?.user as any)?.permissions?.includes(activeTab)) ? (
