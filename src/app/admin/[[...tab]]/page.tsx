@@ -120,7 +120,14 @@ export default function AdminPage() {
   const fetchAll = async (silent = false) => {
     try {
       if (!silent) setLoading(true);
-      const [tr, vr, br, ur, sr] = await Promise.all([fetch('/api/trips'), fetch('/api/vans'), fetch('/api/bookings'), fetch('/api/users'), fetch('/api/settings')]);
+      const tstamp = Date.now();
+      const [tr, vr, br, ur, sr] = await Promise.all([
+        fetch(`/api/trips?_t=${tstamp}`), 
+        fetch(`/api/vans?_t=${tstamp}`), 
+        fetch(`/api/bookings?_t=${tstamp}`), 
+        fetch(`/api/users?_t=${tstamp}`), 
+        fetch(`/api/settings?_t=${tstamp}`)
+      ]);
       const [td, vd, bd, ud, sd] = await Promise.all([tr.json(), vr.json(), br.json(), ur.json(), sr.json()]);
       const t = td.success ? td.trips : trips;
       const v = vd.success ? vd.vans  : vans;
