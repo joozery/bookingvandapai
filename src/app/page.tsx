@@ -104,11 +104,11 @@ const ThaiDatePicker = ({ value, onChange, required, id, className }: { value: s
   return (
     <div className="relative w-full">
       {/* Background visual layer */}
-      <div className={cn("absolute inset-0 flex items-center justify-between px-3 pointer-events-none z-0", className)}>
+      <div className={cn("flex items-center justify-between px-3 pointer-events-none", className)}>
         <span className={displayValue ? 'text-slate-800' : 'text-slate-400'}>
           {displayValue || 'วว/ดด/ปปปป'}
         </span>
-        <Calendar className="w-4 h-4 text-slate-400" />
+        <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
       </div>
       {/* Invisible native date input on top */}
       <input
@@ -117,10 +117,9 @@ const ThaiDatePicker = ({ value, onChange, required, id, className }: { value: s
         required={required}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 m-0 p-0 block"
+        style={{ WebkitAppearance: 'none' }}
       />
-      {/* Placeholder div to maintain height based on className */}
-      <div className={cn("opacity-0 pointer-events-none", className)}>Placeholder</div>
     </div>
   );
 };
