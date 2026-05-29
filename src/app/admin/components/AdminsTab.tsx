@@ -212,7 +212,7 @@ export default function AdminsTab() {
   return (
     <div className="space-y-4">
       {/* ── Toolbar ──────────────────────────────────────────────────────── */}
-      <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
             <Lock className="w-5 h-5 text-violet-600" />
@@ -391,86 +391,143 @@ export default function AdminsTab() {
             <p className="font-semibold text-sm">ยังไม่มีแอดมินในระบบ</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-100">
-                  <th className="px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-wider">แอดมิน</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-wider">Username</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-wider">สิทธิเข้าถึง</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-wider hidden md:table-cell">สร้างเมื่อ</th>
-                  <th className="px-4 py-3 w-20"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {admins.map((admin) => {
-                  return (
-                    <tr key={admin.id} className={cn("hover:bg-slate-50/50 transition group", admin.isBlocked && "bg-rose-50/30")}>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <div className={cn("w-9 h-9 rounded-full overflow-hidden flex items-center justify-center text-white font-bold text-xs shrink-0 border border-slate-200", admin.isBlocked ? "bg-rose-400" : "bg-gradient-to-br from-violet-500 to-purple-600")}>
-                            {admin.avatar_url ? (
-                              <img src={admin.avatar_url} alt="" className="w-full h-full object-cover" />
+          <>
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-100">
+                    <th className="px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-wider">แอดมิน</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-wider">Username</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-wider">สิทธิเข้าถึง</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-wider">สร้างเมื่อ</th>
+                    <th className="px-4 py-3 w-20"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {admins.map((admin) => {
+                    return (
+                      <tr key={admin.id} className={cn("hover:bg-slate-50/50 transition group", admin.isBlocked && "bg-rose-50/30")}>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className={cn("w-9 h-9 rounded-full overflow-hidden flex items-center justify-center text-white font-bold text-xs shrink-0 border border-slate-200", admin.isBlocked ? "bg-rose-400" : "bg-gradient-to-br from-violet-500 to-purple-600")}>
+                              {admin.avatar_url ? (
+                                <img src={admin.avatar_url} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                admin.name.charAt(0).toUpperCase()
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-bold text-slate-800 text-xs truncate">
+                                {admin.name}
+                              </p>
+                              {admin.isBlocked && (
+                                <span className="inline-block mt-0.5 text-[9px] font-bold text-rose-600 bg-rose-100 px-1.5 rounded-sm">BLOCKED</span>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="font-mono text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">{admin.username}</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap gap-1">
+                            {admin.permissions?.length > 0 ? (
+                              admin.permissions.map(p => {
+                                const pLabel = AVAILABLE_PERMISSIONS.find(ap => ap.id === p)?.label.split(' ')[0] || p;
+                                return (
+                                  <span key={p} className="inline-block text-[9px] font-bold text-violet-700 bg-violet-100 border border-violet-200 px-1.5 py-0.5 rounded-md">
+                                    {pLabel}
+                                  </span>
+                                );
+                              })
                             ) : (
-                              admin.name.charAt(0).toUpperCase()
+                              <span className="text-xs text-slate-400">ไม่มีสิทธิเข้าถึง</span>
                             )}
                           </div>
-                          <div className="min-w-0">
-                            <p className="font-bold text-slate-800 text-xs truncate">
-                              {admin.name}
-                            </p>
-                            {admin.isBlocked && (
-                              <span className="inline-block mt-0.5 text-[9px] font-bold text-rose-600 bg-rose-100 px-1.5 rounded-sm">BLOCKED</span>
-                            )}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-slate-400">
+                          {new Date(admin.createdAt).toLocaleDateString('th-TH')}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => handleEdit(admin)}
+                              className="w-7 h-7 rounded hover:bg-slate-200 flex items-center justify-center text-slate-500 transition"
+                              title="แก้ไข"
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(admin.id)}
+                              className="w-7 h-7 rounded hover:bg-rose-100 flex items-center justify-center text-rose-500 transition"
+                              title="ลบ"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="font-mono text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">{admin.username}</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-1">
-                          {admin.permissions?.length > 0 ? (
-                            admin.permissions.map(p => {
-                              const pLabel = AVAILABLE_PERMISSIONS.find(ap => ap.id === p)?.label.split(' ')[0] || p;
-                              return (
-                                <span key={p} className="inline-block text-[9px] font-bold text-violet-700 bg-violet-100 border border-violet-200 px-1.5 py-0.5 rounded-md">
-                                  {pLabel}
-                                </span>
-                              );
-                            })
-                          ) : (
-                            <span className="text-xs text-slate-400">ไม่มีสิทธิเข้าถึง</span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="md:hidden divide-y divide-slate-100">
+              {admins.map((admin) => (
+                <div key={admin.id} className={cn("p-4 flex flex-col gap-3", admin.isBlocked && "bg-rose-50/30")}>
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={cn("w-10 h-10 rounded-full overflow-hidden flex items-center justify-center text-white font-bold text-sm shrink-0 border border-slate-200", admin.isBlocked ? "bg-rose-400" : "bg-gradient-to-br from-violet-500 to-purple-600")}>
+                        {admin.avatar_url ? (
+                          <img src={admin.avatar_url} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          admin.name.charAt(0).toUpperCase()
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-bold text-slate-800 text-sm">{admin.name}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="font-mono text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">{admin.username}</span>
+                          {admin.isBlocked && (
+                            <span className="text-[9px] font-bold text-rose-600 bg-rose-100 px-1.5 py-0.5 rounded-sm">BLOCKED</span>
                           )}
                         </div>
-                      </td>
-                      <td className="px-4 py-3 hidden md:table-cell text-xs text-slate-400">
-                        {new Date(admin.createdAt).toLocaleDateString('th-TH')}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={() => handleEdit(admin)}
-                            className="w-7 h-7 rounded hover:bg-slate-200 flex items-center justify-center text-slate-500 transition"
-                            title="แก้ไข"
-                          >
-                            <Edit className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(admin.id)}
-                            className="w-7 h-7 rounded hover:bg-rose-100 flex items-center justify-center text-rose-500 transition"
-                            title="ลบ"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => handleEdit(admin)} className="p-2 rounded-lg bg-slate-50 text-slate-500 hover:bg-slate-100 transition">
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => handleDelete(admin.id)} className="p-2 rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-100 transition">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 mb-1.5">สิทธิเข้าถึง:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {admin.permissions?.length > 0 ? (
+                        admin.permissions.map(p => {
+                          const pLabel = AVAILABLE_PERMISSIONS.find(ap => ap.id === p)?.label.split(' ')[0] || p;
+                          return (
+                            <span key={p} className="inline-block text-[10px] font-bold text-violet-700 bg-violet-100 border border-violet-200 px-2 py-0.5 rounded-md">
+                              {pLabel}
+                            </span>
+                          );
+                        })
+                      ) : (
+                        <span className="text-xs text-slate-400">ไม่มีสิทธิเข้าถึง</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
     </div>
