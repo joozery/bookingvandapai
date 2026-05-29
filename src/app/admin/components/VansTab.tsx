@@ -28,7 +28,7 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
   const filteredTrips = selectedTripId === 'all' ? trips : trips.filter(t => t.id === selectedTripId);
 
   const renderAdminSeat = (s: Seat | undefined) => {
-    if (!s) return <div className="w-8 h-8" />;
+    if (!s) return <div className="w-14 h-10" />;
     const isDriver = s.type === 'driver';
     const isStaff = s.type === 'staff';
     const isAvail = s.status === 'available';
@@ -37,11 +37,21 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
     if (isDriver) { bg = 'bg-slate-800 text-white border-slate-950'; label = 'D'; }
     else if (isStaff) { bg = 'bg-violet-200 text-violet-800 border-violet-400'; }
     else if (isAvail) { bg = 'bg-emerald-100 text-emerald-700 border-emerald-400 shadow-sm'; }
-    else { bg = 'bg-slate-200 text-slate-400 border-slate-300 line-through'; }
+    else { bg = 'bg-slate-200 border-slate-300'; } // Removed line-through for better readability of names
+
+    const hasName = s.passengerName && s.type === 'customer';
+    const displayLabel = hasName ? (
+      <div className="flex flex-col items-center justify-center leading-tight w-full">
+        <span className="text-[9px] font-black opacity-50">{label}</span>
+        <span className="text-[9px] truncate w-full text-center px-0.5 text-slate-700">{s.passengerName}</span>
+      </div>
+    ) : (
+      <span className={cn(hasName ? "" : "text-[11px]", !isAvail && !isDriver && !isStaff ? "text-slate-400 line-through" : "")}>{label}</span>
+    );
 
     return (
-      <div key={s.id} title={s.type === 'staff' ? s.staffName : ''} className={cn("w-8 h-8 rounded border flex items-center justify-center text-[11px] font-black select-none", bg)}>
-        {label}
+      <div key={s.id} title={s.type === 'staff' ? s.staffName : (s.passengerName || '')} className={cn("w-14 h-10 rounded border flex items-center justify-center font-black select-none overflow-hidden", bg)}>
+        {displayLabel}
       </div>
     );
   };
@@ -246,10 +256,10 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
                     {/* Mini Seat Map */}
                     {viewSeatVanId === van.id && (
                       <div className="pt-3 pb-1 animate-in slide-in-from-top-2 duration-200">
-                        <div className="flex flex-col gap-1.5 w-[116px] mx-auto bg-slate-50 p-2.5 rounded-xl border border-slate-200 shadow-sm">
+                        <div className="flex flex-col gap-1.5 w-max mx-auto bg-slate-50 p-2.5 rounded-xl border border-slate-200 shadow-sm">
                           <div className="flex gap-1.5">
                             {renderAdminSeat(van.seats.find(s=>s.row===1&&s.col===1))}
-                            <div className="w-8 h-8" />
+                            <div className="w-14 h-10" />
                             {renderAdminSeat(van.seats.find(s=>s.row===1&&s.col===3))}
                           </div>
                           {[2,3,4].map(r => (

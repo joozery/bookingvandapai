@@ -7,6 +7,7 @@ export interface Seat {
   status: 'available' | 'pending' | 'booked';
   staffName?: string;
   bookingId?: string | null;
+  passengerName?: string;
   row: number;
   col: number;
 }
