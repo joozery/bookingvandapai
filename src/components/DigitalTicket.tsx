@@ -79,13 +79,7 @@ export const DigitalTicket = forwardRef<HTMLDivElement, Props>(({ booking, htmlI
                       <span className="text-[#2E1A47] font-black text-[18px] leading-tight block mt-0.5 tracking-tight truncate-two-lines break-words whitespace-normal" style={{ wordBreak: 'break-word' }}>
                         {booking.tripName}
                       </span>
-                      <div className="mt-1.5">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-[#2E1A47] text-white">
-                          {booking.durationDays && booking.durationDays > 1 
-                            ? `${booking.durationDays} วัน ${booking.durationDays - 1} คืน` 
-                            : 'ไปเช้าเย็นกลับ (1 วัน)'}
-                        </span>
-                      </div>
+                      
                     </div>
                     
                     {/* Vertical Dashed Line Divider */}
