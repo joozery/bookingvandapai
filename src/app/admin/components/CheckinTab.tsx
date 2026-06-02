@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { QrCode, Check, X, Clock, UserCheck, ArrowRight, ScanLine } from 'lucide-react';
+import { QrCode, Check, X, Clock, UserCheck, ArrowRight, ScanLine, Search } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Scanner } from '@yudiel/react-qr-scanner';
 import { Button } from '@/components/ui/button';
@@ -21,10 +21,20 @@ export default function CheckinTab({ trips, bookings, onCheckIn }: Props) {
   const [scanned, setScanned] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
   const [selectedTripId, setSelectedTripId] = useState<string>('all');
+  const [search, setSearch] = useState('');
 
   const tripBookings = bookings.filter(b => b.status === 'approved' && (selectedTripId === 'all' || b.tripId === selectedTripId));
-  const waitingList = tripBookings.filter(b => !b.checkedIn);
-  const checkedInList = tripBookings.filter(b => b.checkedIn);
+  const filteredBookings = tripBookings.filter(b => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return b.fullName.toLowerCase().includes(q) ||
+           b.nickname.toLowerCase().includes(q) ||
+           b.seatLabel.toLowerCase().includes(q) ||
+           (b.tripName && b.tripName.toLowerCase().includes(q));
+  });
+  
+  const waitingList = filteredBookings.filter(b => !b.checkedIn);
+  const checkedInList = filteredBookings.filter(b => b.checkedIn);
 
   const handleScan = async (id: string) => {
     if (!id.trim()) return;
@@ -84,6 +94,16 @@ export default function CheckinTab({ trips, bookings, onCheckIn }: Props) {
                 <option key={t.id} value={t.id}>{t.name} ({t.departureDate})</option>
               ))}
             </select>
+          </div>
+
+          <div className="relative animate-in fade-in duration-200">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+            <Input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="ค้นหาชื่อ, เลขที่นั่ง, ทริป..."
+              className="pl-8 h-9 text-xs w-full bg-slate-50 border-slate-200 focus:border-violet-500 font-semibold"
+            />
           </div>
 
           {scannerOpen && (
