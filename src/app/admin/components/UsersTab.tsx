@@ -249,8 +249,6 @@ export default function UsersTab({ users, onRefresh }: Props) {
   const [filterRole, setFilterRole] = useState<FilterRole>('all');
   const [showFilter, setShowFilter] = useState(false);
   const [selected, setSelected] = useState<UserRecord | null>(null);
-  const [page, setPage] = useState(1);
-  const PER_PAGE = 15;
 
   const filtered = useMemo(() => {
     let arr = [...users];
@@ -281,13 +279,9 @@ export default function UsersTab({ users, onRefresh }: Props) {
     return arr;
   }, [users, search, sortKey, sortAsc, filterRole]);
 
-  const totalPages = Math.ceil(filtered.length / PER_PAGE);
-  const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
-
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortAsc(p => !p);
     else { setSortKey(key); setSortAsc(false); }
-    setPage(1);
   };
 
   // Summary stats
@@ -345,7 +339,7 @@ export default function UsersTab({ users, onRefresh }: Props) {
               type="text"
               placeholder="ค้นหาชื่อ, เบอร์โทร, LINE ID..."
               value={search}
-              onChange={e => { setSearch(e.target.value); setPage(1); }}
+              onChange={e => setSearch(e.target.value)}
               className="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 transition"
             />
           </div>
@@ -381,7 +375,7 @@ export default function UsersTab({ users, onRefresh }: Props) {
               {(['all', 'customer', 'admin', 'vip', 'blocked'] as FilterRole[]).map(r => (
                 <button
                   key={r}
-                  onClick={() => { setFilterRole(r); setPage(1); }}
+                  onClick={() => setFilterRole(r)}
                   className={cn(
                     'text-xs font-bold px-3 py-1.5 rounded-full border transition',
                     filterRole === r
@@ -422,9 +416,6 @@ export default function UsersTab({ users, onRefresh }: Props) {
         {/* Count row */}
         <div className="px-4 py-2 flex items-center justify-between text-xs text-slate-400 border-b border-slate-50">
           <span>แสดง <strong className="text-slate-600">{filtered.length}</strong> จาก {users.length} ลูกทริป</span>
-          {filtered.length > PER_PAGE && (
-            <span>หน้า {page} / {totalPages}</span>
-          )}
         </div>
 
         {/* ── Table ──────────────────────────────────────────────────────────── */}
@@ -458,7 +449,7 @@ export default function UsersTab({ users, onRefresh }: Props) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {paginated.length === 0 ? (
+              {filtered.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="text-center py-16 text-slate-400">
                     <div className="flex flex-col items-center gap-2">
@@ -468,7 +459,7 @@ export default function UsersTab({ users, onRefresh }: Props) {
                     </div>
                   </td>
                 </tr>
-              ) : paginated.map((u, i) => {
+              ) : filtered.map((u, i) => {
                 const roleConf = ROLE_CONFIG[u.role] || ROLE_CONFIG.customer;
                 const RoleIcon = roleConf.icon;
                 return (
@@ -482,7 +473,7 @@ export default function UsersTab({ users, onRefresh }: Props) {
                   >
                     {/* Index */}
                     <td className="px-4 py-3.5 text-[11px] text-slate-400 font-bold">
-                      {(page - 1) * PER_PAGE + i + 1}
+                      {i + 1}
                     </td>
 
                     {/* User */}
@@ -569,50 +560,6 @@ export default function UsersTab({ users, onRefresh }: Props) {
             </tbody>
           </table>
         </div>
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="px-4 py-3 border-t border-slate-100 flex items-center justify-between">
-            <button
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
-            >
-              ← ก่อนหน้า
-            </button>
-            <div className="flex items-center gap-1">
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                let p = i + 1;
-                if (totalPages > 5) {
-                  if (page <= 3) p = i + 1;
-                  else if (page >= totalPages - 2) p = totalPages - 4 + i;
-                  else p = page - 2 + i;
-                }
-                return (
-                  <button
-                    key={p}
-                    onClick={() => setPage(p)}
-                    className={cn(
-                      'w-7 h-7 rounded-lg text-xs font-bold transition',
-                      page === p
-                        ? 'bg-violet-600 text-white shadow-sm'
-                        : 'text-slate-500 hover:bg-slate-100'
-                    )}
-                  >
-                    {p}
-                  </button>
-                );
-              })}
-            </div>
-            <button
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
-            >
-              ถัดไป →
-            </button>
-          </div>
-        )}
       </div>
 
       {/* ── Detail Drawer ──────────────────────────────────────────────────── */}
