@@ -80,11 +80,10 @@ export function generateSeatsForVan(vanId: string): Seat[] {
     col: 3
   });
   seats.push({
-    id: `${vanId}-seat-staff`,
+    id: `${vanId}-seat-1`,
     label: '1',
-    type: 'staff',
+    type: 'customer',
     status: 'available',
-    staffName: 'สตาฟ',
     row: 1,
     col: 1
   });

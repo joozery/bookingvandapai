@@ -41,27 +41,25 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
   const renderAdminSeat = (s: Seat | undefined) => {
     if (!s) return <div className="w-14 h-10" />;
     const isDriver = s.type === 'driver';
-    const isStaff = s.type === 'staff';
     const isAvail = s.status === 'available';
     let bg = 'bg-slate-200 border-slate-300';
     let label = s.label;
     if (isDriver) { bg = 'bg-slate-800 text-white border-slate-950'; label = 'D'; }
-    else if (isStaff) { bg = 'bg-violet-200 text-violet-800 border-violet-400'; }
     else if (isAvail) { bg = 'bg-emerald-100 text-emerald-700 border-emerald-400 shadow-sm'; }
     else { bg = 'bg-slate-200 border-slate-300'; } // Removed line-through for better readability of names
 
-    const hasName = s.passengerName && s.type === 'customer';
+    const hasName = s.passengerName && (s.type === 'customer' || s.type === 'staff');
     const displayLabel = hasName ? (
       <div className="flex flex-col items-center justify-center leading-tight w-full">
         <span className="text-[9px] font-black opacity-50">{label}</span>
         <span className="text-[9px] truncate w-full text-center px-0.5 text-slate-700">{s.passengerName}</span>
       </div>
     ) : (
-      <span className={cn(hasName ? "" : "text-[11px]", !isAvail && !isDriver && !isStaff ? "text-slate-400 line-through" : "")}>{label}</span>
+      <span className={cn(hasName ? "" : "text-[11px]", !isAvail && !isDriver ? "text-slate-400 line-through" : "")}>{label}</span>
     );
 
     return (
-      <div key={s.id} title={s.type === 'staff' ? s.staffName : (s.passengerName || '')} className={cn("w-14 h-10 rounded border flex items-center justify-center font-black select-none overflow-hidden", bg)}>
+      <div key={s.id} title={s.passengerName || ''} className={cn("w-14 h-10 rounded border flex items-center justify-center font-black select-none overflow-hidden", bg)}>
         {displayLabel}
       </div>
     );
@@ -235,34 +233,7 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
                       </div>
                     )}
 
-                    {/* Staff Seat */}
-                    {staffSeat && (
-                      <div className="border-t border-slate-200 pt-3">
-                        <p className="text-[10px] font-bold text-violet-700 mb-1.5">ผู้จัดประจำคัน (เบาะ 1)</p>
-                        {editingStaff?.vanId === van.id && editingStaff?.seatId === staffSeat.id ? (
-                          <form onSubmit={handleStaffSubmit} className="flex gap-2">
-                            <Input
-                              autoFocus
-                              value={editingStaff.staffName}
-                              onChange={e => setEditingStaff({ ...editingStaff, staffName: e.target.value })}
-                              className="h-7 text-xs flex-1"
-                              placeholder="ชื่อผู้จัด"
-                            />
-                            <button type="submit" className="px-3 h-7 bg-violet-600 text-white text-[10px] rounded-lg font-bold hover:bg-violet-700 transition">บันทึก</button>
-                            <button type="button" onClick={() => setEditingStaff(null)} className="px-3 h-7 border border-slate-200 text-[10px] rounded-lg text-slate-500 hover:bg-slate-100 transition">ยกเลิก</button>
-                          </form>
-                        ) : (
-                          <button
-                            onClick={() => setEditingStaff({ vanId: van.id, seatId: staffSeat.id, staffName: staffSeat.staffName || '' })}
-                            className="flex items-center gap-2 text-[10px] text-slate-600 hover:text-violet-600 bg-violet-50 px-3 py-1.5 rounded-lg border border-violet-100 transition group"
-                          >
-                            <div className="w-5 h-5 rounded bg-violet-200 flex items-center justify-center text-violet-700 font-black text-[10px]">1</div>
-                            <span className="font-semibold">{staffSeat.staffName || 'ยังไม่ระบุชื่อผู้จัด'}</span>
-                            <Edit2 className="w-2.5 h-2.5 ml-auto opacity-0 group-hover:opacity-100 transition" />
-                          </button>
-                        )}
-                      </div>
-                    )}
+
 
                     {/* View Seats Button */}
                     <div className="pt-2 border-t border-slate-100 mt-2">
@@ -295,7 +266,6 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
                         <div className="mt-4 flex flex-wrap justify-center gap-3 text-[9px] font-bold text-slate-500">
                           <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-emerald-100 border border-emerald-400" /> ว่าง</span>
                           <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-slate-200 border border-slate-300" /> จองแล้ว</span>
-                          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-violet-200 border border-violet-400" /> ผู้จัด</span>
                         </div>
                       </div>
                     )}
