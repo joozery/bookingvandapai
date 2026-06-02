@@ -41,7 +41,8 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
     const q = search.toLowerCase();
     return matchTrip && matchStatus && (
       b.fullName.toLowerCase().includes(q) || b.nickname.toLowerCase().includes(q) ||
-      b.phone.includes(q) || b.seatLabel.toLowerCase().includes(q)
+      b.phone.includes(q) || b.seatLabel.toLowerCase().includes(q) ||
+      (b.tripName && b.tripName.toLowerCase().includes(q))
     );
   });
 
@@ -170,7 +171,7 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
         </select>
         <div className="relative flex-1 min-w-[200px]">
           <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="ค้นหา ชื่อ เบอร์โทร เลขที่นั่ง..." className="pl-8 h-8 text-xs" />
+          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="ค้นหา ชื่อ, เบอร์โทร, เลขที่นั่ง, ทริป..." className="pl-8 h-8 text-xs" />
         </div>
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="h-8 border border-slate-200 bg-white rounded-lg px-3 text-xs focus:outline-none focus:border-violet-400">
           <option value="all">สถานะทั้งหมด</option>
@@ -190,7 +191,7 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
           <table className="min-w-full text-xs">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50">
-                {['ลูกทริป', 'ทริป', 'รถ / เบาะที่นั่ง', 'เบอร์โทร', 'สถานะการจอง', 'Check-in', 'จัดการ'].map(h => (
+                {['#', 'ลูกทริป', 'ทริป', 'รถ / เบาะที่นั่ง', 'เบอร์โทร', 'สถานะการจอง', 'Check-in', 'จัดการ'].map(h => (
                   <th key={h} className="px-4 py-3 text-left font-bold text-[10px] uppercase tracking-wider text-slate-500 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -219,6 +220,10 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
 
                 return (
                   <tr key={b.id} className="hover:bg-slate-50/60 transition-colors group">
+                    {/* Index */}
+                    <td className="px-4 py-3 font-mono text-[11px] text-slate-400 font-bold">
+                      {filtered.indexOf(b) + 1}
+                    </td>
                     {/* Passenger */}
                     <td className="px-4 py-3 min-w-[200px]">
                       <div className="flex items-center gap-2.5 min-w-0">
