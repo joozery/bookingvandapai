@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Bus, Plus, Trash2, Edit2, Save, X, Users, Phone, LayoutGrid, ChevronDown, ChevronUp } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Bus, Plus, Trash2, Edit2, Save, X, Users, Phone, LayoutGrid, ChevronDown, ChevronUp, Search } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -24,8 +24,19 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
   const [editingStaff, setEditingStaff] = useState<{ vanId: string; seatId: string; staffName: string } | null>(null);
   const [viewSeatVanId, setViewSeatVanId] = useState<string | null>(null);
   const [selectedTripId, setSelectedTripId] = useState<string>('all');
+  const [tripSearch, setTripSearch] = useState('');
 
-  const filteredTrips = selectedTripId === 'all' ? trips : trips.filter(t => t.id === selectedTripId);
+  const filteredTrips = useMemo(() => {
+    let arr = trips;
+    if (selectedTripId !== 'all') {
+      arr = arr.filter(t => t.id === selectedTripId);
+    }
+    if (tripSearch.trim() !== '') {
+      const q = tripSearch.toLowerCase();
+      arr = arr.filter(t => t.name.toLowerCase().includes(q));
+    }
+    return arr;
+  }, [trips, selectedTripId, tripSearch]);
 
   const renderAdminSeat = (s: Seat | undefined) => {
     if (!s) return <div className="w-14 h-10" />;
@@ -80,16 +91,28 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
           <p className="text-xs text-slate-400 mt-1">เลือกทริปเพื่อจัดการรถและผังที่นั่ง</p>
         </div>
         
-        <select
-          value={selectedTripId}
-          onChange={(e) => setSelectedTripId(e.target.value)}
-          className="w-full sm:w-64 px-3 py-2 bg-slate-50 border-0 ring-1 ring-slate-100 rounded-lg text-sm focus:outline-none focus:ring-violet-500 font-medium text-slate-700"
-        >
-          <option value="all">ทุกทริป (ทั้งหมด)</option>
-          {trips.map(t => (
-            <option key={t.id} value={t.id}>{t.name}</option>
-          ))}
-        </select>
+        <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2">
+          <div className="relative w-full sm:w-56">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="ค้นหาชื่อทริป..."
+              value={tripSearch}
+              onChange={(e) => setTripSearch(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-violet-500"
+            />
+          </div>
+          <select
+            value={selectedTripId}
+            onChange={(e) => setSelectedTripId(e.target.value)}
+            className="w-full sm:w-64 px-3 py-2 bg-slate-50 border-0 ring-1 ring-slate-100 rounded-lg text-sm focus:outline-none focus:ring-violet-500 font-medium text-slate-700"
+          >
+            <option value="all">ทุกทริป (ทั้งหมด)</option>
+            {trips.map(t => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {trips.length === 0 && (
