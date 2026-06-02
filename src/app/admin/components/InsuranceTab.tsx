@@ -234,6 +234,7 @@ export default function InsuranceTab({ trips, onRefresh }: Props) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-100">
+                  <th className="px-4 py-3 w-16 text-center text-[11px] font-black text-slate-400 uppercase tracking-wider">ลำดับ</th>
                   <th className="px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-wider">ชื่อลูกทริป / ที่นั่ง</th>
                   <th className="px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-wider">ทริป & รถ</th>
                   <th className="px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-wider">เลขบัตรประชาชน (13 หลัก)</th>
@@ -243,7 +244,7 @@ export default function InsuranceTab({ trips, onRefresh }: Props) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {passengers.map((p: any) => {
+                {passengers.map((p: any, idx: number) => {
                   const isEditing = editingId === p.id;
                   const hasNatId = !!p.nationalId;
                   const hasDob = !!p.birthDate;
@@ -251,6 +252,9 @@ export default function InsuranceTab({ trips, onRefresh }: Props) {
                   
                   return (
                     <tr key={p.id} className={cn("hover:bg-slate-50/50 transition", isEditing && "bg-violet-50/30")}>
+                      <td className="px-4 py-3 text-center text-xs font-bold text-slate-400">
+                        {idx + 1}
+                      </td>
                       <td className="px-4 py-3">
                         <div 
                           className="flex items-center gap-2.5 cursor-pointer group"

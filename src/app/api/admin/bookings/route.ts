@@ -29,7 +29,7 @@ export async function GET() {
     // Fetch trips and vans for resolving names
     const [{ data: trips }, { data: vans }] = await Promise.all([
       supabase.from('trips').select('id, name'),
-      supabase.from('vans').select('id, number')
+      supabase.from('vans').select('id, vanNumber')
     ]);
 
     const profileMap = new Map();
@@ -42,7 +42,7 @@ export async function GET() {
     }
 
     const tripMap = new Map((trips || []).map((t: any) => [t.id, t.name]));
-    const vanMap = new Map((vans || []).map((v: any) => [v.id, v.number]));
+    const vanMap = new Map((vans || []).map((v: any) => [v.id, v.vanNumber]));
 
     const mergedBookings = (bookings || []).map((booking: any) => {
       const profile = profileMap.get(booking.lineUserId);
