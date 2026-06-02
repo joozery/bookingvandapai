@@ -100,26 +100,21 @@ export default function InsuranceTab({ trips, onRefresh }: Props) {
 
   // Export to CSV
   const handleExport = () => {
-    // ดึงผู้โดยสารทั้งหมดที่ยืนยันแล้วของทริปที่เลือก (เพื่อให้เห็นว่าใครยังไม่กรอกข้อมูลบ้าง)
-    const exportData = bookings
-      .filter(b => b.status === 'approved' || b.checkedIn)
-      .filter(b => selectedTripId === 'all' || b.tripId === selectedTripId);
-
-    if (exportData.length === 0) {
+    if (passengers.length === 0) {
       alert('ไม่มีข้อมูลลูกทริปสำหรับการส่งออก');
       return;
     }
     
     const BOM = '\uFEFF';
     const headers = [
-      'ชื่อลูกทริป', 'ชื่อเล่น', 'เบอร์โทรศัพท์', 'ทริป', 'รถคันที่', 'ที่นั่ง',
+      'ลำดับ', 'ชื่อลูกทริป', 'ชื่อเล่น', 'เบอร์โทรศัพท์', 'ทริป', 'รถคันที่', 'ที่นั่ง',
       'เลขบัตรประชาชน', 'วันเดือนปีเกิด', 'ผู้ติดต่อฉุกเฉิน', 'เบอร์โทรฉุกเฉิน',
       'แพ้อาหาร', 'โรคประจำตัว'
     ];
     const csvRows = [];
     csvRows.push(headers.join(','));
     
-    for (const p of exportData) {
+    passengers.forEach((p, idx) => {
       const nid = p.nationalId || p.profile?.nationalId || '';
       const dob = p.birthDate || p.profile?.birthDate || '';
       
@@ -134,6 +129,7 @@ export default function InsuranceTab({ trips, onRefresh }: Props) {
       };
 
       const row = [
+        `"${idx + 1}"`,
         `"${p.fullName || ''}"`,
         `"${p.profile?.nickname || p.nickname || ''}"`,
         p.phone ? `="${p.phone}"` : '""',
@@ -149,7 +145,7 @@ export default function InsuranceTab({ trips, onRefresh }: Props) {
         `"${p.medicalConditions || p.profile?.medicalConditions || ''}"`
       ];
       csvRows.push(row.join(','));
-    }
+    });
     
     const csvContent = BOM + csvRows.join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
