@@ -258,14 +258,14 @@ export const DigitalTicket = forwardRef<HTMLDivElement, Props>(({ booking, htmlI
                     ข้อมูลคนขับรถตู้
                   </div>
 
-                  <div className="grid grid-cols-2 gap-x-2 gap-y-2 relative z-10 max-w-[200px]">
+                  <div className="grid grid-cols-2 gap-x-2 gap-y-2 relative z-10 max-w-[220px]">
                     <div className="flex items-center gap-1.5">
                       <div className="w-6 h-6 rounded bg-[#2E1A47]/10 flex items-center justify-center shrink-0">
                         <User className="w-3.5 h-3.5 text-[#2E1A47]" />
                       </div>
                       <div className="min-w-0">
                         <span className="text-[7.5px] font-bold text-[#5A3882]/85 block leading-none">ชื่อคนขับรถตู้</span>
-                        <span className="text-[10.5px] font-black text-[#2E1A47] block mt-0.5 truncate leading-none">{booking.driverName || 'ยังไม่ระบุ'}</span>
+                        <span className="text-[10px] font-black text-[#2E1A47] block mt-0.5 leading-tight line-clamp-2">{booking.driverName || 'ยังไม่ระบุ'}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5">
