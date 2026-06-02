@@ -1690,26 +1690,7 @@ function CustomerPageContent() {
                         {(() => {
                           const seat = selectedVan.seats.find((s) => s.row === 1 && s.col === 1);
                           if (!seat) return <div className="w-[58px] h-[64px]" />;
-                          if (selectedVan.vanNumber > 1) {
-                            return renderVanSeat(seat);
-                          }
-                          return (
-                            <div className="relative w-[58px] h-[64px] rounded-[14px] flex flex-col justify-between p-1.5 transition-all duration-300 shadow-md select-none border border-b-[4px] bg-gradient-to-b from-[#e9d5ff] to-[#c084fc] border-[#a855f7] text-[#581c87] shadow-purple-200/50">
-                              {/* Headrest */}
-                              <div className="w-[32px] h-[10px] rounded-[4px] mx-auto bg-[#c084fc]/70" />
-                              {/* Cushion */}
-                              <div className="flex-1 w-full rounded-[8px] mt-1 flex flex-col items-center justify-center bg-purple-50/95 relative">
-                                <span className="text-[10px] font-extrabold tracking-tight bg-purple-600 text-white rounded px-1 scale-90 mb-0.5">1</span>
-                                <span className="text-[9px] font-bold leading-none">ผู้จัด</span>
-                                <span className="text-[6.5px] text-purple-700 scale-90 font-medium">(Admin)</span>
-                                {seat.staffName && (
-                                  <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 bg-purple-600 text-white text-[6px] font-bold px-1 rounded-full whitespace-nowrap shadow-sm scale-75">
-                                    {seat.staffName.split(' ')[0]}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          );
+                          return renderVanSeat(seat);
                         })()}
 
                         {/* Walkway label (middle / col 2) -> empty now */}
@@ -1774,10 +1755,6 @@ function CustomerPageContent() {
                   <div className="flex items-center space-x-2">
                     <div className="w-3.5 h-3.5 rounded bg-slate-900 border border-slate-950" />
                     <span>D คนขับ (ไม่สามารถเลือกได้)</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-3.5 h-3.5 rounded bg-purple-200 border border-purple-400" />
-                    <span>1 ผู้จัด (ไม่สามารถเลือกได้)</span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <div className="w-3.5 h-3.5 rounded bg-green-500 border border-green-600" />
