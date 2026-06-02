@@ -146,16 +146,17 @@ export default function CheckinTab({ trips, bookings, onCheckIn }: Props) {
               </p>
               {waitingList.length > 0 ? (
                 <div className="space-y-1.5 max-h-[250px] overflow-y-auto pr-1 scrollbar-thin">
-                  {waitingList.map(b => (
+                  {waitingList.map((b, idx) => (
                     <button
                       key={b.id}
                       onClick={() => handleScan(b.id)}
                       className="w-full flex items-center gap-2.5 p-2 bg-white border border-slate-200 rounded-lg hover:border-violet-300 hover:bg-violet-50/50 transition text-left group"
                     >
+                      <span className="w-5 text-[10px] font-bold text-slate-400 text-center shrink-0">{idx + 1}</span>
                       <img src={b.lineUserProfilePic} alt="" className="w-7 h-7 rounded-full border border-slate-100 object-cover shrink-0" />
                       <div className="flex-1 min-w-0">
                         <div className="text-[11px] font-bold text-slate-700 truncate">{b.fullName} ({b.nickname})</div>
-                        <div className="text-[9px] text-slate-400 truncate">{b.tripName} · เบาะ {b.seatLabel}</div>
+                        <div className="text-[9px] text-slate-400 truncate">{b.tripName} · คันที่ {b.vanNumber} ({b.plateNumber}) · เบาะ {b.seatLabel}</div>
                       </div>
                       <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-violet-500 transition shrink-0" />
                     </button>
@@ -174,15 +175,16 @@ export default function CheckinTab({ trips, bookings, onCheckIn }: Props) {
               </p>
               {checkedInList.length > 0 ? (
                 <div className="space-y-1.5 max-h-[200px] overflow-y-auto pr-1 scrollbar-thin">
-                  {checkedInList.map(b => (
+                  {checkedInList.map((b, idx) => (
                     <div
                       key={b.id}
                       className="w-full flex items-center gap-2.5 p-2 bg-emerald-50/30 border border-emerald-100 rounded-lg text-left"
                     >
+                      <span className="w-5 text-[10px] font-bold text-emerald-400 text-center shrink-0">{idx + 1}</span>
                       <img src={b.lineUserProfilePic} alt="" className="w-7 h-7 rounded-full border border-emerald-200 object-cover shrink-0 opacity-80" />
                       <div className="flex-1 min-w-0">
                         <div className="text-[11px] font-bold text-emerald-800 truncate">{b.fullName} ({b.nickname})</div>
-                        <div className="text-[9px] text-emerald-600/70 truncate">{b.tripName} · เบาะ {b.seatLabel}</div>
+                        <div className="text-[9px] text-emerald-600/70 truncate">{b.tripName} · คันที่ {b.vanNumber} ({b.plateNumber}) · เบาะ {b.seatLabel}</div>
                       </div>
                       <span className="text-[9px] font-bold text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded">✓ แล้ว</span>
                     </div>
@@ -238,6 +240,7 @@ export default function CheckinTab({ trips, bookings, onCheckIn }: Props) {
                 <div className="grid grid-cols-2 gap-3">
                   {[
                     { label: 'ทริป', value: scanned.tripName || trips.find(t => t.id === scanned.tripId)?.name || '?' },
+                    { label: 'รถตู้ / ทะเบียน', value: `คันที่ ${scanned.vanNumber || '-'} (${scanned.plateNumber || '-'})` },
                     { label: 'เบาะที่นั่ง', value: `เบาะ ${scanned.seatLabel}`, big: true },
                     { label: 'หมายเหตุ', value: scanned.note || '-' },
                     { label: 'สถานะ', value: scanned.checkedIn ? 'เช็คอินแล้ว ✓' : 'ยังไม่ได้เช็คอิน' },
