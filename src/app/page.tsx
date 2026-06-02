@@ -156,6 +156,7 @@ function CustomerPageContent() {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [urlTripId, setUrlTripId] = useState<string | null>(null);
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
+  const [tripSearch, setTripSearch] = useState('');
   const [vans, setVans] = useState<Van[]>([]);
   const [selectedVan, setSelectedVan] = useState<Van | null>(null);
   const [userBooking, setUserBooking] = useState<(Booking & { tripName?: string; pickupPoint?: string; departureDate?: string; departureTime?: string; durationDays?: number; cost?: number; plateNumber?: string; driverName?: string; driverPhone?: string; vanNumber?: number }) | null>(null);
@@ -1370,19 +1371,36 @@ function CustomerPageContent() {
             ) : trips.length === 0 ? (
               <p className="text-xs text-slate-400 text-center py-4">ไม่พบทริปเดินทางในขณะนี้</p>
             ) : (
-              <div
-                className="flex flex-col gap-3 overflow-y-auto scrollbar-thin"
-                style={{ maxHeight: '564px', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}
-              >
-                {!urlTripId && (
-                  <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl mb-1 flex items-start gap-2">
-                    <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                    <p className="text-amber-800 text-[11px] font-bold leading-relaxed">
-                      โปรดเข้าสู่ระบบผ่านลิ้งก์ที่แอดมินส่งให้เท่านั้น (คุณจะไม่สามารถเลือกทริปจองเองได้)
-                    </p>
+              <div className="flex flex-col gap-3 h-full">
+                {/* Search Bar */}
+                <div className="relative mb-1 shrink-0">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg className="h-4 w-4 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+                    </svg>
                   </div>
-                )}
-                {trips.map((trip) => {
+                  <input
+                    type="text"
+                    placeholder="ค้นหาทริป..."
+                    value={tripSearch}
+                    onChange={(e) => setTripSearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#4c1d95] focus:ring-1 focus:ring-purple-200 transition-colors placeholder-slate-400"
+                  />
+                </div>
+
+                <div
+                  className="flex flex-col gap-3 overflow-y-auto scrollbar-thin flex-1"
+                  style={{ maxHeight: '500px', WebkitOverflowScrolling: 'touch' }}
+                >
+                  {!urlTripId && (
+                    <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl mb-1 flex items-start gap-2 shrink-0">
+                      <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                      <p className="text-amber-800 text-[11px] font-bold leading-relaxed">
+                        โปรดเข้าสู่ระบบผ่านลิ้งก์ที่แอดมินส่งให้เท่านั้น (คุณจะไม่สามารถเลือกทริปจองเองได้)
+                      </p>
+                    </div>
+                  )}
+                  {trips.filter(t => t.name.toLowerCase().includes(tripSearch.toLowerCase())).map((trip) => {
                   const isSelected = selectedTrip?.id === trip.id;
                   const nights = trip.durationDays - 1;
                   const seatsLeft = trip.availableSeats ?? 0;
@@ -1473,6 +1491,7 @@ function CustomerPageContent() {
                   );
                 })}
               </div>
+            </div>
             )}
           </div>
           </div> {/* end trip section wrapper */}
