@@ -591,18 +591,6 @@ function CustomerPageContent() {
       return;
     }
 
-    if (seat.type === 'staff') {
-      const isStaffInSubsequentVan = (selectedVan?.vanNumber || 1) > 1;
-      if (!isStaffInSubsequentVan) {
-        setMessage({
-          type: 'error',
-          text: `ที่นั่งผู้จัด (ไม่สามารถจองได้): ${seat.staffName || 'ผู้จัดประจำทริป'}`
-        });
-        setTimeout(() => setMessage(null), 4000);
-        return;
-      }
-    }
-
     if (seat.status !== 'available') {
       setMessage({ type: 'error', text: 'ที่นั่งนี้มีผู้จองหรือกำลังรออนุมัติแล้ว' });
       setTimeout(() => setMessage(null), 3000);
@@ -1623,7 +1611,7 @@ function CustomerPageContent() {
                       </h2>
                       <div className="text-[10px] text-slate-500 font-semibold flex items-center gap-1.5 mt-0.5">
                         <Info className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        <span>กรุณาเลือกที่นั่ง (เบาะ 2 - 10 เท่านั้น)</span>
+                        <span>กรุณาเลือกที่นั่ง (เบาะ 1 - 10 เท่านั้น)</span>
                       </div>
                     </div>
                   </div>
