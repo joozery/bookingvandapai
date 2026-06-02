@@ -176,6 +176,7 @@ function CustomerPageContent() {
 
   // Form States
   const [nickname, setNickname] = useState('');
+  const [titleName, setTitleName] = useState('');
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [note, setNote] = useState('');
@@ -371,7 +372,14 @@ function CustomerPageContent() {
       const data = await res.json();
       if (data.success && data.profile) {
         setHasProfile(true);
-        setFullName(data.profile.fullName || '');
+        let name = data.profile.fullName || '';
+        let title = '';
+        if (name.startsWith('นาย ')) { title = 'นาย'; name = name.replace('นาย ', ''); }
+        else if (name.startsWith('นาง ')) { title = 'นาง'; name = name.replace('นาง ', ''); }
+        else if (name.startsWith('นางสาว ')) { title = 'นางสาว'; name = name.replace('นางสาว ', ''); }
+        
+        setTitleName(title);
+        setFullName(name);
         setNickname(data.profile.nickname || '');
         setPhone(data.profile.phone || '');
         setNationalId(data.profile.nationalId || '');
@@ -395,7 +403,7 @@ function CustomerPageContent() {
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!lineUser) return;
-    if (!fullName.trim() || !nickname.trim() || !phone.trim() || !nationalId.trim() || !birthDate.trim() || !emergencyName.trim() || !emergencyPhone.trim()) {
+    if (!titleName.trim() || !fullName.trim() || !nickname.trim() || !phone.trim() || !nationalId.trim() || !birthDate.trim() || !emergencyName.trim() || !emergencyPhone.trim()) {
       setMessage({ type: 'error', text: 'กรุณากรอกข้อมูลบังคับให้ครบถ้วนทุกช่อง' });
       setTimeout(() => setMessage(null), 3000);
       return;
@@ -407,6 +415,12 @@ function CustomerPageContent() {
       return;
     }
 
+    if (hasProfile) {
+      setMessage({ type: 'error', text: 'การแก้ไขข้อมูลส่วนตัวหลังจากการกรอกครั้งแรก กรุณาติดต่อแอดมินเพื่อขออนุมัติครับ' });
+      setTimeout(() => setMessage(null), 5000);
+      return;
+    }
+
     try {
       setIsSubmittingProfile(true);
       const res = await fetch('/api/profile', {
@@ -414,7 +428,7 @@ function CustomerPageContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           lineUserId: lineUser.userId,
-          fullName,
+          fullName: `${titleName} ${fullName}`,
           nickname,
           phone,
           nationalId,
@@ -461,8 +475,17 @@ function CustomerPageContent() {
               bookingToSet.pendingTransfer = pendingBooking;
             }
             setUserBooking(bookingToSet);
+            
+            // Try to split title
+            let name = ticketData.booking.fullName;
+            let title = '';
+            if (name.startsWith('นาย ')) { title = 'นาย'; name = name.replace('นาย ', ''); }
+            else if (name.startsWith('นาง ')) { title = 'นาง'; name = name.replace('นาง ', ''); }
+            else if (name.startsWith('นางสาว ')) { title = 'นางสาว'; name = name.replace('นางสาว ', ''); }
+            
+            setTitleName(title);
+            setFullName(name);
             setNickname(ticketData.booking.nickname);
-            setFullName(ticketData.booking.fullName);
             setPhone(ticketData.booking.phone);
             setNote(ticketData.booking.note || '');
           }
@@ -615,7 +638,7 @@ function CustomerPageContent() {
     e.preventDefault();
     if (!lineUser || !selectedTrip || !selectedVan || !selectedSeat) return;
 
-    if (!nickname.trim() || !fullName.trim() || !phone.trim()) {
+    if (!nickname.trim() || !titleName.trim() || !fullName.trim() || !phone.trim()) {
       setMessage({ type: 'error', text: 'กรุณากรอกข้อมูลบังคับให้ครบถ้วนทุกช่อง' });
       setTimeout(() => setMessage(null), 3000);
       return;
@@ -1040,11 +1063,24 @@ function CustomerPageContent() {
                 <p className="text-white/80 text-xs mt-1">กรุณากรอกข้อมูลให้ครบถ้วนเพื่อผลประโยชน์ของท่าน</p>
              </div>
              <form onSubmit={handleProfileSubmit} className="p-6 space-y-4">
-                <div>
-                  <label htmlFor="fullName" className="block text-[11px] font-bold text-slate-500 mb-1">
-                    ชื่อ-นามสกุล (Full Name) <span className="text-red-500">*</span>
-                  </label>
-                  <input type="text" id="fullName" required value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="เช่น นายสมชาย ใจดี (ระบุคำนำหน้าด้วย)" className="w-full bg-slate-50 border border-slate-200 focus:border-[#4c1d95] rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200" />
+                <div className="flex gap-3">
+                  <div className="w-1/3">
+                    <label htmlFor="titleName" className="block text-[11px] font-bold text-slate-500 mb-1">
+                      คำนำหน้า <span className="text-red-500">*</span>
+                    </label>
+                    <select id="titleName" required value={titleName} onChange={(e) => setTitleName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 focus:border-[#4c1d95] rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200">
+                      <option value="">เลือก</option>
+                      <option value="นาย">นาย</option>
+                      <option value="นาง">นาง</option>
+                      <option value="นางสาว">นางสาว</option>
+                    </select>
+                  </div>
+                  <div className="w-2/3">
+                    <label htmlFor="fullName" className="block text-[11px] font-bold text-slate-500 mb-1">
+                      ชื่อ-นามสกุล (Full Name) <span className="text-red-500">*</span>
+                    </label>
+                    <input type="text" id="fullName" required value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="เช่น สมชาย ใจดี" className="w-full bg-slate-50 border border-slate-200 focus:border-[#4c1d95] rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200" />
+                  </div>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-3">
@@ -1135,12 +1171,14 @@ function CustomerPageContent() {
                       ยกเลิก
                     </button>
                   )}
-                  <button type="submit" disabled={isSubmittingProfile} className={`flex-1 bg-[#4c1d95] hover:bg-[#3b1774] text-white text-xs font-bold py-3 rounded-xl transition duration-200 shadow-md flex items-center justify-center space-x-2 disabled:opacity-50`}>
+                  <button type="submit" disabled={isSubmittingProfile || hasProfile} className={`flex-1 ${hasProfile ? 'bg-slate-400 cursor-not-allowed' : 'bg-[#4c1d95] hover:bg-[#3b1774]'} text-white text-xs font-bold py-3 rounded-xl transition duration-200 shadow-md flex items-center justify-center space-x-2 disabled:opacity-50`}>
                     {isSubmittingProfile ? (
                       <>
                         <RefreshCw className="w-4 h-4 animate-spin" />
                         <span>กำลังบันทึก...</span>
                       </>
+                    ) : hasProfile ? (
+                      <span>หากต้องการแก้ไข โปรดติดต่อแอดมิน</span>
                     ) : (
                       <span>บันทึกข้อมูลส่วนตัว</span>
                     )}
