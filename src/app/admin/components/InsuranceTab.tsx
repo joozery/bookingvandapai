@@ -57,7 +57,8 @@ export default function InsuranceTab({ trips, onRefresh }: Props) {
         search === '' || 
         b.fullName.toLowerCase().includes(search.toLowerCase()) || 
         b.phone.includes(search) ||
-        (b.nationalId && b.nationalId.includes(search))
+        (b.nationalId && b.nationalId.includes(search)) ||
+        (b.tripName && b.tripName.toLowerCase().includes(search.toLowerCase()))
       )
       .sort((a, b) => {
         if (a.vanNumber !== b.vanNumber) return (a.vanNumber || 0) - (b.vanNumber || 0);
@@ -212,7 +213,7 @@ export default function InsuranceTab({ trips, onRefresh }: Props) {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
-              placeholder="ค้นหาชื่อ, เบอร์, เลขบัตร..."
+              placeholder="ค้นหาชื่อ, ทริป, เบอร์, เลขบัตร..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-violet-500"
