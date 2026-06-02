@@ -250,6 +250,43 @@ export default function UsersTab({ users, onRefresh }: Props) {
   const [showFilter, setShowFilter] = useState(false);
   const [selected, setSelected] = useState<UserRecord | null>(null);
 
+  const [requests, setRequests] = useState<any[]>([]);
+  const [loadingRequests, setLoadingRequests] = useState(false);
+
+  React.useEffect(() => {
+    fetchRequests();
+  }, []);
+
+  const fetchRequests = async () => {
+    setLoadingRequests(true);
+    try {
+      const res = await fetch('/api/admin/profile-requests');
+      const data = await res.json();
+      if (data.success) setRequests(data.requests);
+    } catch {}
+    setLoadingRequests(false);
+  };
+
+  const handleRequestAction = async (lineUserId: string, action: 'approve' | 'reject', payload?: any) => {
+    if (!confirm(action === 'approve' ? 'ยืนยันการอนุมัติ?' : 'ปฏิเสธคำขอ?')) return;
+    try {
+      const res = await fetch('/api/admin/profile-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, lineUserId, payload }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchRequests();
+        onRefresh();
+      } else {
+        alert(data.error);
+      }
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
   const filtered = useMemo(() => {
     let arr = [...users];
     // Search
@@ -329,7 +366,48 @@ export default function UsersTab({ users, onRefresh }: Props) {
       </div>
 
       {/* ── Toolbar ────────────────────────────────────────────────────────── */}
-      <div className="bg-white border border-slate-200 rounded-xl shadow-sm">
+      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+        
+        {requests.length > 0 && (
+          <div className="bg-amber-50 border-b border-slate-200 p-4">
+            <h3 className="text-sm font-bold text-amber-800 flex items-center gap-2 mb-3">
+              <ShieldAlert className="w-4 h-4" />
+              คำขอแก้ไขข้อมูลส่วนตัว ({requests.length} รายการ)
+            </h3>
+            <div className="space-y-2">
+              {requests.map(req => (
+                <div key={req.lineUserId} className="bg-white border border-amber-200 rounded-lg p-3 flex flex-col md:flex-row items-center justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-slate-800 text-sm">
+                      {req.fullName} <span className="text-slate-500 font-normal">({req.nickname})</span>
+                    </p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      เบอร์: {req.phone} | บัตร: {req.nationalId} | เกิด: {req.birthDate}
+                    </p>
+                    <p className="text-[10px] text-amber-600 font-semibold mt-1">
+                      เวลาส่งคำขอ: {fmtDate(req.requestedAt)} {fmtTime(req.requestedAt)}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => handleRequestAction(req.lineUserId, 'reject')}
+                      className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition"
+                    >
+                      ปฏิเสธ
+                    </button>
+                    <button 
+                      onClick={() => handleRequestAction(req.lineUserId, 'approve', req)}
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition shadow-sm flex items-center gap-1.5"
+                    >
+                      <Check className="w-3.5 h-3.5" /> อนุมัติ
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-3 border-b border-slate-100">
           {/* Search */}
           <div className="relative flex-1">

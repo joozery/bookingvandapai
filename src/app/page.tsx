@@ -415,38 +415,51 @@ function CustomerPageContent() {
       return;
     }
 
-    if (hasProfile) {
-      setMessage({ type: 'error', text: 'การแก้ไขข้อมูลส่วนตัวหลังจากการกรอกครั้งแรก กรุณาติดต่อแอดมินเพื่อขออนุมัติครับ' });
-      setTimeout(() => setMessage(null), 5000);
-      return;
-    }
-
     try {
       setIsSubmittingProfile(true);
-      const res = await fetch('/api/profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          lineUserId: lineUser.userId,
-          fullName: `${titleName} ${fullName}`,
-          nickname,
-          phone,
-          nationalId,
-          birthDate,
-          emergencyName,
-          emergencyPhone,
-          allergies,
-          medicalConditions,
-        }),
-      });
+      const payload = {
+        lineUserId: lineUser.userId,
+        fullName: `${titleName} ${fullName}`,
+        nickname,
+        phone,
+        nationalId,
+        birthDate,
+        emergencyName,
+        emergencyPhone,
+        allergies,
+        medicalConditions,
+      };
 
-      const data = await res.json();
-      if (data.success) {
-        setMessage({ type: 'success', text: 'บันทึกข้อมูลส่วนตัวสำเร็จ' });
-        setHasProfile(true);
-        setShowProfileModal(false);
+      if (hasProfile) {
+        // Submit edit request
+        const res = await fetch('/api/profile/requests', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (data.success) {
+          setMessage({ type: 'success', text: 'ส่งคำขอแก้ไขข้อมูลสำเร็จ กรุณารอแอดมินตรวจสอบครับ' });
+          setShowProfileModal(false);
+        } else {
+          setMessage({ type: 'error', text: data.error || 'เกิดข้อผิดพลาดในการส่งคำขอ' });
+        }
       } else {
-        setMessage({ type: 'error', text: data.error });
+        // Direct save for new profile
+        const res = await fetch('/api/profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          setMessage({ type: 'success', text: 'บันทึกข้อมูลส่วนตัวสำเร็จ' });
+          setHasProfile(true);
+          setShowProfileModal(false);
+        } else {
+          setMessage({ type: 'error', text: data.error });
+        }
       }
     } catch (err) {
       setMessage({ type: 'error', text: 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์' });
@@ -1166,7 +1179,7 @@ function CustomerPageContent() {
                         <span>กำลังบันทึก...</span>
                       </>
                     ) : (
-                      <span>{hasProfile ? 'บันทึกการแก้ไขข้อมูล' : 'บันทึกข้อมูลส่วนตัว'}</span>
+                      <span>{hasProfile ? 'ส่งคำขอแก้ไขข้อมูล' : 'บันทึกข้อมูลส่วนตัว'}</span>
                     )}
                   </button>
                 </div>
