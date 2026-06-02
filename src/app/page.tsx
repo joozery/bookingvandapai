@@ -1159,16 +1159,14 @@ function CustomerPageContent() {
                       ยกเลิก
                     </button>
                   )}
-                  <button type="submit" disabled={isSubmittingProfile || hasProfile} className={`flex-1 ${hasProfile ? 'bg-slate-400 cursor-not-allowed' : 'bg-[#4c1d95] hover:bg-[#3b1774]'} text-white text-xs font-bold py-3 rounded-xl transition duration-200 shadow-md flex items-center justify-center space-x-2 disabled:opacity-50`}>
+                  <button type="submit" disabled={isSubmittingProfile} className="flex-1 bg-[#4c1d95] hover:bg-[#3b1774] text-white text-xs font-bold py-3 rounded-xl transition duration-200 shadow-md flex items-center justify-center space-x-2 disabled:opacity-50">
                     {isSubmittingProfile ? (
                       <>
                         <RefreshCw className="w-4 h-4 animate-spin" />
                         <span>กำลังบันทึก...</span>
                       </>
-                    ) : hasProfile ? (
-                      <span>หากต้องการแก้ไข โปรดติดต่อแอดมิน</span>
                     ) : (
-                      <span>บันทึกข้อมูลส่วนตัว</span>
+                      <span>{hasProfile ? 'บันทึกการแก้ไขข้อมูล' : 'บันทึกข้อมูลส่วนตัว'}</span>
                     )}
                   </button>
                 </div>
