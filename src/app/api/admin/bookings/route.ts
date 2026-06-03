@@ -48,6 +48,7 @@ export async function GET() {
       const profile = profileMap.get(booking.lineUserId);
       return {
         ...booking,
+        fullName: profile?.fullName || booking.fullName,
         tripName: tripMap.get(booking.tripId) || 'Unknown Trip',
         vanNumber: vanMap.get(booking.vanId) || 1,
         nationalId: booking.nationalId || profile?.nationalId || null,
