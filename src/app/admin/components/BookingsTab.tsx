@@ -136,7 +136,7 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
               <label className="text-[10px] font-bold text-slate-500 block mb-1">เบาะว่าง</label>
               <select value={seatSel} onChange={e => setSeatSel(e.target.value)} disabled={!vanSel} className="w-full border border-slate-200 bg-white rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-violet-400 disabled:opacity-50">
                 <option value="">เลือกเบาะ</option>
-                {vanSel && vans.find(v => v.id === vanSel)?.seats.filter(s => s.type === 'customer' && s.status === 'available').map(s => <option key={s.id} value={s.id}>เบาะ {s.label}</option>)}
+                {vanSel && vans.find(v => v.id === vanSel)?.seats.filter(s => (s.type === 'customer' || s.type === 'staff') && s.status === 'available').map(s => <option key={s.id} value={s.id}>เบาะ {s.label}</option>)}
               </select>
             </div>
             <div>
