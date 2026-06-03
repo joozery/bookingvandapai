@@ -195,6 +195,7 @@ export async function GET(request: Request, { params }: RouteParams) {
         driverName: van?.driverName || '',
         driverPhone: van?.driverPhone || '',
         vanNumber: van?.vanNumber || 1,
+        fullName: profile?.fullName || booking.fullName,
         nationalId: booking.nationalId || profile?.nationalId || null,
         birthDate: booking.birthDate || profile?.birthDate || null,
         emergencyName: booking.emergencyName || profile?.emergencyName || null,

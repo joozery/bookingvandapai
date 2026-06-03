@@ -33,6 +33,7 @@ export async function GET(request: Request) {
       const profile = profileMap.get(booking.lineUserId);
       return {
         ...booking,
+        fullName: profile?.fullName || booking.fullName,
         nationalId: booking.nationalId || profile?.nationalId || null,
         birthDate: booking.birthDate || profile?.birthDate || null,
         emergencyName: booking.emergencyName || profile?.emergencyName || null,

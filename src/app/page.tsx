@@ -655,7 +655,7 @@ function CustomerPageContent() {
           vanId: selectedVan.id,
           seatId: selectedSeat.id,
           nickname,
-          fullName,
+          fullName: `${titleName} ${fullName}`,
           phone,
           lineUserId: lineUser.userId,
           lineUserName: lineUser.displayName,
