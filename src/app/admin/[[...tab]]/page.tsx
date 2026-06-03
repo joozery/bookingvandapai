@@ -117,18 +117,21 @@ export default function AdminPage() {
       vanNumber:   v.find(x => x.id === b.vanId)?.vanNumber || 1,
     })).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
+  const [profileRequests, setProfileRequests] = useState<any[]>([]);
+
   const fetchAll = async (silent = false) => {
     try {
       if (!silent) setLoading(true);
       const tstamp = Date.now();
-      const [tr, vr, br, ur, sr] = await Promise.all([
+      const [tr, vr, br, ur, sr, pr] = await Promise.all([
         fetch(`/api/trips?_t=${tstamp}`), 
         fetch(`/api/vans?_t=${tstamp}`), 
         fetch(`/api/bookings?_t=${tstamp}`), 
         fetch(`/api/users?_t=${tstamp}`), 
-        fetch(`/api/settings?_t=${tstamp}`)
+        fetch(`/api/settings?_t=${tstamp}`),
+        fetch(`/api/admin/profile-requests?_t=${tstamp}`)
       ]);
-      const [td, vd, bd, ud, sd] = await Promise.all([tr.json(), vr.json(), br.json(), ur.json(), sr.json()]);
+      const [td, vd, bd, ud, sd, pd] = await Promise.all([tr.json(), vr.json(), br.json(), ur.json(), sr.json(), pr.json()]);
       const t = td.success ? td.trips : trips;
       const v = vd.success ? vd.vans  : vans;
       if (td.success) setTrips(t);
@@ -136,6 +139,7 @@ export default function AdminPage() {
       if (bd.success) setBookings(buildEnriched(bd.bookings, t, v));
       if (ud.success) setUsers(ud.users);
       if (sd.success && sd.settings) setSettings(sd.settings);
+      if (pd.success) setProfileRequests(pd.requests);
     } catch { if (!silent) showToast('error', 'โหลดข้อมูลไม่สำเร็จ'); }
     finally   { if (!silent) setLoading(false); }
   };
@@ -323,7 +327,10 @@ export default function AdminPage() {
     pending:   bookings.filter(b => b.status === 'pending').length,
     approved:  bookings.filter(b => b.status === 'approved').length,
     checkedIn: bookings.filter(b => b.checkedIn).length,
+    pendingProfileRequests: profileRequests.length,
   };
+
+  const totalPending = stats.pending + stats.pendingProfileRequests;
 
   const allSeats    = vans.flatMap(v => v.seats.filter(s => s.type === 'customer'));
   const vacantSeats = allSeats.filter(s => s.status === 'available').length;
@@ -556,8 +563,8 @@ export default function AdminPage() {
             {/* Notification bell */}
             <button className="relative w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500 transition">
               <Bell className="w-4 h-4" />
-              {stats.pending > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-rose-500 text-white text-[9px] font-black rounded-full flex items-center justify-center">{stats.pending}</span>
+              {totalPending > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-rose-500 text-white text-[9px] font-black rounded-full flex items-center justify-center">{totalPending}</span>
               )}
             </button>
 
