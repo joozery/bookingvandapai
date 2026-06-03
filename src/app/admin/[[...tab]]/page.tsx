@@ -95,6 +95,7 @@ export default function AdminPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [expandedNav, setExpandedNav] = useState<string[]>(['bookings']);
   const [mobileSidebar, setMobileSidebar] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const [trips, setTrips]     = useState<Trip[]>([]);
   const [vans, setVans]       = useState<Van[]>([]);
@@ -561,12 +562,66 @@ export default function AdminPage() {
             </div>
 
             {/* Notification bell */}
-            <button className="relative w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500 transition">
-              <Bell className="w-4 h-4" />
-              {totalPending > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-rose-500 text-white text-[9px] font-black rounded-full flex items-center justify-center">{totalPending}</span>
+            <div className="relative">
+              <button 
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500 transition"
+              >
+                <Bell className="w-4 h-4" />
+                {totalPending > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-rose-500 text-white text-[9px] font-black rounded-full flex items-center justify-center">{totalPending}</span>
+                )}
+              </button>
+
+              {showNotifications && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)} />
+                  <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl shadow-xl border border-slate-200 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                    <div className="px-4 py-3 border-b border-slate-100 bg-slate-50">
+                      <h3 className="text-xs font-bold text-slate-800">การแจ้งเตือน</h3>
+                    </div>
+                    <div className="divide-y divide-slate-100 max-h-80 overflow-y-auto">
+                      {totalPending === 0 ? (
+                        <div className="p-4 text-center text-xs text-slate-400">
+                          ไม่มีรายการรออนุมัติ
+                        </div>
+                      ) : (
+                        <>
+                          {stats.pending > 0 && (
+                            <button
+                              onClick={() => { setShowNotifications(false); handleSetTab('bookings'); }}
+                              className="w-full px-4 py-3 flex items-start gap-3 hover:bg-slate-50 transition text-left"
+                            >
+                              <div className="w-8 h-8 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+                                <AlertCircle className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <p className="text-xs font-bold text-slate-700">รายการจองรออนุมัติ</p>
+                                <p className="text-[10px] text-slate-500 mt-0.5">มีรายการจองที่รอการตรวจสอบ {stats.pending} รายการ</p>
+                              </div>
+                            </button>
+                          )}
+                          {stats.pendingProfileRequests > 0 && (
+                            <button
+                              onClick={() => { setShowNotifications(false); handleSetTab('users'); }}
+                              className="w-full px-4 py-3 flex items-start gap-3 hover:bg-slate-50 transition text-left"
+                            >
+                              <div className="w-8 h-8 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                                <User className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <p className="text-xs font-bold text-slate-700">คำขอแก้ไขโปรไฟล์</p>
+                                <p className="text-[10px] text-slate-500 mt-0.5">มีคำขอแก้ไขข้อมูลที่รออนุมัติ {stats.pendingProfileRequests} รายการ</p>
+                              </div>
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </>
               )}
-            </button>
+            </div>
 
             {/* User avatar */}
             <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
