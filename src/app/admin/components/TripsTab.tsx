@@ -599,7 +599,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
             const tripVans = vans.filter(v => v.tripId === trip.id);
             let total = 0, occupied = 0;
             tripVans.forEach(van => van.seats.forEach(s => {
-              if (s.type === 'customer') { total++; if (s.status !== 'available') occupied++; }
+              if (s.type === 'customer' || s.type === 'staff') { total++; if (s.status !== 'available') occupied++; }
             }));
             const vacant = total - occupied;
             const pct = total > 0 ? Math.round((occupied / total) * 100) : 0;

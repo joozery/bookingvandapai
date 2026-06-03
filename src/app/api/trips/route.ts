@@ -15,7 +15,7 @@ export async function GET() {
       const tripVans = (vans || []).filter(v => v.tripId === trip.id);
       let totalAvailable = 0;
       tripVans.forEach(van => {
-        totalAvailable += (van.seats || []).filter((s: any) => s.type === 'customer' && s.status === 'available').length;
+        totalAvailable += (van.seats || []).filter((s: any) => (s.type === 'customer' || s.type === 'staff') && s.status === 'available').length;
       });
       return { ...trip, availableSeats: totalAvailable };
     });
