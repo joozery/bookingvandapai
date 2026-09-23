@@ -47,8 +47,8 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
     return arr;
   }, [trips, tripStatusFilter, selectedTripId, tripSearch]);
 
-  const renderAdminSeat = (s: Seat | undefined) => {
-    if (!s) return <div className="w-14 h-10" />;
+  const renderAdminSeat = (s: Seat | undefined, fitCell = false) => {
+    if (!s) return <div className={cn('h-10', fitCell ? 'w-full min-w-0' : 'w-14')} />;
     const isDriver = s.type === 'driver';
     const isAvail = s.status === 'available';
     let bg = 'bg-slate-200 border-slate-300';
@@ -68,7 +68,7 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
     );
 
     return (
-      <div key={s.id} title={s.passengerName || ''} className={cn("w-14 h-10 rounded border flex items-center justify-center font-black select-none overflow-hidden", bg)}>
+      <div key={s.id} title={s.passengerName || ''} className={cn("h-10 rounded border flex items-center justify-center font-black select-none overflow-hidden", fitCell ? 'w-full min-w-0' : 'w-14', bg)}>
         {displayLabel}
       </div>
     );
@@ -260,10 +260,15 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
                         <p className="text-xs font-bold text-slate-700">เบาะเสริมระหว่างเบาะ 9 กับ 10</p>
                         <p className="text-[10px] text-slate-500">{extraSeatOccupied ? 'มีการจองอยู่ ไม่สามารถปิดได้' : 'เปิดเพื่อเพิ่มที่นั่งลูกค้าอีก 1 ที่'}</p>
                       </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                      <span aria-live="polite" className="text-[11px] font-semibold text-slate-500">
+                        {savingExtraSeat === van.id ? 'กำลังบันทึก...' : extraSeat ? 'เปิด' : 'ปิด'}
+                      </span>
                       <button
                         type="button"
                         role="switch"
                         aria-checked={!!extraSeat}
+                        aria-busy={savingExtraSeat === van.id}
                         aria-label={`เบาะเสริม รถตู้คันที่ ${van.vanNumber} ${trip.name}`}
                         disabled={savingExtraSeat !== null || extraSeatOccupied}
                         onClick={async () => {
@@ -271,10 +276,13 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
                           try { await onToggleExtraSeat(van.id, !extraSeat); }
                           finally { setSavingExtraSeat(null); }
                         }}
-                        className={cn('shrink-0 rounded-full px-3 py-2 text-xs font-bold transition disabled:opacity-50', extraSeat ? 'bg-violet-600 text-white' : 'bg-slate-200 text-slate-600')}
+                        className="group flex h-11 w-12 shrink-0 items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        {savingExtraSeat === van.id ? 'กำลังบันทึก...' : extraSeat ? 'มีเบาะเสริม' : 'ไม่มีเบาะเสริม'}
+                        <span aria-hidden="true" className={cn('flex h-7 w-12 items-center rounded-full p-1 transition-colors', extraSeat ? 'bg-violet-600 group-hover:bg-violet-700' : 'bg-slate-300 group-hover:bg-slate-400')}>
+                          <span className={cn('h-5 w-5 rounded-full bg-white shadow-sm transition-transform motion-reduce:transition-none', extraSeat ? 'translate-x-5' : 'translate-x-0')} />
+                        </span>
                       </button>
+                      </div>
                     </div>
 
                     {/* View Seats Button */}
@@ -292,15 +300,15 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
                     {/* Mini Seat Map */}
                     {viewSeatVanId === van.id && (
                       <div className="pt-3 pb-1 animate-in slide-in-from-top-2 duration-200">
-                        <div className={cn('flex flex-col gap-1.5 max-w-full mx-auto bg-slate-50 p-2.5 rounded-xl border border-slate-200 shadow-sm', extraSeat ? 'w-[264px]' : 'w-max')}>
-                          <div className={extraSeat ? 'grid grid-cols-[1fr_56px_56px] gap-x-1 items-center' : 'flex gap-1.5'}>
+                        <div className="flex flex-col gap-1.5 w-[202px] max-w-full mx-auto bg-slate-50 p-2.5 rounded-xl border border-slate-200 shadow-sm">
+                          <div className="flex gap-1.5">
                             {renderAdminSeat(van.seats.find(s=>s.row===1&&s.col===1))}
                             <div className="w-14 h-10" />
                             {renderAdminSeat(van.seats.find(s=>s.row===1&&s.col===3))}
                           </div>
                           {[2,3,4].map(r => (
-                            <div key={r} className={!extraSeat ? 'flex gap-1.5' : r === 4 ? 'flex gap-1 justify-between' : 'grid grid-cols-[1fr_56px_56px] gap-x-1 items-center'}>
-                              {(r === 4 && extraSeat ? [1,1.5,2,3] : [1,2,3]).map(c => renderAdminSeat(van.seats.find(s=>s.row===r&&s.col===c)))}
+                            <div key={r} className={r === 4 && extraSeat ? 'grid grid-cols-4 gap-1.5' : 'flex gap-1.5'}>
+                              {(r === 4 && extraSeat ? [1,1.5,2,3] : [1,2,3]).map(c => renderAdminSeat(van.seats.find(s=>s.row===r&&s.col===c), r === 4 && !!extraSeat))}
                             </div>
                           ))}
                         </div>
