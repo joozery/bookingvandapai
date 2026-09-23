@@ -34,6 +34,7 @@ import {
   ChevronDown
 } from 'lucide-react';
 import LandingPage from '../components/LandingPage';
+import { MESSENGER_URL } from '@/lib/contact';
 
 interface Seat {
   id: string;
@@ -927,7 +928,6 @@ function CustomerPageContent() {
               handleLoginClick();
             }
           }} 
-          showHelpCenter={() => setShowHelpCenterModal(true)} 
           trips={trips}
           isLoggedIn={!!lineUser}
         />
@@ -2465,17 +2465,17 @@ function CustomerPageContent() {
               <div className="space-y-2">
                 <h4 className="font-bold text-slate-700">ช่องทางการติดต่อแอดมิน</h4>
                 <p className="text-[11px]">
-                  หากมีข้อสงสัยเกี่ยวกับรายละเอียดของทริป การทำประกันเดินทาง หรือต้องการความช่วยเหลือเพิ่มเติม สามารถติดต่อผ่านช่องทาง Line Official Account หรือเบอร์โทรติดต่อได้ตลอดเวลาครับ
+                  หากมีข้อสงสัยเกี่ยวกับรายละเอียดของทริป การทำประกันเดินทาง หรือต้องการความช่วยเหลือเพิ่มเติม สามารถติดต่อแอดมินผ่าน Messenger ของเพจ ด่าไป เดินไป ได้ครับ
                 </p>
                 <div className="flex flex-col gap-2 pt-1">
                   <a
-                    href={settings.line_url || "https://line.me"}
+                    href={MESSENGER_URL}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="bg-[#06C755] hover:bg-[#05b34c] text-white py-2.5 px-4 rounded-xl font-bold flex items-center justify-center gap-2 transition"
+                    className="bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-4 rounded-xl font-bold flex items-center justify-center gap-2 transition"
                   >
                     <MessageSquare className="w-4.5 h-4.5" />
-                    <span>ติดต่อแอดมินผ่าน LINE Official</span>
+                    <span>ติดต่อแอดมินผ่าน Messenger</span>
                   </a>
                 </div>
               </div>

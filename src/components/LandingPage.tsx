@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { formatThaiDate } from '@/lib/dateFormat';
+import { MESSENGER_URL } from '@/lib/contact';
 import { 
   Compass, 
   ArrowRight, 
@@ -22,13 +24,11 @@ import {
 
 interface LandingPageProps {
   onLoginClick: () => void;
-  showHelpCenter: () => void;
   trips?: any[];
   isLoggedIn?: boolean;
 }
 
-export default function LandingPage({ onLoginClick, showHelpCenter, trips = [], isLoggedIn = false }: LandingPageProps) {
-  const [currentSlide, setCurrentSlide] = useState(0);
+export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = false }: LandingPageProps) {
   const [settings, setSettings] = useState({
     footer_description: 'กลุ่มเดินป่าและเดินทางสายผจญภัย มุ่งสร้างสรรค์ทริปท่องเที่ยวธรรมชาติที่คุ้มค่า สนุกสนาน มิตรภาพที่ยั่งยืน และปลอดภัยทุกก้าวเดิน',
     contact_phone: '+66 89 123 4567',
@@ -38,6 +38,23 @@ export default function LandingPage({ onLoginClick, showHelpCenter, trips = [], 
     line_url: 'https://line.me'
   });
   const tripsScrollRef = useRef<HTMLDivElement>(null);
+  const completedTripsScrollRef = useRef<HTMLDivElement>(null);
+  const [imageExtraHeights, setImageExtraHeights] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const contents = [tripsScrollRef.current, completedTripsScrollRef.current]
+      .flatMap(row => Array.from(row?.querySelectorAll<HTMLElement>('[data-trip-card-content]') || []));
+    const measure = () => {
+      const maxHeight = Math.max(0, ...contents.map(content => content.offsetHeight));
+      setImageExtraHeights(Object.fromEntries(contents.map(content => [
+        content.dataset.tripCardContent!, maxHeight - content.offsetHeight,
+      ])));
+    };
+    const observer = new ResizeObserver(measure);
+    contents.forEach(content => observer.observe(content));
+    measure();
+    return () => observer.disconnect();
+  }, [trips]);
 
   useEffect(() => {
     fetch('/api/settings').then(res => res.json()).then(data => {
@@ -47,79 +64,26 @@ export default function LandingPage({ onLoginClick, showHelpCenter, trips = [], 
     }).catch(console.error);
   }, []);
 
-  const scrollTripsLeft = () => {
-    if (tripsScrollRef.current) {
-      tripsScrollRef.current.scrollBy({ left: -390, behavior: 'smooth' });
-    }
-  };
-
-  const scrollTripsRight = () => {
-    if (tripsScrollRef.current) {
-      tripsScrollRef.current.scrollBy({ left: 390, behavior: 'smooth' });
-    }
-  };
-
-  const slides = [
-    {
-      img: "https://images.unsplash.com/photo-1527631746610-bca00a040d60?w=1600&auto=format&fit=crop&q=80",
-      tag: "THE NEXT GEN TRAVEL EXPERIENCE",
-      title: "ก้าวสู่การเดินทางที่ง่ายดาย",
-      subtitle: "ท่องเที่ยวธรรมชาติและเดินป่าระดับพรีเมียมไปกับรถตู้ “ด่าไป เดินไป”"
-    },
-    {
-      img: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1600&auto=format&fit=crop&q=80",
-      tag: "100% REAL-TIME SEATING",
-      title: "เลือกที่นั่งโปรดแบบเรียลไทม์",
-      subtitle: "จองตำแหน่งที่นั่งที่คุณถูกใจ เช็คเบาะว่างบนแผนผังรถตู้ได้สดๆ ทันที"
-    },
-    {
-      img: "https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=1600&auto=format&fit=crop&q=80",
-      tag: "AUTOMATIC INSURANCE",
-      title: "ดูแลความปลอดภัยทุกทริป",
-      subtitle: "ลงทะเบียนประกันภัยอุบัติเหตุส่วนบุคคลให้ผู้เดินทางโดยอัตโนมัติ"
-    },
-    {
-      img: "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=1600&auto=format&fit=crop&q=80",
-      tag: "ADVENTURE & COMMUNITY",
-      title: "มิตรภาพและการผจญภัย",
-      subtitle: "ร่วมเดินทางไปกับเพื่อนๆ คอเดินป่าที่มีใจรักธรรมชาติในบรรยากาศอบอุ่น"
-    }
-  ];
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % slides.length);
-    }, 6000);
-    return () => clearInterval(timer);
-  }, [slides.length]);
-
   const destinations = trips && trips.length > 0
-    ? trips.map((t, idx) => {
-        let rating = 4.9;
-        let reviews = "64 รีวิว";
-
-        if (idx === 0) {
-          rating = 4.9;
-          reviews = "128 รีวิว";
-        } else if (idx === 1) {
-          rating = 4.8;
-          reviews = "94 รีวิว";
-        } else if (idx === 2) {
-          rating = 4.9;
-          reviews = "112 รีวิว";
-        }
-
+    ? trips.map(t => {
+        const parts = (t.tripPeriod || '').split('||');
+        const nights = t.durationDays - 1;
+        const durationText = parts.length > 1 ? parts[0] : (nights > 0 ? `${t.durationDays} วัน ${nights} คืน` : 'ไปเช้าเย็นกลับ (1 วัน)');
+        const period = parts.length > 1 ? parts[1] : parts[0];
         return {
+          id: t.id,
+          completed: t.status === 'completed',
           title: t.name,
-          pickupPoint: t.pickupPoint || "ปั๊ม ปตท. วิภาวดี",
-          departureDate: t.departureDate || "15 ธ.ค. 67",
-          departureTime: t.departureTime || "06:00",
-          price: String(t.cost),
-          availableSeats: t.availableSeats !== undefined ? Number(t.availableSeats) : undefined,
-          seatsText: t.availableSeats !== undefined ? `เหลือ ${t.availableSeats} ที่นั่ง` : "มีที่นั่งว่าง",
+          durationText,
+          period,
+          departureDate: formatThaiDate(t.departureDate),
+          pickupPoint: t.pickupPoint || 'ยังไม่ระบุ',
+          departureTime: t.departureTime || '',
+          price: Number(t.cost || 0).toLocaleString('th-TH'),
+          availableSeats: Number(t.availableSeats ?? 0),
+          seatsText: Number(t.availableSeats ?? 0) > 0 ? `ว่าง ${t.availableSeats} ที่` : 'เต็ม',
           img: t.image || "/logo/scenic_van_trip.png",
-          rating: rating,
-          reviews: reviews
+
         };
       })
     : [];
@@ -129,7 +93,7 @@ export default function LandingPage({ onLoginClick, showHelpCenter, trips = [], 
       
       {/* Sticky Premium Navbar */}
       <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-md border-b border-slate-200/50 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 sm:h-20 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 sm:h-16 flex items-center justify-between">
           {/* Logo & Brand */}
           <div className="flex items-center gap-3">
             <div className="shrink-0 flex items-center justify-center">
@@ -144,13 +108,14 @@ export default function LandingPage({ onLoginClick, showHelpCenter, trips = [], 
           {/* Center Links (Hidden on mobile) */}
           <nav className="hidden md:flex items-center gap-8 text-xs font-bold text-slate-500">
             <a href="#" className="text-[#4c1d95] font-black hover:text-purple-800 transition">หน้าแรก</a>
-            <a href="#destinations" className="hover:text-purple-800 transition">ทริปยอดฮิต</a>
+            <a href="#destinations" className="hover:text-purple-800 transition">ทริปที่เปิดอยู่</a>
+            <a href="#completed-trips" className="hover:text-purple-800 transition">ทริปที่ปิดไปแล้ว</a>
           </nav>
 
           {/* Right Action buttons */}
           <div className="flex items-center gap-2 sm:gap-3">
             <a
-              href={settings.line_url || "https://line.me"}
+              href={MESSENGER_URL}
               target="_blank"
               rel="noreferrer"
               className="flex items-center gap-1.5 hover:text-[#4c1d95] text-slate-600 transition px-3 py-2 rounded-xl text-xs font-bold hover:bg-slate-100/80"
@@ -173,114 +138,22 @@ export default function LandingPage({ onLoginClick, showHelpCenter, trips = [], 
         </div>
       </header>
 
-      {/* Dynamic / Glowing Banner Badge */}
-      <div className="w-full bg-gradient-to-r from-[#4c1d95] via-purple-700 to-indigo-800 text-white text-center py-2.5 px-4 text-[10px] sm:text-xs font-bold tracking-wider flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 shadow-inner">
-        <div className="flex items-center gap-1.5">
-          <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-yellow-300 animate-pulse shrink-0" />
-          <span>ระบบจองที่นั่งรถตู้เวอร์ชันใหม่: ซิงค์แผนผังที่นั่งเรียลไทม์ 100% พร้อมประกันเดินทางอัตโนมัติ!</span>
-        </div>
-        <button 
-          onClick={showHelpCenter} 
-          className="underline hover:text-yellow-200 transition font-black sm:ml-2 inline-block mt-1 sm:mt-0 text-[11px] sm:text-xs"
-        >
-          ติดต่อแอดมินเพื่อขอลิ้งก์จอง →
-        </button>
-      </div>
-
-      {/* Hero Section - Immersive Full-Screen Background Slider */}
-      <section className="relative h-[85vh] sm:h-[75vh] min-h-[500px] sm:min-h-[580px] max-h-[750px] w-full overflow-hidden flex items-center justify-center bg-slate-950">
-        
-        {/* Background Image Slider with Crossfade */}
-        <div className="absolute inset-0 z-0">
-          {slides.map((slide, idx) => (
-            <div
-              key={idx}
-              className={`absolute inset-0 transition-all duration-[1200ms] ease-in-out ${
-                currentSlide === idx ? 'opacity-100 scale-100' : 'opacity-0 scale-105 pointer-events-none'
-              }`}
-            >
-              <img
-                src={slide.img}
-                alt={slide.tag}
-                className="w-full h-full object-cover select-none"
-              />
-            </div>
-          ))}
-        </div>
-
-        {/* Cinematic Vignette Overlay - Extremely soft and transparent to ensure maximum background image vibrancy */}
-        <div 
-          className="absolute inset-0 z-10 pointer-events-none" 
-          style={{
-            backgroundImage: 'linear-gradient(to bottom, rgba(3, 7, 18, 0.6) 0%, rgba(3, 7, 18, 0.3) 40%, rgba(3, 7, 18, 0) 90%)'
-          }}
-        />
-        
-        {/* Removed Bottom Fade overlay per user request */}        {/* Foreground Content Card - Glassmorphism & Minimal Text */}
-        <div className="relative z-20 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center space-y-6 sm:space-y-8 animate-in fade-in zoom-in-95 duration-1000 mt-[-40px] sm:mt-0">
-          
-
-          {/* Headline - Big & Elegant yet minimal */}
-          <div className="space-y-3 sm:space-y-4 max-w-3xl">
-            <h1 className="text-2xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.25] sm:leading-[1.15] drop-shadow-md px-2 sm:px-0">
-              ก่อนกรอกข้อมูล อ่านให้มันดีก่อนนะอีห่าจิก <br />
-              <span className="bg-gradient-to-r from-purple-400 via-indigo-300 to-violet-300 bg-clip-text text-transparent drop-shadow-sm inline-block mt-1 sm:mt-0">กูขี้เกียจแก้</span>
-            </h1>
-            <p className="text-xs sm:text-base md:text-lg text-slate-200/90 leading-relaxed max-w-2xl mx-auto font-medium tracking-wide drop-shadow-sm px-4 sm:px-0 mt-2 sm:mt-4">
-              {slides[currentSlide].subtitle}
-            </p>
-          </div>
-
-          {/* Hero CTAs */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 w-full sm:w-auto pt-4 sm:pt-2 pb-8 px-4 sm:px-0">
-            <button
-              onClick={onLoginClick}
-              className="w-full sm:w-auto bg-[#06C755] hover:bg-[#05b34c] text-white py-3.5 sm:py-4 px-8 rounded-2xl font-black text-[13px] sm:text-base transition-all duration-300 shadow-lg shadow-[#06C755]/25 flex items-center justify-center gap-2.5 sm:gap-3 active:scale-97 group overflow-hidden relative border border-emerald-600/20"
-            >
-              {/* shine overlay */}
-              <span className="absolute inset-0 w-full h-full bg-white/15 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-out" />
-              <svg viewBox="0 0 24 24" className="w-5 h-5 sm:w-5.5 sm:h-5.5 fill-current shrink-0">
-                <path d="M24 10.3c0-4.7-4.8-8.5-10.7-8.5S2.7 5.6 2.7 10.3c0 4.2 3.8 7.7 8.9 8.4.3.1.8.2.9.5.1.2 0 .6-.1.8l-.4 2.6c0 .3-.2 1.1 1 0l7.2-7.2h.1c2.7-1.1 3.9-3.1 3.9-5.1z" />
-              </svg>
-              <span>{isLoggedIn ? 'เริ่มจองที่นั่ง' : 'เข้าสู่ระบบด้วย LINE เพื่อจองที่นั่ง'}</span>
-              <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 group-hover:translate-x-1 transition-transform" />
-            </button>
-
-
-          </div>
-
-        </div>
-
-        {/* Slider Indicators (Dots) - Ultra-slim Glassmorphic Pill floating cleanly above the fade transition zone */}
-        <div className="absolute bottom-6 sm:bottom-20 left-1/2 transform -translate-x-1/2 flex items-center gap-2 z-30 bg-slate-950/20 backdrop-blur-sm border border-white/10 px-3 py-1.5 rounded-full shadow-lg">
-          {slides.map((_, idx) => (
-            <button
-              key={idx}
-              onClick={() => setCurrentSlide(idx)}
-              className={`h-1.5 rounded-full transition-all duration-300 ${
-                currentSlide === idx ? 'w-6 bg-purple-400 shadow-sm shadow-purple-500/25' : 'w-1.5 bg-white/40 hover:bg-white/70'
-              }`}
-              aria-label={`Go to slide ${idx + 1}`}
-            />
-          ))}
-        </div>
-      </section>
-
       {/* Trip showcase Section - Redesigned to Premium Card Slider */}
-      <section id="destinations" className="py-12 lg:py-28 bg-white border-b border-slate-100 overflow-hidden">
+      {[false, true].map(completed => {
+        const groupTrips = destinations.filter(dest => dest.completed === completed);
+        const scrollRef = completed ? completedTripsScrollRef : tripsScrollRef;
+        return (
+      <section key={String(completed)} id={completed ? 'completed-trips' : 'destinations'} className="py-3 sm:py-2 bg-white border-b border-slate-100 overflow-hidden scroll-mt-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
           
-          <div className="text-center max-w-xl mx-auto space-y-3 sm:space-y-4 mb-10 sm:mb-16">
+          <div className="flex flex-row-reverse items-center justify-end gap-2 mb-2">
             <div className="inline-flex items-center gap-1 bg-emerald-50 border border-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>อัปเดตทริปใหม่ทุกสัปดาห์</span>
+              <span>{groupTrips.length} ทริป</span>
             </div>
-            <h2 className="text-xl sm:text-4xl font-black text-slate-900 leading-tight">
-              ทริปยอดฮิตยอดนิยม “ด่าไป เดินไป”
+            <h2 className="text-base sm:text-lg font-black text-slate-900 leading-tight">
+              {completed ? 'ทริปที่ปิดไปแล้ว' : 'ทริปที่เปิดอยู่'}
             </h2>
-            <p className="text-[11px] sm:text-sm text-slate-500 font-medium leading-relaxed px-4 sm:px-0">
-              สัมผัสความงามของขุนเขาและธรรมชาติชั้นแนวหน้าของเมืองไทย จองที่นั่งรถตู้เดินทางไปกับครอบครัวหรือกลุ่มเพื่อนร่วมอุดมการณ์
-            </p>
           </div>
 
           {/* Cards Carousel Container with group hover states */}
@@ -288,33 +161,37 @@ export default function LandingPage({ onLoginClick, showHelpCenter, trips = [], 
             
             {/* Scrollable card deck with snap alignment & hidden scrollbar */}
             <div 
-              ref={tripsScrollRef}
-              className="flex gap-4 sm:gap-6 overflow-x-auto snap-x snap-mandatory pb-6 sm:pb-8 pt-2 sm:pt-4 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 [&::-webkit-scrollbar]:hidden"
+              ref={scrollRef}
+              className="flex gap-3 sm:gap-4 overflow-x-auto snap-x snap-mandatory pb-2 pt-1 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 [&::-webkit-scrollbar]:hidden"
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
-              {destinations.length === 0 ? (
-                <div className="w-full shrink-0 flex flex-col items-center justify-center text-center py-16 px-4 bg-slate-50/50 border border-slate-100 rounded-3xl mx-auto max-w-xl">
-                  <Compass className="w-12 h-12 text-slate-300 mb-4" />
-                  <h3 className="text-lg font-black text-slate-700">ยังไม่มีทริปเปิดให้จองในขณะนี้</h3>
-                  <p className="text-sm text-slate-400 mt-2">โปรดติดตามอัปเดตทริปใหม่ๆ ได้เร็วๆ นี้ หรือติดต่อแอดมินเพื่อสอบถามข้อมูลเพิ่มเติม</p>
+              {groupTrips.length === 0 ? (
+                <div className="w-full shrink-0 flex flex-col items-center justify-center text-center py-6 sm:py-16 px-4 bg-slate-50/50 border border-slate-100 rounded-3xl mx-auto max-w-xl">
+                  <Compass className="w-7 h-7 sm:w-12 sm:h-12 text-slate-300 mb-2 sm:mb-4" />
+                  <h3 className="text-sm sm:text-lg font-black text-slate-700">{completed ? 'ยังไม่มีทริปที่ปิดไปแล้ว' : 'ยังไม่มีทริปเปิดให้จองในขณะนี้'}</h3>
+                  {!completed && <p className="text-sm text-slate-400 mt-2">โปรดติดตามอัปเดตทริปใหม่ๆ หรือติดต่อแอดมินเพื่อสอบถามข้อมูลเพิ่มเติม</p>}
                 </div>
               ) : (
-                destinations.map((dest, idx) => (
+                groupTrips.map((dest) => (
                   <div 
-                  key={idx} 
-                  className="w-[85vw] max-w-[340px] sm:w-[360px] md:w-[380px] shrink-0 snap-center sm:snap-start bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.03)] hover:shadow-[0_20px_50px_rgb(76,29,149,0.07)] transition-all duration-350 hover:-translate-y-1.5 flex flex-col group"
+                  key={dest.id}
+                  className="w-[82vw] max-w-[340px] sm:w-[360px] md:w-[380px] shrink-0 snap-center sm:snap-start bg-white rounded-2xl sm:rounded-3xl overflow-hidden border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.03)] hover:shadow-[0_20px_50px_rgb(76,29,149,0.07)] transition-all duration-350 hover:-translate-y-1.5 flex flex-col group"
                 >
                   {/* Image top with floating seats status pill (No rating star! - aspect ratio reduced to modern 16:10 landscape) */}
-                  <div className="relative aspect-[16/10] overflow-hidden bg-slate-50 shrink-0">
+                  <div className="relative overflow-hidden bg-slate-50 shrink-0">
+                    <div aria-hidden="true" className="h-28 sm:h-[clamp(112px,14vh,160px)]" />
+                    <div aria-hidden="true" style={{ height: imageExtraHeights[dest.id] || 0 }} />
                     <img 
                       src={dest.img} 
                       alt={dest.title} 
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                     />
                     
                     {/* Floating Status Pill on top-left of the image */}
-                    <div className="absolute top-4 left-4 z-10">
-                      {dest.availableSeats !== undefined ? (
+                    <div className="absolute top-2 left-2 sm:top-4 sm:left-4 z-10">
+                      {completed ? (
+                        <span className="inline-flex items-center bg-slate-700/90 text-white text-[10px] font-black py-1 px-2.5 rounded-full">จบแล้ว</span>
+                      ) : dest.availableSeats !== undefined ? (
                         dest.availableSeats <= 3 ? (
                           <span className="inline-flex items-center gap-1.5 bg-rose-600/90 backdrop-blur-sm text-white text-[10px] font-black py-1 px-2.5 rounded-full shadow-md border border-white/10">
                             <span className="w-1.5 h-1.5 bg-white rounded-full animate-ping shrink-0" />
@@ -341,45 +218,52 @@ export default function LandingPage({ onLoginClick, showHelpCenter, trips = [], 
                   </div>
 
                   {/* Body details */}
-                  <div className="p-6 flex-1 flex flex-col justify-between space-y-5">
-                    <div className="space-y-4">
+                  <div>
+                  <div data-trip-card-content={dest.id} className="p-3 flex flex-col justify-between space-y-2">
+                    <div className="space-y-1.5">
                       {/* Trip Title */}
-                      <h3 className="text-base sm:text-lg font-black text-slate-800 leading-snug group-hover:text-[#4c1d95] transition duration-200 line-clamp-1">
+                      <h3 className="text-sm sm:text-base font-black text-slate-800 leading-snug group-hover:text-[#4c1d95] transition duration-200 line-clamp-1">
                         {dest.title}
                       </h3>
                       
-                      {/* Structured Details with Icons - Cleaner inline schedule */}
-                      <div className="space-y-2.5 text-xxs sm:text-xs font-bold text-slate-400">
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-3.5 h-3.5 text-purple-600/70 shrink-0" />
-                          <span className="truncate text-slate-500">{dest.pickupPoint}</span>
+                      <div className="space-y-1 text-[11px] sm:text-xs font-semibold text-slate-500">
+                        <div className="flex items-start gap-2">
+                          <Calendar className="w-3.5 h-3.5 text-purple-600/70 shrink-0 mt-0.5" />
+                          <span>{dest.durationText}{!completed && dest.period && <span className="font-normal ml-1">({dest.period})</span>}</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Calendar className="w-3.5 h-3.5 text-purple-600/70 shrink-0" />
-                          <span className="text-slate-500">{dest.departureDate} &bull; เวลา {dest.departureTime} น.</span>
-                        </div>
+                        {completed ? (
+                          <p>{dest.period || dest.departureDate}</p>
+                        ) : (
+                          <div className="space-y-1">
+                            <p>วันที่ออกเดินทาง {dest.departureDate}</p>
+                            <p className="flex items-start gap-2"><MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5 text-purple-600/70" /><span>สถานที่ขึ้นรถ: {dest.pickupPoint}</span></p>
+                            <p className="flex items-center gap-2"><Clock className="w-3.5 h-3.5 shrink-0 text-purple-600/70" /><span>เวลาออกเดินทาง {dest.departureTime ? `${dest.departureTime} น.` : 'ยังไม่ระบุ'}</span></p>
+                          </div>
+                        )}
                       </div>
                     </div>
 
                     {/* Footer: Price on the left, interactive book button on the right */}
-                    <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold">
+                    {!completed && <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 text-xs font-bold">
                       <div>
-                        <p className="text-[10px] text-slate-400 leading-none">เริ่มต้นเพียง</p>
                         <p className="text-base sm:text-lg font-black text-[#4c1d95] mt-1">
-                          ฿{dest.price} <span className="text-[10px] text-slate-400 font-semibold">/ ที่นั่ง</span>
+                          ฿{dest.price} <span className="text-[10px] text-slate-400 font-semibold">/ ท่าน</span>
                         </p>
                       </div>
 
                       <div className="text-right">
-                        <button 
-                          onClick={showHelpCenter}
-                          className="bg-purple-50 text-[#4c1d95] group-hover:bg-[#4c1d95] group-hover:text-white transition-all duration-300 py-2 px-4 rounded-xl font-black text-xxs flex items-center gap-1 border border-purple-100 group-hover:border-transparent shadow-sm active:scale-95"
+                        <a
+                          href={MESSENGER_URL}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="bg-purple-50 text-[#4c1d95] group-hover:bg-[#4c1d95] group-hover:text-white transition-all duration-300 min-h-10 sm:min-h-0 py-2 px-2 sm:px-4 rounded-xl font-black text-[11px] sm:text-xxs flex items-center gap-1 border border-purple-100 group-hover:border-transparent shadow-sm active:scale-95"
                         >
                           <span>ติดต่อแอดมินเพื่อจอง</span>
                           <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-                        </button>
+                        </a>
                       </div>
-                    </div>
+                    </div>}
+                  </div>
                   </div>
                 </div>
               )))}
@@ -387,7 +271,7 @@ export default function LandingPage({ onLoginClick, showHelpCenter, trips = [], 
 
             {/* Left Floating Arrow Button (Reveals on Hover, Hidden on Mobile Touch) */}
             <button
-              onClick={scrollTripsLeft}
+              onClick={() => scrollRef.current?.scrollBy({ left: -390, behavior: 'smooth' })}
               className="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full bg-white/95 hover:bg-white text-slate-700 hover:text-[#4c1d95] border border-slate-200/80 shadow-lg hidden md:flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 group focus:outline-none opacity-0 group-hover/carousel:opacity-100"
               aria-label="เลื่อนซ้าย"
             >
@@ -396,7 +280,7 @@ export default function LandingPage({ onLoginClick, showHelpCenter, trips = [], 
 
             {/* Right Floating Arrow Button (Reveals on Hover, Hidden on Mobile Touch) */}
             <button
-              onClick={scrollTripsRight}
+              onClick={() => scrollRef.current?.scrollBy({ left: 390, behavior: 'smooth' })}
               className="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full bg-white/95 hover:bg-white text-slate-700 hover:text-[#4c1d95] border border-slate-200/80 shadow-lg hidden md:flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 group focus:outline-none opacity-0 group-hover/carousel:opacity-100"
               aria-label="เลื่อนขวา"
             >
@@ -405,18 +289,11 @@ export default function LandingPage({ onLoginClick, showHelpCenter, trips = [], 
 
           </div>
 
-          <div className="text-center mt-12">
-            <button 
-              onClick={showHelpCenter}
-              className="inline-flex items-center gap-2 text-xs sm:text-sm font-black text-[#4c1d95] hover:text-purple-800 underline transition"
-            >
-              <span>สอบถามข้อมูลตารางทริปทั้งหมดกับแอดมินที่นี่</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
 
         </div>
       </section>
+        );
+      })}
 
 
 
@@ -446,10 +323,10 @@ export default function LandingPage({ onLoginClick, showHelpCenter, trips = [], 
 
             <div className="relative z-10 pt-1 flex justify-center">
               <a
-                href={settings.line_url || "https://line.me"}
+                href={MESSENGER_URL}
                 target="_blank"
                 rel="noreferrer"
-                className="bg-[#06C755] hover:bg-[#05b34c] text-white py-3 px-8 rounded-xl font-black text-xxs sm:text-xs transition-all duration-300 shadow-md shadow-[#06C755]/10 flex items-center gap-2 active:scale-97 group relative overflow-hidden"
+                className="bg-blue-600 hover:bg-blue-700 text-white py-3 px-8 rounded-xl font-black text-xxs sm:text-xs transition-all duration-300 shadow-md flex items-center gap-2 active:scale-97 group relative overflow-hidden"
               >
                 <MessageSquare className="w-4 h-4 text-white" />
                 <span>ติดต่อแอดมินเพื่อขอลิ้งก์จองเลย</span>
@@ -495,9 +372,9 @@ export default function LandingPage({ onLoginClick, showHelpCenter, trips = [], 
             <h5 className="text-white font-extrabold text-xs tracking-wider uppercase">การช่วยเหลือ</h5>
             <ul className="space-y-2 text-xxs sm:text-xs font-bold text-slate-500">
               <li>
-                <button onClick={showHelpCenter} className="hover:text-white transition">
-                  ติดต่อแอดมิน / คุยผ่านไลน์
-                </button>
+                <a href={MESSENGER_URL} target="_blank" rel="noopener noreferrer" className="hover:text-white transition">
+                  ติดต่อแอดมิน / Messenger
+                </a>
               </li>
               <li>
                 <button onClick={onLoginClick} className="hover:text-white transition">
