@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { formatThaiDate } from '@/lib/dateFormat';
 import type { Trip, Van } from './types';
 
 interface Props {
@@ -68,22 +69,14 @@ const generatePeriod = (dateStr: string, days: number) => {
 };
 
 const ThaiDatePicker = ({ value, onChange, required, min, max }: { value: string, onChange: (val: string) => void, required?: boolean, min?: string, max?: string }) => {
-  const displayValue = React.useMemo(() => {
-    if (!value) return '';
-    const d = new Date(value);
-    if (isNaN(d.getTime())) return '';
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = d.getFullYear() + 543;
-    return `${day}/${month}/${year}`;
-  }, [value]);
+  const displayValue = formatThaiDate(value);
 
   return (
     <div className="relative w-full h-10">
       {/* Background visual layer */}
       <div className="absolute inset-0 flex items-center justify-between px-3 bg-white border border-slate-200 rounded-lg pointer-events-none z-0">
         <span className={displayValue ? 'text-slate-800 text-sm' : 'text-slate-400 text-sm'}>
-          {displayValue || 'วว/ดด/ปปปป'}
+          {displayValue || 'วัน เดือน ปี พ.ศ.'}
         </span>
         <Calendar className="w-4 h-4 text-slate-400" />
       </div>
@@ -218,7 +211,8 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, on
         trip.name.toLowerCase().includes(search.toLowerCase()) ||
         trip.pickupPoint.toLowerCase().includes(search.toLowerCase()) ||
         (trip.tripPeriod && trip.tripPeriod.toLowerCase().includes(search.toLowerCase())) ||
-        trip.departureDate.includes(search);
+        trip.departureDate.includes(search) ||
+        formatThaiDate(trip.departureDate).includes(search);
       const matchNameFilter = selectedTripFilter ? trip.name === selectedTripFilter : true;
       return matchSearch && matchNameFilter;
     });
@@ -645,7 +639,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, on
                       <div className="space-y-1">
                         <h4 className="font-bold text-slate-800 text-base leading-tight group-hover:text-violet-700 transition">{trip.name}</h4>
                         <div className="text-[11px] text-slate-500 font-semibold flex items-center gap-1.5">
-                          <Calendar className="w-3.5 h-3.5 text-slate-400" /> {trip.departureDate}
+                          <Calendar className="w-3.5 h-3.5 text-slate-400" /> {formatThaiDate(trip.departureDate)}
                           {trip.tripPeriod && <span className="text-slate-400 font-normal">({trip.tripPeriod.split('||').pop()})</span>}
                         </div>
                       </div>
