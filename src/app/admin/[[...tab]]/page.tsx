@@ -30,6 +30,7 @@ import type { Trip, Van, Booking } from '../components/types';
 const NAV = [
   { id: 'dashboard', label: 'แดชบอร์ด', icon: LayoutDashboard },
   { id: 'trips',     label: 'จัดการทริป', icon: Compass },
+  { id: 'completed-trips', label: 'ทริปที่จบไปแล้ว', icon: Check },
   { id: 'vans',      label: 'จัดการรถ', icon: Bus },
   {
     id: 'bookings', label: 'การจองและลูกทริป', icon: Users,
@@ -46,7 +47,7 @@ const NAV = [
   { id: 'profile',   label: 'โปรไฟล์ของฉัน', icon: User },
 ] as const;
 
-type TabId = 'dashboard' | 'bookings' | 'trips' | 'vans' | 'checkin' | 'pending' | 'users' | 'staff' | 'insurance' | 'profile' | 'settings';
+type TabId = 'dashboard' | 'bookings' | 'trips' | 'completed-trips' | 'vans' | 'checkin' | 'pending' | 'users' | 'staff' | 'insurance' | 'profile' | 'settings';
 
 export default function AdminPage() {
   const { data: session, status } = useSession();
@@ -240,7 +241,7 @@ export default function AdminPage() {
     try {
       const res = await fn();
       const d   = await res.json();
-      if (d.success) { showToast('success', ok); fetchAll(true); }
+      if (d.success) { showToast('success', ok); await fetchAll(true); }
       else showToast('error', d.error || err);
     } catch { showToast('error', err); }
   };
@@ -362,7 +363,7 @@ export default function AdminPage() {
           const isAdmin = (session?.user as any)?.role === 'admin';
           const isSuperAdmin = (session?.user as any)?.username === 'admin';
           const perms = (session?.user as any)?.permissions || [];
-          if (isAdmin && !isSuperAdmin && !perms.includes(item.id)) return null;
+          if (isAdmin && !isSuperAdmin && !perms.includes(item.id === 'completed-trips' ? 'trips' : item.id)) return null;
 
           const Icon    = item.icon;
           const hasChildren = 'children' in item && item.children;
@@ -661,7 +662,7 @@ export default function AdminPage() {
            activeTab !== 'profile' && 
            !(activeTab === 'pending' 
              ? (session?.user as any)?.permissions?.includes('bookings') || (session?.user as any)?.permissions?.includes('pending')
-             : (session?.user as any)?.permissions?.includes(activeTab)) ? (
+             : (session?.user as any)?.permissions?.includes(activeTab === 'completed-trips' ? 'trips' : activeTab)) ? (
              <div className="flex flex-col items-center justify-center h-full text-slate-400 space-y-3">
                <Lock className="w-12 h-12 opacity-20" />
                <p className="font-bold">คุณไม่มีสิทธิเข้าถึงหน้านี้</p>
@@ -677,6 +678,7 @@ export default function AdminPage() {
                  activeTab === 'bookings'  ? 'การจองและลูกทริป' :
                  activeTab === 'pending'   ? 'รออนุมัติเปลี่ยนที่นั่ง' :
                  activeTab === 'trips'     ? 'จัดการทริป' :
+                 activeTab === 'completed-trips' ? 'ทริปที่จบไปแล้ว' :
                  activeTab === 'vans'      ? 'จัดการรถตู้' :
                  activeTab === 'users'     ? 'จัดการลูกทริป' : 
                  activeTab === 'staff'     ? 'ทีมงาน / ผู้จัด' : 
@@ -726,8 +728,12 @@ export default function AdminPage() {
                   onManualSubmit={handleManual}
                 />
               )}
-              {activeTab === 'trips' && (
-                <TripsTab trips={trips} vans={vans} onCreate={handleCreateTrip} onUpdate={handleUpdateTrip} onDelete={handleDelTrip} />
+              {(activeTab === 'trips' || activeTab === 'completed-trips') && (
+                <TripsTab key={activeTab} completed={activeTab === 'completed-trips'}
+                  trips={trips.filter(trip => activeTab === 'completed-trips' ? trip.status === 'completed' : trip.status !== 'completed')}
+                  vans={vans} onCreate={handleCreateTrip} onUpdate={handleUpdateTrip} onDelete={handleDelTrip}
+                  onStatusChange={(id, status) => api(() => fetch(`/api/trips/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) }), status === 'active' ? 'เปิดรับจองทริปแล้ว' : 'ย้ายไปทริปที่จบไปแล้ว')}
+                />
               )}
               {activeTab === 'vans' && (
                 <VansTab

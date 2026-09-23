@@ -12,11 +12,13 @@ import { cn } from '@/lib/utils';
 import type { Trip, Van } from './types';
 
 interface Props {
+  completed?: boolean;
   trips: Trip[];
   vans: Van[];
   onCreate: (form: { name: string; departureDate: string; durationDays: number; cost: number; pickupPoint: string; departureTime: string; tripPeriod: string; vansCount: number; vansList: { plateNumber: string; driverName: string; driverPhone: string; }[]; imageFile?: File | null }) => Promise<void>;
   onUpdate: (id: string, form: { name: string; departureDate: string; durationDays: number; cost: number; pickupPoint: string; departureTime: string; tripPeriod: string; imageFile?: File | null }) => Promise<void>;
   onDelete: (tripId: string) => Promise<void>;
+  onStatusChange: (tripId: string, status: Trip['status']) => Promise<void>;
 }
 
 const DEFAULT_FORM = { name: '', departureDate: '', returnDate: '', durationDays: 3, cost: 1500, pickupPoint: '', departureTime: '06:00', tripPeriod: '', durationText: '', vansCount: 1, vansList: [{ plateNumber: '', driverName: '', driverPhone: '' }] };
@@ -98,7 +100,8 @@ const ThaiDatePicker = ({ value, onChange, required, min, max }: { value: string
   );
 };
 
-export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: Props) {
+export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, onStatusChange, completed = false }: Props) {
+  const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
   const [form, setForm] = useState(DEFAULT_FORM);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -555,9 +558,9 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
         <div>
           <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
             <Compass className="w-4 h-4 text-violet-600" />
-            ทริปเดินทางทั้งหมด
+            {completed ? 'ทริปที่จบไปแล้ว' : 'ทริปที่เปิดรับจอง'}
           </h2>
-          <p className="text-xs text-slate-500 mt-0.5">จัดการทริป, ดูยอดจอง และแชร์ลิ้งก์รับสมัคร</p>
+          <p className="text-xs text-slate-500 mt-0.5">{completed ? 'ดูทริปที่ปิดแล้ว หรือเปิดสวิตช์เพื่อย้ายกลับไปจัดการทริป' : 'จัดการทริป, ดูยอดจอง และแชร์ลิ้งก์รับสมัคร'}</p>
         </div>
         
         <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto shrink-0">
@@ -571,9 +574,9 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
               className="w-full pl-9 pr-3 h-9 bg-slate-50 border-slate-200 text-xs rounded-lg"
             />
           </div>
-          <Button onClick={() => setIsCreating(true)} className="w-full sm:w-auto bg-violet-600 hover:bg-violet-700 text-white h-9 shadow-sm gap-1.5 text-xs font-bold rounded-lg">
+          {!completed && <Button onClick={() => setIsCreating(true)} className="w-full sm:w-auto bg-violet-600 hover:bg-violet-700 text-white h-9 shadow-sm gap-1.5 text-xs font-bold rounded-lg">
             <Plus className="w-4 h-4" /> สร้างทริปใหม่
-          </Button>
+          </Button>}
         </div>
       </div>
 
@@ -582,11 +585,11 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
           <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <Compass className="w-8 h-8 text-slate-300" />
           </div>
-          <h3 className="text-sm font-bold text-slate-700 mb-1">ยังไม่มีทริปในระบบ</h3>
-          <p className="text-xs text-slate-400 mb-4">เริ่มต้นด้วยการสร้างทริปแรกของคุณ เพื่อเปิดรับจอง</p>
-          <Button onClick={() => setIsCreating(true)} variant="outline" className="h-9 text-xs font-bold border-violet-200 text-violet-600 hover:bg-violet-50">
+          <h3 className="text-sm font-bold text-slate-700 mb-1">{completed ? 'ยังไม่มีทริปที่จบไปแล้ว' : 'ยังไม่มีทริปที่เปิดรับจอง'}</h3>
+          <p className="text-xs text-slate-400 mb-4">{completed ? 'เมื่อปิดสวิตช์ในเมนูจัดการทริป ทริปจะย้ายมาแสดงที่นี่' : 'สร้างทริปใหม่ หรือเปิดทริปจากเมนูทริปที่จบไปแล้ว'}</p>
+          {!completed && <Button onClick={() => setIsCreating(true)} variant="outline" className="h-9 text-xs font-bold border-violet-200 text-violet-600 hover:bg-violet-50">
             สร้างทริปใหม่ตอนนี้
-          </Button>
+          </Button>}
         </div>
       ) : filteredTrips.length === 0 ? (
         <div className="text-center py-20 bg-white border border-slate-200 rounded-2xl shadow-sm flex flex-col items-center justify-center text-slate-400 gap-2">
@@ -636,6 +639,31 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete }: 
                       <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-amber-500" /> ออก {trip.departureTime} น.</span>
                       <span className="text-slate-300">|</span>
                       <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-rose-500" /> {trip.pickupPoint}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2">
+                      <span className="text-xs font-semibold text-slate-600">{trip.status === 'completed' ? 'ทริปที่จบไปแล้ว' : 'เปิดรับจอง'}</span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={trip.status !== 'completed'}
+                        aria-label={`เปิดรับจองทริป ${trip.name}`}
+                        disabled={updatingStatusId !== null}
+                        onClick={async () => {
+                          setUpdatingStatusId(trip.id);
+                          try {
+                            await onStatusChange(trip.id, trip.status === 'completed' ? 'active' : 'completed');
+                          } finally {
+                            setUpdatingStatusId(null);
+                          }
+                        }}
+                        className="flex items-center gap-2 text-xs font-bold disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-violet-600"
+                      >
+                        <span>{updatingStatusId === trip.id ? 'กำลังบันทึก...' : trip.status === 'completed' ? 'ปิด' : 'เปิด'}</span>
+                        <span className={cn('flex h-6 w-11 items-center rounded-full p-0.5 transition-colors', trip.status === 'completed' ? 'bg-slate-300' : 'bg-emerald-500')}>
+                          <span className={cn('h-5 w-5 rounded-full bg-white shadow transition-transform', trip.status === 'completed' ? 'translate-x-0' : 'translate-x-5')} />
+                        </span>
+                      </button>
                     </div>
 
                     <div className="flex items-end justify-between mt-auto pt-2">

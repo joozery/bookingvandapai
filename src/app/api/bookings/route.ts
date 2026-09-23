@@ -70,6 +70,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Please provide all required booking fields' }, { status: 400 });
     }
 
+    const { data: trip, error: tripError } = await supabase.from('trips').select('status').eq('id', tripId).maybeSingle();
+    if (tripError) throw tripError;
+    if (!trip) {
+      return NextResponse.json({ success: false, error: 'Trip not found' }, { status: 404 });
+    }
+    if (trip.status === 'completed') {
+      return NextResponse.json({ success: false, error: 'ทริปนี้จบไปแล้ว ไม่สามารถจองเพิ่มได้' }, { status: 409 });
+    }
+
     // 1. Fetch Van and check seat
     const { data: van, error: vanError } = await supabase.from('vans').select('*').eq('id', vanId).single();
     if (vanError || !van) {

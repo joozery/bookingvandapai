@@ -9,6 +9,7 @@ import DigitalTicket from '@/components/DigitalTicket';
 import { supabase } from '@/lib/supabase';
 import { toPng } from 'html-to-image';
 import { cn } from '@/lib/utils';
+import { formatThaiDate } from '@/lib/dateFormat';
 import {
   Compass,
   Calendar,
@@ -187,7 +188,8 @@ function CustomerPageContent() {
   const [isSubmittingProfile, setIsSubmittingProfile] = useState(false);
 
   // Mobile Tab & Modals States
-  const [mobileTab, setMobileTab] = useState<'explore' | 'tickets' | 'profile'>('explore');
+  const [mobileTab, setMobileTab] = useState<'explore' | 'completed' | 'tickets' | 'profile'>('explore');
+  const [completedTripSearch, setCompletedTripSearch] = useState('');
   const [showBookingHistoryModal, setShowBookingHistoryModal] = useState(false);
   const [allUserBookings, setAllUserBookings] = useState<any[]>([]);
   const [showHelpCenterModal, setShowHelpCenterModal] = useState(false);
@@ -199,6 +201,47 @@ function CustomerPageContent() {
   const [allergies, setAllergies] = useState('');
   const [medicalConditions, setMedicalConditions] = useState('');
   const [consentInsurance, setConsentInsurance] = useState(false);
+  const draftOwner = useRef<string | null>(null);
+  const hasFormDraft = useRef(false);
+  const [draftReadyFor, setDraftReadyFor] = useState<string | null>(null);
+
+  // Keep unfinished forms in this browser tab, separately for each account.
+  useEffect(() => {
+    const userId = lineUser?.userId;
+    draftOwner.current = userId || null;
+    hasFormDraft.current = false;
+    setDraftReadyFor(null);
+    if (!userId) return;
+    try {
+      const raw = sessionStorage.getItem(`booking-form:${userId}`);
+      const draft = raw ? JSON.parse(raw) : null;
+      if (draft && typeof draft === 'object') {
+        const fields = { nickname: setNickname, titleName: setTitleName, fullName: setFullName, phone: setPhone, note: setNote, nationalId: setNationalId, birthDate: setBirthDate, emergencyName: setEmergencyName, emergencyPhone: setEmergencyPhone, allergies: setAllergies, medicalConditions: setMedicalConditions };
+        for (const [key, setter] of Object.entries(fields)) {
+          if (typeof draft[key] === 'string') setter(draft[key]);
+        }
+        if (typeof draft.consentInsurance === 'boolean') setConsentInsurance(draft.consentInsurance);
+        if (draft.showProfileModal === true) setShowProfileModal(true);
+        hasFormDraft.current = true;
+        setIsLandingMode(false);
+      }
+    } catch { /* Storage can be unavailable in private browsers. */ }
+    setDraftReadyFor(userId);
+  }, [lineUser?.userId]);
+
+  useEffect(() => {
+    if (!draftReadyFor || draftReadyFor !== lineUser?.userId || !hasFormDraft.current) return;
+    try {
+      sessionStorage.setItem(`booking-form:${draftReadyFor}`, JSON.stringify({ nickname, titleName, fullName, phone, note, nationalId, birthDate, emergencyName, emergencyPhone, allergies, medicalConditions, consentInsurance, showProfileModal }));
+    } catch { /* Keep the live form usable if storage is unavailable. */ }
+  }, [draftReadyFor, lineUser?.userId, nickname, titleName, fullName, phone, note, nationalId, birthDate, emergencyName, emergencyPhone, allergies, medicalConditions, consentInsurance, showProfileModal]);
+
+  const clearFormDraft = () => {
+    hasFormDraft.current = false;
+    if (lineUser) {
+      try { sessionStorage.removeItem(`booking-form:${lineUser.userId}`); } catch { /* Storage unavailable. */ }
+    }
+  };
 
   const [settings, setSettings] = useState({ line_url: 'https://line.me' });
 
@@ -232,17 +275,18 @@ function CustomerPageContent() {
   // Sync NextAuth session with local lineUser state
   useEffect(() => {
     if (session?.user) {
-      setLineUser({
+      const nextUser = {
         userId: (session.user as any).id || session.user.email || `line-user-${Date.now()}`,
         displayName: session.user.name || 'ผู้ใช้งาน LINE',
         pictureUrl: session.user.image || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
-      });
+      };
+      setLineUser(previous => previous && previous.userId === nextUser.userId && previous.displayName === nextUser.displayName && previous.pictureUrl === nextUser.pictureUrl ? previous : nextUser);
     } else {
       setLineUser(null);
     }
   }, [session]);
 
-  // 2. Fetch bookings when LINE User or Selected Trip changes
+  // Load the profile only when the account changes, not on seat/session refreshes.
   useEffect(() => {
     if (lineUser) {
       fetchUserProfile();
@@ -250,7 +294,10 @@ function CustomerPageContent() {
       setHasProfile(false);
       setShowProfileModal(false);
     }
-    
+  }, [lineUser?.userId]);
+
+  // Fetch bookings independently of profile form initialization.
+  useEffect(() => {
     if (lineUser && selectedTrip && hasProfile) {
       fetchUserBooking();
     } else {
@@ -370,8 +417,10 @@ function CustomerPageContent() {
     try {
       const res = await fetch(`/api/profile?lineUserId=${lineUser.userId}`);
       const data = await res.json();
+      if (draftOwner.current !== lineUser.userId) return;
       if (data.success && data.profile) {
         setHasProfile(true);
+        if (hasFormDraft.current) return;
         let name = data.profile.fullName || '';
         let title = '';
         if (name.startsWith('นาย ')) { title = 'นาย'; name = name.replace('นาย ', ''); }
@@ -392,7 +441,7 @@ function CustomerPageContent() {
         setShowProfileModal(false);
       } else {
         setHasProfile(false);
-        setConsentInsurance(false);
+        if (!hasFormDraft.current) setConsentInsurance(false);
         setShowProfileModal(true);
       }
     } catch (err) {
@@ -440,6 +489,7 @@ function CustomerPageContent() {
         const data = await res.json();
         if (data.success) {
           setMessage({ type: 'success', text: 'ส่งคำขอแก้ไขข้อมูลสำเร็จ กรุณารอแอดมินตรวจสอบครับ' });
+          clearFormDraft();
           setShowProfileModal(false);
         } else {
           setMessage({ type: 'error', text: data.error || 'เกิดข้อผิดพลาดในการส่งคำขอ' });
@@ -455,6 +505,7 @@ function CustomerPageContent() {
         const data = await res.json();
         if (data.success) {
           setMessage({ type: 'success', text: 'บันทึกข้อมูลส่วนตัวสำเร็จ' });
+          clearFormDraft();
           setHasProfile(true);
           setShowProfileModal(false);
         } else {
@@ -589,6 +640,7 @@ function CustomerPageContent() {
   };
 
   const handleLogout = () => {
+    clearFormDraft();
     signOut();
   };
 
@@ -667,6 +719,7 @@ function CustomerPageContent() {
       const data = await res.json();
       if (data.success) {
         setMessage({ type: 'success', text: 'จองที่นั่งสำเร็จแล้ว! ดูตั๋วของคุณได้ที่ "ตั๋วของฉัน" หรือ "ประวัติการจอง"' });
+        clearFormDraft();
         setSelectedTrip(null);
         setSelectedVan(null);
         setSelectedSeat(null);
@@ -883,7 +936,11 @@ function CustomerPageContent() {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-[#f8fafc] text-slate-800 min-h-screen">
+    <div className="flex-1 flex flex-col bg-[#f8fafc] text-slate-800 min-h-screen"
+      onChangeCapture={event => {
+        if ((event.target as HTMLElement).closest('form')) hasFormDraft.current = true;
+      }}
+    >
       {/* Global alert messages banner */}
       {message && (
         <div className="fixed top-24 right-4 z-50 animate-bounce max-w-sm">
@@ -905,7 +962,7 @@ function CustomerPageContent() {
       )}
 
       {/* Header Panel matching screenshot */}
-      <header className="bg-white border-b border-slate-200 py-3 sm:py-4 px-4 sm:px-6 lg:px-8">
+      <header className="bg-white border-b border-slate-200 py-3 sm:py-4 px-4 sm:px-6 2xl:px-8">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 sm:gap-4">
           <div className="flex items-center space-x-3 sm:space-x-4 min-w-0">
             {/* Real Brand Logo */}
@@ -943,13 +1000,23 @@ function CustomerPageContent() {
                 
                 {/* Dropdown Menu */}
                 <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-slate-200 rounded-2xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-right scale-95 group-hover:scale-100 z-50 overflow-hidden flex flex-col py-2">
-                  <Link
-                    href="/"
+                  <button
+                    type="button"
+                    onClick={() => setMobileTab('explore')}
                     className="flex items-center px-4 py-2.5 text-left text-[11px] font-bold text-slate-700 hover:bg-purple-50 hover:text-[#4c1d95] transition"
                   >
                     <Compass className="w-4 h-4 mr-2 text-[#4c1d95]" />
-                    สำรวจ
-                  </Link>
+                    ทริปที่เปิดอยู่
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMobileTab('completed')}
+                    aria-pressed={mobileTab === 'completed'}
+                    className="flex items-center px-4 py-2.5 text-left text-[11px] font-bold text-slate-700 hover:bg-purple-50 hover:text-[#4c1d95] transition"
+                  >
+                    <Check className="w-4 h-4 mr-2 text-[#4c1d95]" />
+                    ทริปที่จบไปแล้ว
+                  </button>
                   <Link
                     href="/tickets"
                     className="flex items-center px-4 py-2.5 text-left text-[11px] font-bold text-slate-700 hover:bg-purple-50 hover:text-[#4c1d95] transition"
@@ -1208,7 +1275,7 @@ function CustomerPageContent() {
            </div>
         </div>
       ) : (
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full flex-grow flex flex-col gap-6 pb-24 lg:pb-10">
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 2xl:px-8 py-6 w-full flex-grow flex flex-col gap-6 pb-24 2xl:pb-10">
         
         {/* Back Navigation — show on step 2+ */}
         {currentStep > 1 && !userBooking && (
@@ -1234,7 +1301,7 @@ function CustomerPageContent() {
 
         {/* On mobile, if active tab is profile, show the profile screen */}
         {mobileTab === 'profile' && lineUser && (
-          <div className="lg:hidden col-span-1 flex flex-col gap-6 bg-white rounded-3xl p-5 border border-slate-200 shadow-sm animate-in fade-in duration-200">
+          <div className="2xl:hidden col-span-1 flex flex-col gap-6 bg-white rounded-3xl p-5 border border-slate-200 shadow-sm animate-in fade-in duration-200">
             {/* Profile Header */}
             <div className="border-b border-slate-100 pb-4 text-center">
               <h2 className="text-base font-bold text-slate-800">โปรไฟล์</h2>
@@ -1323,7 +1390,7 @@ function CustomerPageContent() {
 
         {/* On mobile, if active tab is tickets, show all tickets */}
         {mobileTab === 'tickets' && lineUser && (
-          <div className="lg:hidden col-span-1 flex flex-col gap-4 bg-white rounded-3xl p-5 border border-slate-200 shadow-sm animate-in fade-in duration-200">
+          <div className="2xl:hidden col-span-1 flex flex-col gap-4 bg-white rounded-3xl p-5 border border-slate-200 shadow-sm animate-in fade-in duration-200">
             <div className="border-b border-slate-100 pb-4 text-center">
               <h2 className="text-base font-bold text-slate-800 flex items-center justify-center gap-2">
                 <Armchair className="w-5 h-5 text-[#4c1d95]" />
@@ -1339,7 +1406,7 @@ function CustomerPageContent() {
                   </div>
                   <p className="text-sm font-bold text-slate-500">ยังไม่มีตั๋วโดยสาร</p>
                   <button onClick={() => setMobileTab('explore')} className="mt-4 text-xs font-bold text-[#4c1d95] bg-purple-50 hover:bg-purple-100 px-4 py-2.5 rounded-xl transition border border-purple-100">
-                    ไปสำรวจทริปกันเลย
+                    ดูทริปที่เปิดอยู่
                   </button>
                 </div>
               ) : (
@@ -1389,11 +1456,11 @@ function CustomerPageContent() {
         {/* ========================================================================= */}
         {/* COLUMN 1: LEFT SIDE (3 columns on lg) - SELECT TRIP & VAN */}
         {/* ========================================================================= */}
-        <section className={`flex-col gap-6 lg:flex lg:col-span-3 ${currentStep === 1 || currentStep === 2 || isRequestingTransfer ? (mobileTab === 'explore' ? 'flex' : 'hidden') : 'hidden'}`}>
+        <section className={`flex-col gap-6 2xl:col-span-3 ${mobileTab === 'completed' || ((currentStep === 1 || currentStep === 2 || isRequestingTransfer) && mobileTab === 'explore') ? 'flex' : 'hidden'}`}>
           
           {/* 1.1 เลือกทริป — Show only on step 1 */}
-          <div className={currentStep > 1 || (userBooking && isRequestingTransfer) ? 'hidden' : 'block'}>
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+          <div className={mobileTab === 'completed' || (currentStep === 1 && !(userBooking && isRequestingTransfer)) ? 'block' : 'hidden'}>
+          <div className={`bg-white border border-slate-200 rounded-2xl p-5 shadow-sm ${mobileTab === 'completed' ? 'hidden' : ''}`}>
             <h2 className="text-sm sm:text-base font-bold text-slate-800 mb-4 flex items-center gap-1.5 uppercase tracking-wide">
               <Compass className="w-4 h-4 text-[#4c1d95]" />
               <span>เลือกทริป</span>
@@ -1437,7 +1504,10 @@ function CustomerPageContent() {
                       </p>
                     </div>
                   )}
-                  {trips.filter(t => t.name.toLowerCase().includes(tripSearch.toLowerCase())).map((trip) => {
+                  {!trips.some(t => t.status !== 'completed' && t.name.toLowerCase().includes(tripSearch.toLowerCase())) && (
+                    <p className="py-4 text-center text-xs text-slate-400">ไม่พบทริปที่เปิดรับจอง</p>
+                  )}
+                  {trips.filter(t => t.status !== 'completed' && t.name.toLowerCase().includes(tripSearch.toLowerCase())).map((trip) => {
                   const isSelected = selectedTrip?.id === trip.id;
                   const nights = trip.durationDays - 1;
                   const seatsLeft = trip.availableSeats ?? 0;
@@ -1493,7 +1563,7 @@ function CustomerPageContent() {
                           <div className="flex items-center gap-2 flex-wrap">
                             <div className="flex items-center gap-1">
                               <MapPin className="w-3 h-3 text-white/50 shrink-0" />
-                              <span className="text-white/70 text-[10px] font-semibold">ออก {trip.departureDate}</span>
+                              <span className="text-white/70 text-[10px] font-semibold">วันที่ออกเดินทาง {formatThaiDate(trip.departureDate)}</span>
                             </div>
                             <div className="flex items-center gap-1">
                               <Clock className="w-3 h-3 text-white/50 shrink-0" />
@@ -1531,9 +1601,47 @@ function CustomerPageContent() {
             </div>
             )}
           </div>
+          {!loading && (
+            <div className={`rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ${mobileTab === 'completed' ? 'block' : 'hidden'}`}>
+              <h2 className="mb-4 flex items-center gap-2 text-sm font-bold text-slate-800 sm:text-base">
+                <Check className="h-4 w-4 text-slate-500" /> ทริปที่จบไปแล้ว
+              </h2>
+              <input
+                type="search"
+                aria-label="ค้นหาทริปที่จบไปแล้ว"
+                placeholder="ค้นหาทริปที่จบไปแล้ว..."
+                value={completedTripSearch}
+                onChange={e => setCompletedTripSearch(e.target.value)}
+                className="mb-4 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:outline-none focus:border-[#4c1d95]"
+              />
+              <div className="flex max-h-[500px] flex-col gap-3 overflow-y-auto">
+                {trips.filter(t => t.status === 'completed' && t.name.toLowerCase().includes(completedTripSearch.toLowerCase())).map(trip => (
+                  <article key={trip.id} className="relative min-h-[130px] shrink-0 overflow-hidden rounded-xl bg-slate-700">
+                    <img
+                      src={trip.image || 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=400&auto=format&fit=crop&q=80'}
+                      alt={trip.name}
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-black/20" />
+                    <div className="relative flex min-h-[130px] items-center justify-between gap-3 p-4">
+                      <div className="min-w-0 space-y-2">
+                        <h3 className="text-sm font-black text-white">{trip.name}</h3>
+                        <p className="text-xs text-white/80">{trip.tripPeriod?.split('||').pop() || trip.departureDate}</p>
+                        <p className="text-xs text-white/70">{trip.pickupPoint}</p>
+                      </div>
+                      <span className="shrink-0 rounded-full border border-white/30 bg-slate-800/80 px-3 py-1 text-[10px] font-bold text-white">จบแล้ว</span>
+                    </div>
+                  </article>
+                ))}
+                {!trips.some(t => t.status === 'completed' && t.name.toLowerCase().includes(completedTripSearch.toLowerCase())) && (
+                  <p className="py-4 text-center text-xs text-slate-400">{completedTripSearch ? 'ไม่พบทริปที่จบไปแล้วตรงกับคำค้นหา' : 'ยังไม่มีทริปที่จบไปแล้ว'}</p>
+                )}
+              </div>
+            </div>
+          )}
           </div> {/* end trip section wrapper */}
           {/* 1.2 เลือกรถตู้ — show only on step 2 */}
-          <div className={currentStep === 1 && !(userBooking && isRequestingTransfer) ? 'hidden' : 'block'}>
+          <div className={mobileTab === 'completed' || (currentStep === 1 && !(userBooking && isRequestingTransfer)) ? 'hidden' : 'block'}>
             <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm animate-in fade-in duration-200">
               <h2 className="text-sm sm:text-base font-bold text-slate-800 mb-4 flex items-center gap-1.5 uppercase tracking-wide">
                 <Armchair className="w-4 h-4 text-[#4c1d95]" />
@@ -1601,7 +1709,7 @@ function CustomerPageContent() {
         {/* ========================================================================= */}
         {/* COLUMN 2: MIDDLE (5 columns on lg) - DETAILED VAN & SEAT MAP */}
         {/* ========================================================================= */}
-        <section className={`flex-col gap-6 lg:col-span-5 ${(userBooking && !isRequestingTransfer) ? 'hidden lg:hidden' : (currentStep === 3 || isRequestingTransfer ? (mobileTab === 'explore' ? 'flex lg:flex' : 'hidden lg:hidden') : 'hidden lg:hidden')}`}>
+        <section className={`flex-col gap-6 2xl:col-span-5 ${(userBooking && !isRequestingTransfer) ? 'hidden 2xl:hidden' : (currentStep === 3 || isRequestingTransfer ? (mobileTab === 'explore' ? 'flex 2xl:flex' : 'hidden 2xl:hidden') : 'hidden 2xl:hidden')}`}>
           
           {selectedVan ? (
             <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex-1 flex flex-col justify-between">
@@ -1805,7 +1913,7 @@ function CustomerPageContent() {
         {/* ========================================================================= */}
         {/* COLUMN 3: RIGHT SIDE (4 columns on lg) - BOOKING FORM / DIGITAL TICKET */}
         {/* ========================================================================= */}
-        <section className={`flex-col gap-6 lg:col-span-4 ${(currentStep === 4 || currentStep === 5 || !!userBooking) ? (mobileTab === 'explore' ? 'flex lg:flex' : 'hidden lg:hidden') : 'hidden lg:hidden'}`}>
+        <section className={`flex-col gap-6 2xl:col-span-4 ${(currentStep === 4 || currentStep === 5 || !!userBooking) ? (mobileTab === 'explore' ? 'flex 2xl:flex' : 'hidden 2xl:hidden') : 'hidden 2xl:hidden'}`}>
           
           {/* Active Digital Ticket display if user has a booking */}
           {lineUser && userBooking && (
@@ -2296,7 +2404,7 @@ function CustomerPageContent() {
                     </div>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-slate-500 font-semibold">
                       <span>เบาะ: {b.seatLabel || b.seatId}</span>
-                      <span>ออก: {b.departureDate || ''} เวลา {b.departureTime || ''} น.</span>
+                      <span>วันที่ออกเดินทาง: {formatThaiDate(b.departureDate)} เวลา {b.departureTime || ''} น.</span>
                     </div>
                     <div className="border-t border-slate-200/50 pt-2 flex items-center justify-between text-[10px] font-black text-[#4c1d95]">
                       <span>ราคาทริป</span>
@@ -2380,10 +2488,10 @@ function CustomerPageContent() {
         </div>
       )}
 
-      {/* Mobile Bottom Navigation Bar matching screenshot style */}
+      {/* Phone and tablet bottom navigation (below 1536px) */}
       {lineUser && hasProfile && !showProfileModal && (
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 py-2 px-6 flex justify-around items-center shadow-lg">
-          {/* Tab 1: สำรวจ */}
+        <div className="2xl:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 py-2 px-2 grid grid-cols-4 items-center shadow-lg">
+          {/* Tab 1: ทริปที่เปิดอยู่ */}
           <button
             onClick={() => setMobileTab('explore')}
             className={`flex flex-col items-center gap-0.5 transition-colors duration-200 ${
@@ -2391,11 +2499,22 @@ function CustomerPageContent() {
             }`}
           >
             <Compass className="w-5 h-5" />
-            <span className="text-[9.5px] font-bold">สำรวจ</span>
+            <span className="text-[9.5px] font-bold">ทริปที่เปิดอยู่</span>
             {mobileTab === 'explore' && <span className="w-1 h-1 bg-[#4c1d95] rounded-full mt-0.5" />}
           </button>
 
-          {/* Tab 2: ตั๋วของฉัน */}
+          <button
+            type="button"
+            onClick={() => setMobileTab('completed')}
+            aria-pressed={mobileTab === 'completed'}
+            className={`flex flex-col items-center gap-0.5 transition-colors duration-200 ${mobileTab === 'completed' ? 'text-[#4c1d95]' : 'text-slate-400 hover:text-slate-600'}`}
+          >
+            <Check className="w-5 h-5" />
+            <span className="text-[9.5px] font-bold whitespace-nowrap">ทริปที่จบไปแล้ว</span>
+            {mobileTab === 'completed' && <span className="w-1 h-1 bg-[#4c1d95] rounded-full mt-0.5" />}
+          </button>
+
+          {/* Tab 3: ตั๋วของฉัน */}
           <Link
             href="/tickets"
             className={`flex flex-col items-center gap-0.5 transition-colors duration-200 text-slate-400 hover:text-slate-600`}
@@ -2409,7 +2528,7 @@ function CustomerPageContent() {
             <span className="text-[9.5px] font-bold">ตั๋วของฉัน</span>
           </Link>
 
-          {/* Tab 3: โปรไฟล์ */}
+          {/* Tab 4: โปรไฟล์ */}
           <button
             onClick={() => setMobileTab('profile')}
             className={`flex flex-col items-center gap-0.5 transition-colors duration-200 ${

@@ -23,9 +23,14 @@ export async function PUT(request: Request, { params }: RouteParams) {
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, departureDate, durationDays, cost, pickupPoint, departureTime, tripPeriod, image } = body;
+    const { name, departureDate, durationDays, cost, pickupPoint, departureTime, tripPeriod, image, status } = body;
+
+    if (status !== undefined && status !== 'active' && status !== 'completed') {
+      return NextResponse.json({ success: false, error: 'Invalid trip status' }, { status: 400 });
+    }
 
     const updates: any = {};
+    if (status !== undefined) updates.status = status;
     if (name !== undefined) updates.name = name;
     if (departureDate !== undefined) updates.departureDate = departureDate;
     if (durationDays !== undefined) updates.durationDays = Number(durationDays);
@@ -42,6 +47,10 @@ export async function PUT(request: Request, { params }: RouteParams) {
       .select();
 
     if (error) throw error;
+
+    if (!data?.length) {
+      return NextResponse.json({ success: false, error: 'Trip not found' }, { status: 404 });
+    }
 
     return NextResponse.json({ success: true, trip: data?.[0] });
   } catch (error: any) {
