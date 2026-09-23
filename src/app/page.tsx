@@ -1615,7 +1615,12 @@ function CustomerPageContent() {
                 className="mb-4 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:outline-none focus:border-[#4c1d95]"
               />
               <div className="flex max-h-[500px] flex-col gap-3 overflow-y-auto">
-                {trips.filter(t => t.status === 'completed' && t.name.toLowerCase().includes(completedTripSearch.toLowerCase())).map(trip => (
+                {trips.filter(t => t.status === 'completed' && t.name.toLowerCase().includes(completedTripSearch.toLowerCase())).map(trip => {
+                  const nights = trip.durationDays - 1;
+                  const parts = (trip.tripPeriod || '').split('||');
+                  const hasCustomDuration = parts.length > 1;
+                  const durationText = hasCustomDuration ? parts[0] : (nights > 0 ? `${trip.durationDays} วัน ${nights} คืน` : `ไปเช้าเย็นกลับ (1 วัน)`);
+                  return (
                   <article key={trip.id} className="relative min-h-[130px] shrink-0 overflow-hidden rounded-xl bg-slate-700">
                     <img
                       src={trip.image || 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=400&auto=format&fit=crop&q=80'}
@@ -1627,12 +1632,13 @@ function CustomerPageContent() {
                       <div className="min-w-0 space-y-2">
                         <h3 className="text-sm font-black text-white">{trip.name}</h3>
                         <p className="text-xs text-white/80">{trip.tripPeriod?.split('||').pop() || trip.departureDate}</p>
-                        <p className="text-xs text-white/70">{trip.pickupPoint}</p>
+                        <p className="text-xs text-white/70">{durationText}</p>
                       </div>
                       <span className="shrink-0 rounded-full border border-white/30 bg-slate-800/80 px-3 py-1 text-[10px] font-bold text-white">จบแล้ว</span>
                     </div>
                   </article>
-                ))}
+                  );
+                })}
                 {!trips.some(t => t.status === 'completed' && t.name.toLowerCase().includes(completedTripSearch.toLowerCase())) && (
                   <p className="py-4 text-center text-xs text-slate-400">{completedTripSearch ? 'ไม่พบทริปที่จบไปแล้วตรงกับคำค้นหา' : 'ยังไม่มีทริปที่จบไปแล้ว'}</p>
                 )}
