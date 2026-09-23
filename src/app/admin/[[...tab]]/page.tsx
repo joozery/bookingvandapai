@@ -363,7 +363,7 @@ export default function AdminPage() {
           const isAdmin = (session?.user as any)?.role === 'admin';
           const isSuperAdmin = (session?.user as any)?.username === 'admin';
           const perms = (session?.user as any)?.permissions || [];
-          if (isAdmin && !isSuperAdmin && !perms.includes(item.id === 'completed-trips' ? 'trips' : item.id)) return null;
+          if (isAdmin && !isSuperAdmin && !perms.includes(item.id === 'completed-trips' ? 'completed-trips' : item.id) && !(item.id === 'completed-trips' && perms.includes('trips'))) return null;
 
           const Icon    = item.icon;
           const hasChildren = 'children' in item && item.children;
@@ -662,7 +662,7 @@ export default function AdminPage() {
            activeTab !== 'profile' && 
            !(activeTab === 'pending' 
              ? (session?.user as any)?.permissions?.includes('bookings') || (session?.user as any)?.permissions?.includes('pending')
-             : (session?.user as any)?.permissions?.includes(activeTab === 'completed-trips' ? 'trips' : activeTab)) ? (
+             : (session?.user as any)?.permissions?.includes(activeTab === 'completed-trips' ? ((session?.user as any)?.permissions?.includes('completed-trips') ? 'completed-trips' : 'trips') : activeTab)) ? (
              <div className="flex flex-col items-center justify-center h-full text-slate-400 space-y-3">
                <Lock className="w-12 h-12 opacity-20" />
                <p className="font-bold">คุณไม่มีสิทธิเข้าถึงหน้านี้</p>
@@ -730,6 +730,7 @@ export default function AdminPage() {
               )}
               {(activeTab === 'trips' || activeTab === 'completed-trips') && (
                 <TripsTab key={activeTab} completed={activeTab === 'completed-trips'}
+                  canToggleCompleted={(session?.user as any)?.username === 'admin' || (session?.user as any)?.permissions?.includes('completed-trips')}
                   trips={trips.filter(trip => activeTab === 'completed-trips' ? trip.status === 'completed' : trip.status !== 'completed')}
                   vans={vans} onCreate={handleCreateTrip} onUpdate={handleUpdateTrip} onDelete={handleDelTrip}
                   onStatusChange={(id, status) => api(() => fetch(`/api/trips/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) }), status === 'active' ? 'เปิดรับจองทริปแล้ว' : 'ย้ายไปทริปที่จบไปแล้ว')}

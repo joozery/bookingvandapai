@@ -13,6 +13,7 @@ import type { Trip, Van } from './types';
 
 interface Props {
   completed?: boolean;
+  canToggleCompleted?: boolean;
   trips: Trip[];
   vans: Van[];
   onCreate: (form: { name: string; departureDate: string; durationDays: number; cost: number; pickupPoint: string; departureTime: string; tripPeriod: string; vansCount: number; vansList: { plateNumber: string; driverName: string; driverPhone: string; }[]; imageFile?: File | null }) => Promise<void>;
@@ -100,7 +101,7 @@ const ThaiDatePicker = ({ value, onChange, required, min, max }: { value: string
   );
 };
 
-export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, onStatusChange, completed = false }: Props) {
+export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, onStatusChange, completed = false, canToggleCompleted = true }: Props) {
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
   const [form, setForm] = useState(DEFAULT_FORM);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -108,6 +109,12 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, on
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [selectedTripFilter, setSelectedTripFilter] = useState('');
+
+  const uniqueTripNames = React.useMemo(() => {
+    const names = trips.map(t => t.name);
+    return Array.from(new Set(names)).sort();
+  }, [trips]);
 
   // Edit States
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
@@ -206,13 +213,16 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, on
   };
 
   const filteredTrips = React.useMemo(() => {
-    return trips.filter(trip => 
-      trip.name.toLowerCase().includes(search.toLowerCase()) ||
-      trip.pickupPoint.toLowerCase().includes(search.toLowerCase()) ||
-      (trip.tripPeriod && trip.tripPeriod.toLowerCase().includes(search.toLowerCase())) ||
-      trip.departureDate.includes(search)
-    );
-  }, [trips, search]);
+    return trips.filter(trip => {
+      const matchSearch =
+        trip.name.toLowerCase().includes(search.toLowerCase()) ||
+        trip.pickupPoint.toLowerCase().includes(search.toLowerCase()) ||
+        (trip.tripPeriod && trip.tripPeriod.toLowerCase().includes(search.toLowerCase())) ||
+        trip.departureDate.includes(search);
+      const matchNameFilter = selectedTripFilter ? trip.name === selectedTripFilter : true;
+      return matchSearch && matchNameFilter;
+    });
+  }, [trips, search, selectedTripFilter]);
 
   const cropperModal = showCropper && originalImage && (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
@@ -564,7 +574,21 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, on
         </div>
         
         <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto shrink-0">
-          <div className="relative w-full sm:w-64">
+          {uniqueTripNames.length > 0 && (
+            <select
+              value={selectedTripFilter}
+              onChange={e => setSelectedTripFilter(e.target.value)}
+              className="w-full sm:w-48 h-9 px-3 bg-slate-50 border border-slate-200 text-xs rounded-lg font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+            >
+              <option value="">-- ทุกทริป --</option>
+              {uniqueTripNames.map(name => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          )}
+          <div className="relative w-full sm:w-56">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 animate-pulse" />
             <Input
               type="text"
@@ -648,8 +672,10 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, on
                         role="switch"
                         aria-checked={trip.status !== 'completed'}
                         aria-label={`เปิดรับจองทริป ${trip.name}`}
-                        disabled={updatingStatusId !== null}
+                        disabled={updatingStatusId !== null || !canToggleCompleted}
+                        title={!canToggleCompleted ? 'ต้องมีสิทธิ์ "ทริปที่จบไปแล้ว" จึงจะเปลี่ยนสถานะได้' : undefined}
                         onClick={async () => {
+                          if (!canToggleCompleted) return;
                           setUpdatingStatusId(trip.id);
                           try {
                             await onStatusChange(trip.id, trip.status === 'completed' ? 'active' : 'completed');
@@ -657,7 +683,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, on
                             setUpdatingStatusId(null);
                           }
                         }}
-                        className="flex items-center gap-2 text-xs font-bold disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-violet-600"
+                        className={cn("flex items-center gap-2 text-xs font-bold disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-violet-600", !canToggleCompleted && "cursor-not-allowed")}
                       >
                         <span>{updatingStatusId === trip.id ? 'กำลังบันทึก...' : trip.status === 'completed' ? 'ปิด' : 'เปิด'}</span>
                         <span className={cn('flex h-6 w-11 items-center rounded-full p-0.5 transition-colors', trip.status === 'completed' ? 'bg-slate-300' : 'bg-emerald-500')}>
