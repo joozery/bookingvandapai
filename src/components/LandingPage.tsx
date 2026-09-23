@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { formatThaiDate } from '@/lib/dateFormat';
 import { MESSENGER_URL, tripMessengerUrl } from '@/lib/contact';
 import { 
@@ -228,6 +229,7 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
                     </div>
 
                     {/* Footer: Price on the left, interactive book button on the right */}
+                    {completed && <Link href={`/trips/${encodeURIComponent(dest.id)}/reviews`} className="flex items-center justify-center gap-2 rounded-xl bg-purple-50 px-4 py-3 text-sm font-bold text-purple-900 hover:bg-purple-100"><Star className="h-4 w-4" />ดูรีวิวและคะแนนเฉลี่ย<ArrowRight className="h-4 w-4" /></Link>}
                     {!completed && <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 text-xs font-bold">
                       <div>
                         <p className="text-base sm:text-lg font-black text-[#4c1d95] mt-1">

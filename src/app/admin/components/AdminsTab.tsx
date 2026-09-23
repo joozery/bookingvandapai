@@ -29,6 +29,7 @@ const AVAILABLE_PERMISSIONS = [
   { id: 'staff', label: 'ทีมงาน / ผู้จัด (Admin Roles)' },
   { id: 'insurance', label: 'ประกันการเดินทาง (Insurance)' },
   { id: 'reports', label: 'รายงาน (Reports)' },
+  { id: 'reviews', label: 'รีวิวและความคิดเห็น (Reviews)' },
   { id: 'settings', label: 'ตั้งค่า (Settings)' },
 ];
 

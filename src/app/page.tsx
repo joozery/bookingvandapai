@@ -34,6 +34,8 @@ import {
   ChevronDown
 } from 'lucide-react';
 import LandingPage from '../components/LandingPage';
+import TripReviewPage from '@/components/TripReviewPage';
+import { isTripReviewOpen } from '@/lib/tripReview';
 import { MESSENGER_URL } from '@/lib/contact';
 
 interface Seat {
@@ -147,6 +149,13 @@ const MOCK_LINE_USERS = [
 function CustomerPageContent() {
   const { data: session, status: sessionStatus } = useSession();
   const searchParams = useSearchParams();
+  const [reviewClock, setReviewClock] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setReviewClock(Date.now()), 30_000);
+    const refreshClock = () => setReviewClock(Date.now());
+    window.addEventListener('focus', refreshClock);
+    return () => { clearInterval(timer); window.removeEventListener('focus', refreshClock); };
+  }, []);
 
   // Authentication & Simulation States
   const [lineUser, setLineUser] = useState<{ userId: string; displayName: string; pictureUrl: string } | null>(null);
@@ -896,6 +905,11 @@ function CustomerPageContent() {
     }
   }, [isLandingMode, currentStep, lineUser, hasProfile, trips.length, router, pathname]);
 
+  const linkedTrip = trips.find(trip => trip.id === searchParams?.get('tripId'));
+  if (linkedTrip && isTripReviewOpen(linkedTrip, reviewClock)) {
+    return <TripReviewPage key={linkedTrip.id} trip={linkedTrip} />;
+  }
+
   if (isLandingMode) {
     return (
       <div className="flex-1 flex flex-col bg-[#f8fafc] text-slate-800 min-h-screen">
@@ -1632,6 +1646,7 @@ function CustomerPageContent() {
                         <h3 className="text-sm font-black text-white">{trip.name}</h3>
                         <p className="text-xs text-white/80">{trip.tripPeriod?.split('||').pop() || trip.departureDate}</p>
                         <p className="text-xs text-white/70">{durationText}</p>
+                        <Link href={`/trips/${encodeURIComponent(trip.id)}/reviews`} className="inline-flex rounded-lg bg-white/15 px-3 py-2 text-xs font-bold text-white hover:bg-white/25">ดูรีวิวและคะแนนเฉลี่ย →</Link>
                       </div>
                       <span className="shrink-0 rounded-full border border-white/30 bg-slate-800/80 px-3 py-1 text-[10px] font-bold text-white">จบแล้ว</span>
                     </div>

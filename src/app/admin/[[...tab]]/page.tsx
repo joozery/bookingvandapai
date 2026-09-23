@@ -22,6 +22,7 @@ import DashboardOverview from '../components/DashboardOverview';
 import UsersTab, { type UserRecord } from '../components/UsersTab';
 import AdminsTab from '../components/AdminsTab';
 import InsuranceTab from '../components/InsuranceTab';
+import ReviewsTab from '../components/ReviewsTab';
 import ProfileTab from '../components/ProfileTab';
 import SettingsTab from '../components/SettingsTab';
 import type { Trip, Van, Booking } from '../components/types';
@@ -43,11 +44,12 @@ const NAV = [
   { id: 'checkin', label: 'Check-in QR', icon: QrCode },
   { id: 'staff',   label: 'ทีมงาน / ผู้จัด', icon: Lock },
   { id: 'insurance', label: 'ประกันการเดินทาง', icon: Shield },
+  { id: 'reviews', label: 'รีวิวและความคิดเห็น', icon: FileText },
   { id: 'settings',  label: 'ตั้งค่าเว็บไซต์', icon: Settings },
   { id: 'profile',   label: 'โปรไฟล์ของฉัน', icon: User },
 ] as const;
 
-type TabId = 'dashboard' | 'bookings' | 'trips' | 'completed-trips' | 'vans' | 'checkin' | 'pending' | 'users' | 'staff' | 'insurance' | 'profile' | 'settings';
+type TabId = 'dashboard' | 'bookings' | 'trips' | 'completed-trips' | 'vans' | 'checkin' | 'pending' | 'users' | 'staff' | 'insurance' | 'reviews' | 'profile' | 'settings';
 
 export default function AdminPage() {
   const { data: session, status } = useSession();
@@ -750,6 +752,7 @@ export default function AdminPage() {
               {activeTab === 'users'     && <UsersTab users={users} onRefresh={() => fetchAll()} />}
               {activeTab === 'staff'     && <AdminsTab />}
               {activeTab === 'insurance' && <InsuranceTab trips={trips} bookings={bookings} onRefresh={() => fetchAll()} />}
+              {activeTab === 'reviews' && <ReviewsTab trips={trips} />}
               {activeTab === 'settings'  && <SettingsTab />}
               {activeTab === 'profile'   && <ProfileTab />}
               {activeTab === 'checkin' && (
