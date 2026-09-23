@@ -27,6 +27,7 @@ interface Props {
 
 export default function BookingsTab({ trips, vans, bookings, onApprove, onReject, onDelete, onCheckIn, onManualSubmit }: Props) {
   const [showForm, setShowForm] = useState(false);
+  const [tripStatusFilter, setTripStatusFilter] = useState<'all' | 'active' | 'completed'>('active');
   const [tripFilter, setTripFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
@@ -36,10 +37,14 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
   const [form, setForm] = useState({ nickname: '', fullName: '', phone: '', note: '' });
 
   const filtered = bookings.filter(b => {
+    const trip = trips.find(t => t.id === b.tripId);
+    const matchTripStatus = tripStatusFilter === 'all' || 
+                            (tripStatusFilter === 'active' && trip?.status !== 'completed') || 
+                            (tripStatusFilter === 'completed' && trip?.status === 'completed');
     const matchTrip   = tripFilter === 'all' || b.tripId === tripFilter;
     const matchStatus = statusFilter === 'all' || b.status === statusFilter;
     const q = search.toLowerCase();
-    return matchTrip && matchStatus && (
+    return matchTripStatus && matchTrip && matchStatus && (
       b.fullName.toLowerCase().includes(q) || b.nickname.toLowerCase().includes(q) ||
       b.phone.includes(q) || b.seatLabel.toLowerCase().includes(q) ||
       (b.tripName && b.tripName.toLowerCase().includes(q))
@@ -108,7 +113,7 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">ดูข้อมูลลูกทริป จัดการการจอง และตรวจสอบสถานะ</p>
         </div>
-        <Button size="sm" onClick={() => { setShowForm(!showForm); if (trips.length > 0) setTripSel(trips[0].id); }} className="bg-violet-600 hover:bg-violet-700 text-white text-xs h-8 gap-1.5 shadow-sm">
+        <Button size="sm" onClick={() => { setShowForm(!showForm); if (trips.length > 0) setTripSel(trips.filter(t => t.status !== 'completed')[0]?.id || trips[0]?.id || ''); }} className="bg-violet-600 hover:bg-violet-700 text-white text-xs h-8 gap-1.5 shadow-sm">
           <span className="text-base leading-none">+</span> เพิ่มลูกทริปใหม่
         </Button>
       </div>
@@ -122,7 +127,12 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
               <label className="text-[10px] font-bold text-slate-500 block mb-1">ทริป</label>
               <select value={tripSel} onChange={e => { setTripSel(e.target.value); setVanSel(''); setSeatSel(''); }} className="w-full border border-slate-200 bg-white rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-violet-400">
                 <option value="">เลือกทริป</option>
-                {trips.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                <optgroup label="ทริปที่กำลังเปิดรับ">
+                  {trips.filter(t => t.status !== 'completed').map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </optgroup>
+                <optgroup label="ทริปที่จบไปแล้ว">
+                  {trips.filter(t => t.status === 'completed').map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </optgroup>
               </select>
             </div>
             <div>
@@ -165,9 +175,14 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
 
       {/* Filter bar */}
       <div className="flex flex-wrap gap-2 items-center">
+        <select value={tripStatusFilter} onChange={e => { setTripStatusFilter(e.target.value as any); setTripFilter('all'); }} className="h-8 border border-slate-200 bg-slate-50 rounded-lg px-3 text-xs focus:outline-none focus:border-violet-400 font-bold text-violet-700">
+          <option value="all">ทริปทั้งหมด</option>
+          <option value="active">ทริปที่กำลังเปิดรับ</option>
+          <option value="completed">ทริปที่จบไปแล้ว</option>
+        </select>
         <select value={tripFilter} onChange={e => setTripFilter(e.target.value)} className="h-8 border border-slate-200 bg-white rounded-lg px-3 text-xs focus:outline-none focus:border-violet-400 min-w-[110px]">
-          <option value="all">ทุกทริป</option>
-          {trips.map(t => <option key={t.id} value={t.id}>{t.name.substring(0, 20)}...</option>)}
+          <option value="all">เลือกทริป...</option>
+          {trips.filter(t => tripStatusFilter === 'all' || (tripStatusFilter === 'active' && t.status !== 'completed') || (tripStatusFilter === 'completed' && t.status === 'completed')).map(t => <option key={t.id} value={t.id}>{t.name.substring(0, 20)}...</option>)}
         </select>
         <div className="relative flex-1 min-w-[200px]">
           <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
