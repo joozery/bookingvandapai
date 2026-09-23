@@ -10,6 +10,7 @@ import {
   CheckCircle2, 
   MapPin, 
   Calendar,
+  Bus,
   Clock,
   ChevronLeft,
   ChevronRight,
@@ -191,27 +192,10 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
                     <div className="absolute top-2 left-2 sm:top-4 sm:left-4 z-10">
                       {completed ? (
                         <span className="inline-flex items-center bg-slate-700/90 text-white text-[10px] font-black py-1 px-2.5 rounded-full">จบแล้ว</span>
-                      ) : dest.availableSeats !== undefined ? (
-                        dest.availableSeats <= 3 ? (
-                          <span className="inline-flex items-center gap-1.5 bg-rose-600/90 backdrop-blur-sm text-white text-[10px] font-black py-1 px-2.5 rounded-full shadow-md border border-white/10">
-                            <span className="w-1.5 h-1.5 bg-white rounded-full animate-ping shrink-0" />
-                            <span>{dest.seatsText}</span>
-                          </span>
-                        ) : dest.availableSeats <= 8 ? (
-                          <span className="inline-flex items-center gap-1.5 bg-amber-500/90 backdrop-blur-sm text-white text-[10px] font-black py-1 px-2.5 rounded-full shadow-md border border-white/10">
-                            <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse shrink-0" />
-                            <span>{dest.seatsText}</span>
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 bg-[#4c1d95]/85 backdrop-blur-sm text-white text-[10px] font-black py-1 px-2.5 rounded-full shadow-md border border-white/10">
-                            <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full shrink-0" />
-                            <span>{dest.seatsText}</span>
-                          </span>
-                        )
                       ) : (
-                        <span className="inline-flex items-center gap-1.5 bg-[#4c1d95]/85 backdrop-blur-sm text-white text-[10px] font-black py-1 px-2.5 rounded-full shadow-md border border-white/10">
-                          <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full shrink-0" />
-                          <span>มีที่นั่งว่าง</span>
+                        <span className={`inline-flex items-center gap-1.5 ${dest.availableSeats > 0 ? 'bg-emerald-600' : 'bg-red-600'} text-white text-[10px] font-black py-1 px-2.5 rounded-full shadow-md border border-white/10`}>
+                          <span className="w-1.5 h-1.5 bg-white rounded-full shrink-0" />
+                          <span>{dest.seatsText}</span>
                         </span>
                       )}
                     </div>
@@ -235,7 +219,7 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
                           <p>{dest.period || dest.departureDate}</p>
                         ) : (
                           <div className="space-y-1">
-                            <p>วันที่ออกเดินทาง {dest.departureDate}</p>
+                            <p className="flex items-start gap-2"><Bus aria-hidden="true" className="w-3.5 h-3.5 shrink-0 mt-0.5 text-purple-600/70" /><span>วันที่ออกเดินทาง {dest.departureDate}</span></p>
                             <p className="flex items-start gap-2"><MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5 text-purple-600/70" /><span>สถานที่ขึ้นรถ: {dest.pickupPoint}</span></p>
                             <p className="flex items-center gap-2"><Clock className="w-3.5 h-3.5 shrink-0 text-purple-600/70" /><span>เวลาออกเดินทาง {dest.departureTime ? `${dest.departureTime} น.` : 'ยังไม่ระบุ'}</span></p>
                           </div>
