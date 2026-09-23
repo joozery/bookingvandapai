@@ -224,18 +224,17 @@ function CustomerPageContent() {
         if (typeof draft.consentInsurance === 'boolean') setConsentInsurance(draft.consentInsurance);
         if (draft.showProfileModal === true) setShowProfileModal(true);
         hasFormDraft.current = true;
-        setIsLandingMode(false);
       }
     } catch { /* Storage can be unavailable in private browsers. */ }
     setDraftReadyFor(userId);
-  }, [lineUser?.userId]);
+  }, [lineUser ? lineUser.userId : null]);
 
   useEffect(() => {
-    if (!draftReadyFor || draftReadyFor !== lineUser?.userId || !hasFormDraft.current) return;
+    if (!draftReadyFor || draftReadyFor !== (lineUser ? lineUser.userId : null) || !hasFormDraft.current) return;
     try {
       sessionStorage.setItem(`booking-form:${draftReadyFor}`, JSON.stringify({ nickname, titleName, fullName, phone, note, nationalId, birthDate, emergencyName, emergencyPhone, allergies, medicalConditions, consentInsurance, showProfileModal }));
     } catch { /* Keep the live form usable if storage is unavailable. */ }
-  }, [draftReadyFor, lineUser?.userId, nickname, titleName, fullName, phone, note, nationalId, birthDate, emergencyName, emergencyPhone, allergies, medicalConditions, consentInsurance, showProfileModal]);
+  }, [draftReadyFor, lineUser ? lineUser.userId : null, nickname, titleName, fullName, phone, note, nationalId, birthDate, emergencyName, emergencyPhone, allergies, medicalConditions, consentInsurance, showProfileModal]);
 
   const clearFormDraft = () => {
     hasFormDraft.current = false;
@@ -295,7 +294,7 @@ function CustomerPageContent() {
       setHasProfile(false);
       setShowProfileModal(false);
     }
-  }, [lineUser?.userId]);
+  }, [lineUser ? lineUser.userId : null]);
 
   // Fetch bookings independently of profile form initialization.
   useEffect(() => {
@@ -883,8 +882,8 @@ function CustomerPageContent() {
   const pathname = usePathname();
 
   useEffect(() => {
-    // Only sync when user is logged in and has profile (otherwise no step UI shown)
-    if (!lineUser || !hasProfile) return;
+    // Landing visits must not become booking visits just because a session exists.
+    if (isLandingMode || !lineUser || !hasProfile) return;
     const params = new URLSearchParams(window.location.search);
     const currentInUrl = params.get('step');
     
@@ -895,7 +894,7 @@ function CustomerPageContent() {
       params.set('step', String(currentStep));
       router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     }
-  }, [currentStep, lineUser, hasProfile, trips.length, router, pathname]);
+  }, [isLandingMode, currentStep, lineUser, hasProfile, trips.length, router, pathname]);
 
   if (isLandingMode) {
     return (
