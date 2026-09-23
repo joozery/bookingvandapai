@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { formatThaiDate } from '@/lib/dateFormat';
-import { MESSENGER_URL } from '@/lib/contact';
+import { MESSENGER_URL, tripMessengerUrl } from '@/lib/contact';
 import { 
   Compass, 
   ArrowRight, 
@@ -253,7 +253,7 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
 
                       <div className="text-right">
                         <a
-                          href={MESSENGER_URL}
+                          href={tripMessengerUrl(dest.id)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="bg-purple-50 text-[#4c1d95] group-hover:bg-[#4c1d95] group-hover:text-white transition-all duration-300 min-h-10 sm:min-h-0 py-2 px-2 sm:px-4 rounded-xl font-black text-[11px] sm:text-xxs flex items-center gap-1 border border-purple-100 group-hover:border-transparent shadow-sm active:scale-95"
