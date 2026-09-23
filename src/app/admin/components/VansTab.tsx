@@ -23,11 +23,17 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
   const [vanForm, setVanForm] = useState({ plateNumber: '', driverName: '', driverPhone: '' });
   const [editingStaff, setEditingStaff] = useState<{ vanId: string; seatId: string; staffName: string } | null>(null);
   const [viewSeatVanId, setViewSeatVanId] = useState<string | null>(null);
+  const [tripStatusFilter, setTripStatusFilter] = useState<'all' | 'active' | 'completed'>('active');
   const [selectedTripId, setSelectedTripId] = useState<string>('all');
   const [tripSearch, setTripSearch] = useState('');
 
   const filteredTrips = useMemo(() => {
     let arr = trips;
+    if (tripStatusFilter === 'active') {
+      arr = arr.filter(t => t.status !== 'completed');
+    } else if (tripStatusFilter === 'completed') {
+      arr = arr.filter(t => t.status === 'completed');
+    }
     if (selectedTripId !== 'all') {
       arr = arr.filter(t => t.id === selectedTripId);
     }
@@ -36,7 +42,7 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
       arr = arr.filter(t => t.name.toLowerCase().includes(q));
     }
     return arr;
-  }, [trips, selectedTripId, tripSearch]);
+  }, [trips, tripStatusFilter, selectedTripId, tripSearch]);
 
   const renderAdminSeat = (s: Seat | undefined) => {
     if (!s) return <div className="w-14 h-10" />;
@@ -101,12 +107,21 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
             />
           </div>
           <select
+            value={tripStatusFilter}
+            onChange={(e) => { setTripStatusFilter(e.target.value as any); setSelectedTripId('all'); }}
+            className="w-full sm:w-auto px-3 py-2 bg-slate-50 border-0 ring-1 ring-slate-100 rounded-lg text-sm focus:outline-none focus:ring-violet-500 font-bold text-violet-700"
+          >
+            <option value="all">สถานะทริปทั้งหมด</option>
+            <option value="active">ทริปที่กำลังเปิดรับ</option>
+            <option value="completed">ทริปที่จบไปแล้ว</option>
+          </select>
+          <select
             value={selectedTripId}
             onChange={(e) => setSelectedTripId(e.target.value)}
             className="w-full sm:w-64 px-3 py-2 bg-slate-50 border-0 ring-1 ring-slate-100 rounded-lg text-sm focus:outline-none focus:ring-violet-500 font-medium text-slate-700"
           >
             <option value="all">ทุกทริป (ทั้งหมด)</option>
-            {trips.map(t => (
+            {trips.filter(t => tripStatusFilter === 'all' || (tripStatusFilter === 'active' && t.status !== 'completed') || (tripStatusFilter === 'completed' && t.status === 'completed')).map(t => (
               <option key={t.id} value={t.id}>{t.name}</option>
             ))}
           </select>
