@@ -1732,7 +1732,7 @@ function CustomerPageContent() {
                     </div>
                     <div>
                       <h2 className="text-base sm:text-lg font-bold text-slate-800 leading-tight">
-                        รถตู้คันที่ {selectedVan.vanNumber} (11 ที่นั่ง)
+                        รถตู้คันที่ {selectedVan.vanNumber} ({selectedVan.seats.filter(s => s.type === 'customer').length} ที่นั่งลูกค้า)
                       </h2>
                       <div className="text-[10px] text-slate-500 font-semibold flex items-center gap-1.5 mt-0.5">
                         <Info className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -1809,7 +1809,7 @@ function CustomerPageContent() {
                     <div className="absolute inset-x-0 top-[140px] bottom-[45px] px-[36px] pt-4 pb-2 grid grid-rows-4 gap-y-4">
                       
                       {/* ROW 1: Staff 1 (Col 1 / left) & Driver D (Col 3 / right) */}
-                      <div className="grid grid-cols-3 items-center justify-items-center">
+                      <div className={selectedVan.seats.some(s => s.row === 4 && s.col === 1.5) ? 'grid grid-cols-[1fr_58px_58px] gap-x-1 items-center justify-items-start' : 'grid grid-cols-3 items-center justify-items-center'}>
                         
                         {/* Staff 1 (left / col 1) */}
                         {(() => {
@@ -1841,7 +1841,7 @@ function CustomerPageContent() {
                       </div>
 
                       {/* ROW 2: Seats 4 (left), 3 (middle), 2 (right) */}
-                      <div className="grid grid-cols-3 items-center justify-items-center relative">
+                      <div className={selectedVan.seats.some(s => s.row === 4 && s.col === 1.5) ? 'grid grid-cols-[1fr_58px_58px] gap-x-1 items-center justify-items-start relative' : 'grid grid-cols-3 items-center justify-items-center relative'}>
                         {/* Door label (beside Seat 4) */}
                         <div className="absolute -left-1 top-1/2 -translate-y-1/2 bg-slate-100 text-slate-500 border border-slate-200/80 px-2.5 py-0.5 rounded text-[8px] font-bold text-center uppercase tracking-widest scale-90 select-none -rotate-90 origin-center translate-x-[-15px]">
                           ประตู
@@ -1854,7 +1854,7 @@ function CustomerPageContent() {
                       </div>
 
                       {/* ROW 3: Seats 7 (left), 6 (middle), 5 (right) */}
-                      <div className="grid grid-cols-3 items-center justify-items-center">
+                      <div className={selectedVan.seats.some(s => s.row === 4 && s.col === 1.5) ? 'grid grid-cols-[1fr_58px_58px] gap-x-1 items-center justify-items-start' : 'grid grid-cols-3 items-center justify-items-center'}>
                         {[1, 2, 3].map((colVal) => {
                           const seat = selectedVan.seats.find((s) => s.row === 3 && s.col === colVal);
                           if (!seat) return <div key={colVal} className="w-[58px] h-[64px]" />;
@@ -1862,9 +1862,9 @@ function CustomerPageContent() {
                         })}
                       </div>
 
-                      {/* ROW 4: Seats 10 (left), 9 (middle), 8 (right) */}
-                      <div className="grid grid-cols-3 items-center justify-items-center">
-                        {[1, 2, 3].map((colVal) => {
+                      {/* ROW 4: 10, optional extra seat, 9, 8 */}
+                      <div className={`grid ${selectedVan.seats.some(s => s.row === 4 && s.col === 1.5) ? 'grid-cols-4' : 'grid-cols-3'} items-center justify-items-center`}>
+                        {(selectedVan.seats.some(s => s.row === 4 && s.col === 1.5) ? [1, 1.5, 2, 3] : [1, 2, 3]).map((colVal) => {
                           const seat = selectedVan.seats.find((s) => s.row === 4 && s.col === colVal);
                           if (!seat) return <div key={colVal} className="w-[58px] h-[64px]" />;
                           return renderVanSeat(seat);

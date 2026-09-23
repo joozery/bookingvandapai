@@ -741,6 +741,10 @@ export default function AdminPage() {
                   trips={trips} vans={vans}
                   onAddVan={handleAddVan} onDeleteVan={handleDelVan}
                   onUpdateVan={handleUpdateVan} onUpdateStaff={handleUpdateStaff}
+                  onToggleExtraSeat={(id, enabled) => api(() => fetch(`/api/vans/${id}`, {
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ extraSeatEnabled: enabled }),
+                  }), enabled ? 'เปิดเบาะเสริมแล้ว' : 'ปิดเบาะเสริมแล้ว')}
                 />
               )}
               {activeTab === 'users'     && <UsersTab users={users} onRefresh={() => fetchAll()} />}

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { Trip, Van, Seat } from './types';
 import { cn } from '@/lib/utils';
+import { extraSeatId } from '@/lib/extraSeat';
 
 interface Props {
   trips: Trip[];
@@ -16,9 +17,11 @@ interface Props {
   onDeleteVan: (vanId: string) => Promise<void>;
   onUpdateVan: (vanId: string, data: { plateNumber: string; driverName: string; driverPhone: string }) => Promise<void>;
   onUpdateStaff: (vanId: string, seatId: string, staffName: string) => Promise<void>;
+  onToggleExtraSeat: (vanId: string, enabled: boolean) => Promise<void>;
 }
 
-export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVan, onUpdateStaff }: Props) {
+export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVan, onUpdateStaff, onToggleExtraSeat }: Props) {
+  const [savingExtraSeat, setSavingExtraSeat] = useState<string | null>(null);
   const [editingVanId, setEditingVanId] = useState<string | null>(null);
   const [vanForm, setVanForm] = useState({ plateNumber: '', driverName: '', driverPhone: '' });
   const [editingStaff, setEditingStaff] = useState<{ vanId: string; seatId: string; staffName: string } | null>(null);
@@ -167,6 +170,8 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
                 const staffSeat = van.seats.find(s => s.type === 'staff');
                 const customerSeats = van.seats.filter(s => s.type === 'customer');
                 const availableCount = customerSeats.filter(s => s.status === 'available').length;
+                const extraSeat = van.seats.find(s => s.id === extraSeatId(van.id));
+                const extraSeatOccupied = !!extraSeat && (extraSeat.status !== 'available' || !!extraSeat.bookingId);
 
                 return (
                   <div key={van.id} className="bg-slate-50/70 rounded-xl p-4 space-y-3 hover:bg-slate-100/50 transition">
@@ -250,6 +255,28 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
 
 
 
+                    <div className="flex items-center justify-between gap-3 border-t border-slate-200 pt-3">
+                      <div>
+                        <p className="text-xs font-bold text-slate-700">เบาะเสริมระหว่างเบาะ 9 กับ 10</p>
+                        <p className="text-[10px] text-slate-500">{extraSeatOccupied ? 'มีการจองอยู่ ไม่สามารถปิดได้' : 'เปิดเพื่อเพิ่มที่นั่งลูกค้าอีก 1 ที่'}</p>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={!!extraSeat}
+                        aria-label={`เบาะเสริม รถตู้คันที่ ${van.vanNumber} ${trip.name}`}
+                        disabled={savingExtraSeat !== null || extraSeatOccupied}
+                        onClick={async () => {
+                          setSavingExtraSeat(van.id);
+                          try { await onToggleExtraSeat(van.id, !extraSeat); }
+                          finally { setSavingExtraSeat(null); }
+                        }}
+                        className={cn('shrink-0 rounded-full px-3 py-2 text-xs font-bold transition disabled:opacity-50', extraSeat ? 'bg-violet-600 text-white' : 'bg-slate-200 text-slate-600')}
+                      >
+                        {savingExtraSeat === van.id ? 'กำลังบันทึก...' : extraSeat ? 'มีเบาะเสริม' : 'ไม่มีเบาะเสริม'}
+                      </button>
+                    </div>
+
                     {/* View Seats Button */}
                     <div className="pt-2 border-t border-slate-100 mt-2">
                       <button
@@ -265,15 +292,15 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
                     {/* Mini Seat Map */}
                     {viewSeatVanId === van.id && (
                       <div className="pt-3 pb-1 animate-in slide-in-from-top-2 duration-200">
-                        <div className="flex flex-col gap-1.5 w-max mx-auto bg-slate-50 p-2.5 rounded-xl border border-slate-200 shadow-sm">
-                          <div className="flex gap-1.5">
+                        <div className={cn('flex flex-col gap-1.5 max-w-full mx-auto bg-slate-50 p-2.5 rounded-xl border border-slate-200 shadow-sm', extraSeat ? 'w-[264px]' : 'w-max')}>
+                          <div className={extraSeat ? 'grid grid-cols-[1fr_56px_56px] gap-x-1 items-center' : 'flex gap-1.5'}>
                             {renderAdminSeat(van.seats.find(s=>s.row===1&&s.col===1))}
                             <div className="w-14 h-10" />
                             {renderAdminSeat(van.seats.find(s=>s.row===1&&s.col===3))}
                           </div>
                           {[2,3,4].map(r => (
-                            <div key={r} className="flex gap-1.5">
-                              {[1,2,3].map(c => renderAdminSeat(van.seats.find(s=>s.row===r&&s.col===c)))}
+                            <div key={r} className={!extraSeat ? 'flex gap-1.5' : r === 4 ? 'flex gap-1 justify-between' : 'grid grid-cols-[1fr_56px_56px] gap-x-1 items-center'}>
+                              {(r === 4 && extraSeat ? [1,1.5,2,3] : [1,2,3]).map(c => renderAdminSeat(van.seats.find(s=>s.row===r&&s.col===c)))}
                             </div>
                           ))}
                         </div>
