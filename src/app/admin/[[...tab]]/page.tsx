@@ -744,6 +744,10 @@ export default function AdminPage() {
                   trips={trips} vans={vans}
                   onAddVan={handleAddVan} onDeleteVan={handleDelVan}
                   onUpdateVan={handleUpdateVan} onUpdateStaff={handleUpdateStaff}
+                  onToggleSeat={(id, seatId, enabled) => api(() => fetch(`/api/vans/${id}`, {
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ seatId, seatEnabled: enabled }),
+                  }), enabled ? 'เปิดรับจองที่นั่งแล้ว' : 'ปิดรับจองที่นั่งแล้ว')}
                   onToggleExtraSeat={(id, enabled) => api(() => fetch(`/api/vans/${id}`, {
                     method: 'PUT', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ extraSeatEnabled: enabled }),

@@ -40,9 +40,10 @@ test('occupied seats cannot be removed', () => {
   }
 });
 
-async function request({ enabled = false, user = { role: 'admin', username: 'admin' }, bookings = [], conflict = false } = {}) {
+async function request({ enabled = false, user = { role: 'admin', username: 'admin' }, bookings = [], conflict = false, body, seatStatus } = {}) {
   let written;
   const seats = helpers.setExtraSeat(original, 'van', true);
+  if (seatStatus) seats[0] = { ...seats[0], status: seatStatus };
   const supabase = { from(table) {
     let updating = false;
     const query = {
@@ -60,7 +61,7 @@ async function request({ enabled = false, user = { role: 'admin', username: 'adm
     '@/lib/supabase': { supabase }, 'next-auth': { getServerSession: async () => user ? { user } : null },
     '../../auth/[...nextauth]/route': { authOptions: {} }, '@/lib/extraSeat': helpers,
   });
-  const response = await route.PUT({ json: async () => ({ extraSeatEnabled: enabled }) }, { params: Promise.resolve({ id: 'van' }) });
+  const response = await route.PUT({ json: async () => body || ({ extraSeatEnabled: enabled }) }, { params: Promise.resolve({ id: 'van' }) });
   return { ...response, written };
 }
 
@@ -84,4 +85,20 @@ test('authorized staff can remove empty extra seat', async () => {
 });
 test('API reports concurrent seat changes instead of success', async () => {
   assert.equal((await request({ conflict: true })).status, 409);
+});
+
+test('individual seats close and reopen without removing seats', async () => {
+  for (const enabled of [false, true]) {
+    const result = await request({ body: { seatId: 'van-seat-10', seatEnabled: enabled }, seatStatus: enabled ? 'blocked' : 'available' });
+    assert.equal(result.status, 200);
+    assert.equal(result.written.seats.length, 4);
+    assert.equal(result.written.seats[0].status, enabled ? 'available' : 'blocked');
+  }
+});
+test('individual seat changes reject unauthorized, occupied, pending and stale requests', async () => {
+  const body = { seatId: 'van-seat-10', seatEnabled: false };
+  for (const options of [{ user: null }, { seatStatus: 'booked' }, { seatStatus: 'pending' }, { bookings: [{ id: 'pending' }] }, { conflict: true }]) {
+    assert.ok((await request({ body, ...options })).status >= 400);
+  }
+  assert.equal((await request({ body: { ...body, seatEnabled: 'false' } })).status, 400);
 });

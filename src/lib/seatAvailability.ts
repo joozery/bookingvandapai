@@ -6,7 +6,7 @@ export function countAvailableSeats(vans: unknown): number | null {
     if (!van || !Array.isArray(van.seats)) return null;
     for (const seat of van.seats) {
       if (!seat || !['driver', 'customer', 'staff'].includes(seat.type)
-        || !['available', 'pending', 'booked'].includes(seat.status)) return null;
+        || !['available', 'pending', 'booked', 'blocked'].includes(seat.status)) return null;
       if ((seat.type === 'customer' || seat.type === 'staff') && seat.status === 'available') available++;
     }
   }

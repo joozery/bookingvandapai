@@ -17,10 +17,12 @@ interface Props {
   onDeleteVan: (vanId: string) => Promise<void>;
   onUpdateVan: (vanId: string, data: { plateNumber: string; driverName: string; driverPhone: string }) => Promise<void>;
   onUpdateStaff: (vanId: string, seatId: string, staffName: string) => Promise<void>;
+  onToggleSeat: (vanId: string, seatId: string, enabled: boolean) => Promise<void>;
   onToggleExtraSeat: (vanId: string, enabled: boolean) => Promise<void>;
 }
 
-export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVan, onUpdateStaff, onToggleExtraSeat }: Props) {
+export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVan, onUpdateStaff, onToggleExtraSeat, onToggleSeat }: Props) {
+  const [savingSeat, setSavingSeat] = useState<string | null>(null);
   const [savingExtraSeat, setSavingExtraSeat] = useState<string | null>(null);
   const [editingVanId, setEditingVanId] = useState<string | null>(null);
   const [vanForm, setVanForm] = useState({ plateNumber: '', driverName: '', driverPhone: '' });
@@ -47,13 +49,14 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
     return arr;
   }, [trips, tripStatusFilter, selectedTripId, tripSearch]);
 
-  const renderAdminSeat = (s: Seat | undefined, fitCell = false) => {
+  const renderAdminSeat = (s: Seat | undefined, vanId: string, fitCell = false) => {
     if (!s) return <div className={cn('h-10', fitCell ? 'w-full min-w-0' : 'w-14')} />;
     const isDriver = s.type === 'driver';
     const isAvail = s.status === 'available';
     let bg = 'bg-slate-200 border-slate-300';
     let label = s.label;
     if (isDriver) { bg = 'bg-slate-800 text-white border-slate-950'; label = 'D'; }
+    else if (s.status === 'blocked') { bg = 'bg-red-600 text-white border-red-700'; }
     else if (isAvail) { bg = 'bg-emerald-100 text-emerald-700 border-emerald-400 shadow-sm'; }
     else { bg = 'bg-slate-200 border-slate-300'; } // Removed line-through for better readability of names
 
@@ -68,9 +71,16 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
     );
 
     return (
-      <div key={s.id} title={s.passengerName || ''} className={cn("h-10 rounded border flex items-center justify-center font-black select-none overflow-hidden", fitCell ? 'w-full min-w-0' : 'w-14', bg)}>
-        {displayLabel}
-      </div>
+      <button type="button" key={s.id}
+        disabled={isDriver || !!s.bookingId || !['available', 'blocked'].includes(s.status) || savingSeat !== null}
+        aria-label={`ที่นั่ง ${s.label} ${s.status === 'blocked' ? 'เปิดรับจอง' : 'ปิดรับจอง'}`}
+        onClick={async () => {
+          setSavingSeat(s.id);
+          try { await onToggleSeat(vanId, s.id, s.status === 'blocked'); }
+          finally { setSavingSeat(null); }
+        }} title={s.status === 'blocked' ? 'ปิดรับจอง — กดเพื่อเปิด' : s.passengerName || 'กดเพื่อปิดรับจอง'} className={cn("h-10 rounded border flex items-center justify-center font-black select-none overflow-hidden", fitCell ? 'w-full min-w-0' : 'w-14', bg)}>
+        {s.status === 'blocked' ? <span className="text-[9px] leading-tight">{s.label}<br />ปิดรับจอง</span> : displayLabel}
+      </button>
     );
   };
 
@@ -95,7 +105,7 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
             <Bus className="w-5 h-5 text-violet-600" />
             ข้อมูลรถตู้แต่ละทริป
           </h2>
-          <p className="text-xs text-slate-400 mt-1">เลือกทริปเพื่อจัดการรถและผังที่นั่ง</p>
+          <p className="text-xs text-slate-400 mt-1">กดที่นั่งสีเขียวเพื่อปิดรับจอง กดสีแดงเพื่อเปิดคืน</p>
         </div>
         
         <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2">
@@ -168,7 +178,7 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
               ) : tripVans.map(van => {
                 const isEditing = editingVanId === van.id;
                 const staffSeat = van.seats.find(s => s.type === 'staff');
-                const customerSeats = van.seats.filter(s => s.type === 'customer');
+                const customerSeats = van.seats.filter(s => s.type === 'customer' && s.status !== 'blocked');
                 const availableCount = customerSeats.filter(s => s.status === 'available').length;
                 const extraSeat = van.seats.find(s => s.id === extraSeatId(van.id));
                 const extraSeatOccupied = !!extraSeat && (extraSeat.status !== 'available' || !!extraSeat.bookingId);
@@ -302,13 +312,13 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
                       <div className="pt-3 pb-1 animate-in slide-in-from-top-2 duration-200">
                         <div className="flex flex-col gap-1.5 w-[202px] max-w-full mx-auto bg-slate-50 p-2.5 rounded-xl border border-slate-200 shadow-sm">
                           <div className="flex gap-1.5">
-                            {renderAdminSeat(van.seats.find(s=>s.row===1&&s.col===1))}
+                            {renderAdminSeat(van.seats.find(s=>s.row===1&&s.col===1), van.id)}
                             <div className="w-14 h-10" />
-                            {renderAdminSeat(van.seats.find(s=>s.row===1&&s.col===3))}
+                            {renderAdminSeat(van.seats.find(s=>s.row===1&&s.col===3), van.id)}
                           </div>
                           {[2,3,4].map(r => (
                             <div key={r} className={r === 4 && extraSeat ? 'grid grid-cols-4 gap-1.5' : 'flex gap-1.5'}>
-                              {(r === 4 && extraSeat ? [1,1.5,2,3] : [1,2,3]).map(c => renderAdminSeat(van.seats.find(s=>s.row===r&&s.col===c), r === 4 && !!extraSeat))}
+                              {(r === 4 && extraSeat ? [1,1.5,2,3] : [1,2,3]).map(c => renderAdminSeat(van.seats.find(s=>s.row===r&&s.col===c), van.id, r === 4 && !!extraSeat))}
                             </div>
                           ))}
                         </div>

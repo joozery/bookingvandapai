@@ -51,6 +51,8 @@ test('shared booking availability counts available customer/staff and extra seat
   assert.equal(availability.countAvailableSeats(vans), 4);
   assert.equal(availability.countAvailableSeats([{ seats: [seat('customer', 'booked')] }]), 0);
   assert.equal(availability.countAvailableSeats([]), 0);
+  assert.equal(availability.countAvailableSeats([{ seats: [seat('customer', 'blocked'), seat('customer', 'available')] }]), 1);
+  assert.equal(availability.countAvailableSeats([{ seats: [seat('customer', 'blocked')] }]), 0);
   for (const invalid of [null, undefined, [{}], [{ seats: null }], [{ seats: [null] }], [{ seats: [{ type: 'customer' }] }]]) {
     assert.equal(availability.countAvailableSeats(invalid), null);
   }

@@ -4,7 +4,7 @@ export interface Seat {
   id: string;
   label: string;
   type: 'driver' | 'staff' | 'customer';
-  status: 'available' | 'pending' | 'booked';
+  status: 'available' | 'pending' | 'booked' | 'blocked';
   staffName?: string;
   bookingId?: string | null;
   passengerName?: string;

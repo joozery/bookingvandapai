@@ -42,7 +42,7 @@ interface Seat {
   id: string;
   label: string;
   type: 'driver' | 'staff' | 'customer';
-  status: 'available' | 'pending' | 'booked';
+  status: 'available' | 'pending' | 'booked' | 'blocked';
   staffName?: string;
   bookingId?: string | null;
   passengerName?: string;
@@ -2595,6 +2595,10 @@ function CustomerPageContent() {
         headrestStyle = 'bg-[#86efac]';
         cushionStyle = 'bg-[#15803d]';
       }
+    } else if (seat.status === 'blocked') {
+      containerStyle = 'bg-red-600 border-red-800 border-b-[4px] text-white cursor-not-allowed';
+      headrestStyle = 'bg-red-300';
+      cushionStyle = 'bg-red-700';
     } else if (seat.status === 'pending') {
       containerStyle = 'bg-[#fbbf24] border-[#b45309] border-b-[4px] text-amber-950 cursor-not-allowed shadow-amber-950/20';
       headrestStyle = 'bg-[#fde047]';
@@ -2618,6 +2622,7 @@ function CustomerPageContent() {
         {/* Backrest & Seat Cushion */}
         <div className={`flex-1 w-full rounded-[8px] mt-1 flex flex-col items-center justify-center relative overflow-hidden transition-all duration-300 ${cushionStyle}`}>
           <span className="text-[11px] font-black tracking-tight leading-none scale-100">{seat.label}</span>
+          {seat.status === 'blocked' && <span className="text-[8px] mt-1">ปิดรับจอง</span>}
           {seat.passengerName && (
             <span className="text-[8.5px] font-black tracking-tight leading-none mt-0.5 max-w-[50px] truncate opacity-95 block bg-black/25 px-1 py-0.5 rounded text-white">
               {seat.passengerName.split(' ')[0]}

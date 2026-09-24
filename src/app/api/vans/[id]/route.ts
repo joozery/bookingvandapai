@@ -11,13 +11,13 @@ export async function PUT(request: Request, { params }: RouteParams) {
     const { id } = await params;
     const body = await request.json();
 
-    if (body.extraSeatEnabled !== undefined) {
+    if (body.extraSeatEnabled !== undefined || body.seatEnabled !== undefined) {
       const session = await getServerSession(authOptions);
       const user = session?.user as { role?: string; username?: string; permissions?: string[] } | undefined;
       if (user?.role !== 'admin' || (user.username !== 'admin' && !user.permissions?.includes('vans'))) {
         return NextResponse.json({ success: false, error: 'ไม่มีสิทธิ์จัดการรถ' }, { status: 403 });
       }
-      if (typeof body.extraSeatEnabled !== 'boolean') {
+      if (body.extraSeatEnabled !== undefined && typeof body.extraSeatEnabled !== 'boolean') {
         return NextResponse.json({ success: false, error: 'สถานะเบาะเสริมไม่ถูกต้อง' }, { status: 400 });
       }
     }
@@ -50,6 +50,27 @@ export async function PUT(request: Request, { params }: RouteParams) {
       if (!updated?.length) {
         return NextResponse.json({ success: false, error: 'ข้อมูลที่นั่งเปลี่ยนแล้ว กรุณาโหลดใหม่และลองอีกครั้ง' }, { status: 409 });
       }
+      return NextResponse.json({ success: true });
+    }
+
+    if (body.seatEnabled !== undefined) {
+      if (typeof body.seatEnabled !== 'boolean' || typeof body.seatId !== 'string') {
+        return NextResponse.json({ success: false, error: 'ข้อมูลที่นั่งไม่ถูกต้อง' }, { status: 400 });
+      }
+      const seat = van.seats?.find((s: any) => s.id === body.seatId);
+      if (!seat || seat.type === 'driver' || seat.bookingId || !['available', 'blocked'].includes(seat.status)) {
+        return NextResponse.json({ success: false, error: 'เปลี่ยนได้เฉพาะที่นั่งว่างหรือปิดรับจอง' }, { status: 409 });
+      }
+      const { data: bookings, error: bookingError } = await supabase.from('bookings').select('id')
+        .eq('vanId', id).eq('seatId', body.seatId)
+        .in('status', ['approved', 'pending', 'cancel_pending']).limit(1);
+      if (bookingError) throw bookingError;
+      if (bookings?.length) return NextResponse.json({ success: false, error: 'ที่นั่งมีการจองหรือรออนุมัติอยู่' }, { status: 409 });
+      const seats = van.seats.map((s: any) => s.id === body.seatId ? { ...s, status: body.seatEnabled ? 'available' : 'blocked' } : s);
+      const { data: updated, error } = await supabase.from('vans').update({ seats })
+        .eq('id', id).eq('seats', JSON.stringify(van.seats)).select('id');
+      if (error) throw error;
+      if (!updated?.length) return NextResponse.json({ success: false, error: 'ข้อมูลที่นั่งเปลี่ยนแล้ว กรุณาลองอีกครั้ง' }, { status: 409 });
       return NextResponse.json({ success: true });
     }
 
