@@ -53,6 +53,8 @@ type TabId = 'dashboard' | 'bookings' | 'trips' | 'completed-trips' | 'vans' | '
 
 export default function AdminPage() {
   const { data: session, status } = useSession();
+  const adminId = (session?.user as { id?: string } | undefined)?.id;
+  const adminRole = (session?.user as { role?: string } | undefined)?.role;
   const params = useParams();
   const router = useRouter();
   
@@ -149,9 +151,8 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
+    if (status !== 'authenticated' || adminRole !== 'admin') return;
     fetchAll();
-    
-    if (status !== 'authenticated' || (session?.user as any)?.role !== 'admin') return;
 
     const channel = supabase
       .channel('admin-realtime')
@@ -163,7 +164,7 @@ export default function AdminPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [session, status]);
+  }, [adminId, adminRole, status]);
 
   if (status === 'loading') {
     return (

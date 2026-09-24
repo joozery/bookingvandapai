@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
+import ReviewCopyFields from '@/components/ReviewCopyFields';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from '@/lib/cropImage';
 import { Compass, Plus, FileText, Trash2, Calendar, Clock, MapPin, Info, Link2, Check, ArrowLeft, Image as ImageIcon, Pencil, Search, X } from 'lucide-react';
@@ -17,13 +18,13 @@ interface Props {
   canToggleCompleted?: boolean;
   trips: Trip[];
   vans: Van[];
-  onCreate: (form: { name: string; departureDate: string; durationDays: number; cost: number; pickupPoint: string; departureTime: string; tripPeriod: string; vansCount: number; vansList: { plateNumber: string; driverName: string; driverPhone: string; }[]; imageFile?: File | null }) => Promise<void>;
-  onUpdate: (id: string, form: { name: string; departureDate: string; durationDays: number; cost: number; pickupPoint: string; departureTime: string; tripPeriod: string; imageFile?: File | null }) => Promise<void>;
+  onCreate: (form: { name: string; departureDate: string; durationDays: number; cost: number; pickupPoint: string; departureTime: string; tripPeriod: string; reviewTitle: string; reviewDescription: string; vansCount: number; vansList: { plateNumber: string; driverName: string; driverPhone: string; }[]; imageFile?: File | null }) => Promise<void>;
+  onUpdate: (id: string, form: { name: string; departureDate: string; durationDays: number; cost: number; pickupPoint: string; departureTime: string; tripPeriod: string; reviewTitle: string; reviewDescription: string; imageFile?: File | null }) => Promise<void>;
   onDelete: (tripId: string) => Promise<void>;
   onStatusChange: (tripId: string, status: Trip['status']) => Promise<void>;
 }
 
-const DEFAULT_FORM = { name: '', departureDate: '', returnDate: '', durationDays: 3, cost: 1500, pickupPoint: '', departureTime: '06:00', tripPeriod: '', durationText: '', vansCount: 1, vansList: [{ plateNumber: '', driverName: '', driverPhone: '' }] };
+const DEFAULT_FORM = { reviewTitle: '', reviewDescription: '', name: '', departureDate: '', returnDate: '', durationDays: 3, cost: 1500, pickupPoint: '', departureTime: '06:00', tripPeriod: '', durationText: '', vansCount: 1, vansList: [{ plateNumber: '', driverName: '', driverPhone: '' }] };
 
 const calculateEndDate = (startDate: string, days: number) => {
   if (!startDate || !days) return '';
@@ -111,7 +112,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, on
 
   // Edit States
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
-  const [editForm, setEditForm] = useState({ name: '', departureDate: '', returnDate: '', durationDays: 3, cost: 1500, pickupPoint: '', departureTime: '06:00', tripPeriod: '', durationText: '' });
+  const [editForm, setEditForm] = useState({ reviewTitle: '', reviewDescription: '', name: '', departureDate: '', returnDate: '', durationDays: 3, cost: 1500, pickupPoint: '', departureTime: '06:00', tripPeriod: '', durationText: '' });
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
   const [editImagePreview, setEditImagePreview] = useState<string | null>(null);
 
@@ -152,6 +153,8 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, on
     const period = hasCustomDuration ? parts[1] : parts[0];
     const durationText = hasCustomDuration ? parts[0] : '';
     setEditForm({
+      reviewTitle: trip.reviewTitle || '',
+      reviewDescription: trip.reviewDescription || '',
       name: trip.name,
       departureDate: trip.departureDate,
       returnDate: calculateEndDate(trip.departureDate, trip.durationDays),
@@ -361,6 +364,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, on
                 </div>
               </div>
 
+              <ReviewCopyFields perTrip value={editForm} onChange={copy => setEditForm({ ...editForm, ...copy })} />
               <div className="flex justify-end gap-3 pt-6 border-t border-slate-100">
                 <Button type="button" variant="outline" onClick={() => setEditingTrip(null)} className="h-10 px-6 font-bold">
                   ยกเลิก
@@ -403,6 +407,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, on
           </CardHeader>
           <CardContent className="p-6">
             <form onSubmit={handleSubmit} className="space-y-6">
+              <ReviewCopyFields perTrip value={form} onChange={copy => setForm({ ...form, ...copy })} />
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">

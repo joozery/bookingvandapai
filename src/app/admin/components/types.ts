@@ -23,6 +23,8 @@ export interface Van {
 }
 
 export interface Trip {
+  reviewTitle?: string | null;
+  reviewDescription?: string | null;
   id: string;
   name: string;
   departureDate: string;

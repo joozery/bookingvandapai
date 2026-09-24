@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 import { supabase } from '@/lib/supabase';
+import { defaultHomepageSettings } from '@/lib/homepageSettings';
 
 const SETTINGS_FILE = 'settings/footer.json';
 
 const defaultSettings = {
+  ...defaultHomepageSettings,
   footer_description: 'กลุ่มเดินป่าและเดินทางสายผจญภัย มุ่งสร้างสรรค์ทริปท่องเที่ยวธรรมชาติที่คุ้มค่า สนุกสนาน มิตรภาพที่ยั่งยืน และปลอดภัยทุกก้าวเดิน',
   contact_phone: '+66 89 123 4567',
   contact_email: 'support@dapaidernpai.com',

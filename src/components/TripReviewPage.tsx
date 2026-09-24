@@ -5,14 +5,25 @@ import { signIn, useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { Star, CheckCircle2 } from 'lucide-react';
 import type { TripReview } from '@/lib/tripReview';
+import { defaultReviewCopy, resolveReviewCopy, type ReviewCopy } from '@/lib/reviewCopy';
 
-export default function TripReviewPage({ trip }: { trip: { id: string; name: string; status?: string } }) {
+export default function TripReviewPage({ trip }: { trip: { id: string; name: string; status?: string } & ReviewCopy }) {
   const { data: session, status } = useSession();
   const userId = (session?.user as { id?: string } | undefined)?.id;
   return <TripReviewForm key={`${trip.id}:${status}:${userId || ''}`} trip={trip} />;
 }
 
-function TripReviewForm({ trip }: { trip: { id: string; name: string; status?: string } }) {
+function TripReviewForm({ trip }: { trip: { id: string; name: string; status?: string } & ReviewCopy }) {
+  const [defaults, setDefaults] = useState(defaultReviewCopy);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch('/api/settings', { cache: 'no-store', signal: controller.signal })
+      .then(res => res.json()).then(data => {
+        if (!controller.signal.aborted && data.success) setDefaults(data.settings);
+      }).catch(() => { /* Use built-in copy if settings are unavailable. */ });
+    return () => controller.abort();
+  }, []);
+  const copy = resolveReviewCopy(trip, defaults);
   const { data: session, status } = useSession();
   const [review, setReview] = useState<TripReview | null>(null);
   const [rating, setRating] = useState(0);
@@ -53,9 +64,9 @@ function TripReviewForm({ trip }: { trip: { id: string; name: string; status?: s
   return <main className="min-h-screen bg-slate-50 px-4 py-12 text-slate-800">
     <div className="mx-auto max-w-xl rounded-3xl bg-white p-6 sm:p-10 shadow-sm border border-purple-100">
       <p className="text-sm font-bold text-purple-700">ด่าไป เดินไป · รีวิวหลังเดินทาง</p>
-      <h1 className="mt-3 text-2xl font-bold">ขอบคุณที่ร่วมเดินทางกับเรา</h1>
+      <h1 className="mt-3 text-2xl font-bold whitespace-pre-wrap break-words">{copy.reviewTitle}</h1>
       <h2 className="mt-2 text-lg text-slate-600">{trip.name}</h2>
-      <p className="mt-3 text-sm text-slate-500">ทริปนี้ปิดรับจองแล้ว แบ่งปันความประทับใจและข้อเสนอแนะเพื่อพัฒนาทริปครั้งต่อไป คะแนนและความคิดเห็นที่ไม่ได้ถูกซ่อนจะแสดงสาธารณะเมื่อแอดมินปิดทริป กรุณาไม่ใส่ข้อมูลส่วนตัวในข้อความ</p>
+      <p className="mt-3 text-sm text-slate-500 whitespace-pre-wrap break-words">{copy.reviewDescription}</p>
       {trip.status === 'completed' && <Link href={`/trips/${encodeURIComponent(trip.id)}/reviews`} className="mt-4 inline-block text-sm font-bold text-purple-800 underline">ดูรีวิวและคะแนนเฉลี่ยของทริปนี้</Link>}
       {status === 'loading' || loading ? <p className="py-8" role="status">กำลังตรวจสอบข้อมูล…</p> : status !== 'authenticated' ?
         <button onClick={() => signIn('line', { callbackUrl: `${window.location.origin}/?tripId=${encodeURIComponent(trip.id)}` })} className="mt-6 w-full rounded-xl bg-green-600 p-3 font-bold text-white">เข้าสู่ระบบด้วย LINE เพื่อประเมิน</button> :

@@ -61,6 +61,8 @@ interface Van {
 }
 
 interface Trip {
+  reviewTitle?: string | null;
+  reviewDescription?: string | null;
   id: string;
   name: string;
   departureDate: string;

@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Settings, Save, RefreshCw } from 'lucide-react';
-import { useSession } from 'next-auth/react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Settings, RefreshCw } from 'lucide-react';
+import { defaultHomepageSettings } from '@/lib/homepageSettings';
+import ReviewCopyFields from '@/components/ReviewCopyFields';
 
 export default function SettingsTab() {
   const [settings, setSettings] = useState({
+    ...defaultHomepageSettings,
     footer_description: '',
     contact_phone: '',
     contact_email: '',
@@ -16,7 +18,12 @@ export default function SettingsTab() {
     terms_of_service: ''
   });
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState('');
+  const [loadError, setLoadError] = useState(false);
+  const [retry, setRetry] = useState(0);
+  const savedSettings = useRef('');
+  const saveQueue = useRef<Promise<void>>(Promise.resolve());
+  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     fetchSettings();
@@ -26,37 +33,51 @@ export default function SettingsTab() {
     try {
       const res = await fetch('/api/settings');
       const data = await res.json();
-      if (data.success) {
-        setSettings(data.settings);
-      }
+      if (!res.ok || !data.success) throw new Error('Could not load settings');
+      const loaded = { ...defaultHomepageSettings, ...data.settings };
+      savedSettings.current = JSON.stringify(loaded);
+      setSettings(loaded);
     } catch (e) {
       console.error(e);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      const res = await fetch('/api/settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings)
-      });
-      const data = await res.json();
-      if (data.success) {
-        alert('บันทึกการตั้งค่าเรียบร้อยแล้ว');
-      } else {
-        alert(data.error || 'เกิดข้อผิดพลาดในการบันทึก');
+  useEffect(() => {
+    if (loading || loadError) return;
+    const body = JSON.stringify(settings);
+    let current = true;
+    setSaveStatus('รอบันทึกอัตโนมัติ…');
+    const timer = setTimeout(() => {
+      if (!formRef.current?.checkValidity()) {
+        setSaveStatus('กรุณากรอกข้อมูลให้ครบและตรวจรูปแบบอีเมล / ลิงก์');
+        return;
       }
-    } catch (e: any) {
-      alert(e.message);
-    } finally {
-      setSaving(false);
-    }
-  };
+      // Serialize writes so a slow older request cannot overwrite the latest edit.
+      saveQueue.current = saveQueue.current.then(async () => {
+        if (!current) return;
+        if (body === savedSettings.current) {
+          setSaveStatus('บันทึกแล้ว');
+          return;
+        }
+        setSaveStatus('กำลังบันทึก…');
+        try {
+          const res = await fetch('/api/settings', {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' }, body,
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) throw new Error('Save failed');
+          savedSettings.current = body;
+          if (current) setSaveStatus('บันทึกแล้ว');
+        } catch {
+          if (current) setSaveStatus('บันทึกไม่สำเร็จ กรุณาลองอีกครั้ง');
+        }
+      });
+    }, 800);
+    return () => { current = false; clearTimeout(timer); };
+  }, [settings, loading, loadError, retry]);
 
   if (loading) {
     return (
@@ -66,6 +87,8 @@ export default function SettingsTab() {
     );
   }
 
+  if (loadError) return <p role="alert" className="p-6 text-red-600">โหลดการตั้งค่าไม่สำเร็จ กรุณารีเฟรชหน้าเพื่อลองใหม่</p>;
+
   return (
     <div className="space-y-6">
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-4 flex items-center justify-between">
@@ -74,18 +97,37 @@ export default function SettingsTab() {
             <Settings className="w-5 h-5 text-violet-600" />
             ตั้งค่าเว็บไซต์
           </h2>
-          <p className="text-xs text-slate-400 mt-1">จัดการข้อความ Footer, ข้อมูลการติดต่อ</p>
+          <p className="text-xs text-slate-400 mt-1">จัดการข้อความชวนร่วมเดินทาง คำอธิบายกลุ่ม และข้อมูลการติดต่อ</p>
+          <p role="status" className="text-xs text-violet-700 mt-2">{saveStatus}</p>
+          {saveStatus.startsWith('บันทึกไม่สำเร็จ') && <button type="button" onClick={() => setRetry(value => value + 1)} className="mt-2 text-xs font-bold text-violet-700 underline">ลองบันทึกอีกครั้ง</button>}
         </div>
       </div>
 
-      <form onSubmit={handleSave} className="bg-white border border-slate-200 rounded-xl shadow-sm p-6 space-y-6">
+      <form ref={formRef} onSubmit={e => e.preventDefault()} className="bg-white border border-slate-200 rounded-xl shadow-sm p-6 space-y-6">
+        <ReviewCopyFields value={settings} onChange={copy => setSettings({ ...settings, ...copy })} />
+        <div className="space-y-4">
+          <h3 className="font-bold text-slate-800 border-b border-slate-100 pb-2">ข้อความชวนร่วมเดินทาง (กล่องสีม่วงหน้าแรก)</h3>
+          <div className="space-y-1.5">
+            <label htmlFor="cta-title" className="text-xs font-bold text-slate-600">หัวข้อชวนร่วมเดินทาง</label>
+            <textarea id="cta-title" required rows={2} value={settings.cta_title}
+              onChange={e => setSettings({...settings, cta_title: e.target.value})}
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-violet-500" />
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="cta-description" className="text-xs font-bold text-slate-600">ข้อความรายละเอียดใต้หัวข้อ</label>
+            <textarea id="cta-description" required rows={4} value={settings.cta_description}
+              onChange={e => setSettings({...settings, cta_description: e.target.value})}
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-violet-500" />
+          </div>
+        </div>
         
         <div className="space-y-4">
           <h3 className="font-bold text-slate-800 border-b border-slate-100 pb-2">ข้อมูลส่วนท้ายเว็บ (Footer)</h3>
           
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-600">คำอธิบายเว็บไซต์ (ใต้โลโก้)</label>
+            <label htmlFor="footer-description" className="text-xs font-bold text-slate-600">คำอธิบายกลุ่ม (ใต้โลโก้ท้ายหน้าแรก)</label>
             <textarea
+              id="footer-description"
               required
               rows={3}
               value={settings.footer_description}
@@ -151,41 +193,11 @@ export default function SettingsTab() {
               />
             </div>
             
-            <div className="space-y-1.5 md:col-span-2 pt-4 border-t border-slate-100">
-              <h3 className="font-bold text-slate-800 pb-2">หน้านโยบายและเงื่อนไข (รองรับ HTML/Text)</h3>
-              <label className="text-xs font-bold text-slate-600 mt-2 block">นโยบายความเป็นส่วนตัว (Privacy Policy)</label>
-              <textarea
-                rows={6}
-                value={settings.privacy_policy || ''}
-                onChange={e => setSettings({...settings, privacy_policy: e.target.value})}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-violet-500 font-mono text-xs"
-                placeholder="<h1>นโยบายความเป็นส่วนตัว</h1>..."
-              />
-            </div>
-            <div className="space-y-1.5 md:col-span-2">
-              <label className="text-xs font-bold text-slate-600">เงื่อนไขการให้บริการ (Terms of Service)</label>
-              <textarea
-                rows={6}
-                value={settings.terms_of_service || ''}
-                onChange={e => setSettings({...settings, terms_of_service: e.target.value})}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-violet-500 font-mono text-xs"
-                placeholder="<h1>เงื่อนไขการให้บริการ</h1>..."
-              />
-            </div>
+
           </div>
 
         </div>
 
-        <div className="flex justify-end pt-4 border-t border-slate-100">
-          <button
-            type="submit"
-            disabled={saving}
-            className="px-6 py-2 bg-violet-600 text-white font-bold text-sm rounded-lg hover:bg-violet-700 transition shadow-sm flex items-center gap-2 disabled:opacity-70"
-          >
-            {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            {saving ? 'กำลังบันทึก...' : 'บันทึกการตั้งค่า'}
-          </button>
-        </div>
       </form>
     </div>
   );

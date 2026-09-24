@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 import { supabase } from '@/lib/supabase';
+import { reviewCopyUpdates } from '@/lib/reviewCopy';
 import { generateSeatsForVan, Trip, Van } from '@/lib/db';
 
 export async function GET() {
@@ -36,8 +37,12 @@ export async function POST(request: Request) {
     }
 
     const newTripId = `trip-${Date.now()}`;
+    let reviewCopy;
+    try { reviewCopy = reviewCopyUpdates(body); }
+    catch (error) { return NextResponse.json({ success: false, error: (error as Error).message }, { status: 400 }); }
 
     const newTrip = {
+      ...reviewCopy,
       id: newTripId,
       name,
       departureDate,

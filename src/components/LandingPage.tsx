@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import TripRatingSummary from '@/components/TripRatingSummary';
+import { defaultHomepageSettings } from '@/lib/homepageSettings';
 import { formatThaiDate } from '@/lib/dateFormat';
 import { MESSENGER_URL, tripMessengerUrl } from '@/lib/contact';
 import { 
@@ -32,6 +34,7 @@ interface LandingPageProps {
 
 export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = false }: LandingPageProps) {
   const [settings, setSettings] = useState({
+    ...defaultHomepageSettings,
     footer_description: 'กลุ่มเดินป่าและเดินทางสายผจญภัย มุ่งสร้างสรรค์ทริปท่องเที่ยวธรรมชาติที่คุ้มค่า สนุกสนาน มิตรภาพที่ยั่งยืน และปลอดภัยทุกก้าวเดิน',
     contact_phone: '+66 89 123 4567',
     contact_email: 'support@dapaidernpai.com',
@@ -179,7 +182,7 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
                   key={dest.id}
                   className="w-[82vw] max-w-[340px] sm:w-[360px] md:w-[380px] shrink-0 snap-center sm:snap-start bg-white rounded-2xl sm:rounded-3xl overflow-hidden border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.03)] hover:shadow-[0_20px_50px_rgb(76,29,149,0.07)] transition-all duration-350 hover:-translate-y-1.5 flex flex-col group"
                 >
-                  {/* Image top with floating seats status pill (No rating star! - aspect ratio reduced to modern 16:10 landscape) */}
+                  {/* Image with floating trip status */}
                   <div className="relative overflow-hidden bg-slate-50 shrink-0">
                     <div aria-hidden="true" className="h-28 sm:h-[clamp(112px,14vh,160px)]" />
                     <div aria-hidden="true" style={{ height: imageExtraHeights[dest.id] || 0 }} />
@@ -200,6 +203,7 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
                         </span>
                       )}
                     </div>
+                    {completed && <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-10"><TripRatingSummary key={dest.id} tripId={dest.id} /></div>}
                   </div>
 
                   {/* Body details */}
@@ -298,12 +302,12 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
             <div className="absolute -left-20 -bottom-20 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
 
             <div className="relative z-10 max-w-2xl mx-auto space-y-4">
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight leading-tight">
-                พร้อมร่วมเดินทางเก็บความทรงจำดีๆ กับเราหรือยัง?
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight leading-tight whitespace-pre-wrap break-words">
+                {settings.cta_title}
               </h2>
               
-              <p className="text-xxs sm:text-xs text-purple-200/80 max-w-md mx-auto leading-relaxed">
-                ติดต่อแอดมินของเราเพื่อขอลิ้งก์เข้าสู่ระบบจองที่นั่งรถตู้คันโปรดของคุณง่ายๆ ผ่านระบบออนไลน์ เพื่อไม่พลาดทริปเดินป่าสุดพิเศษนี้
+              <p className="text-xxs sm:text-xs text-purple-200/80 max-w-md mx-auto leading-relaxed whitespace-pre-wrap break-words">
+                {settings.cta_description}
               </p>
             </div>
 
@@ -348,7 +352,7 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
               </div>
               <span className="text-white font-extrabold text-base sm:text-lg">ด่าไป เดินไป</span>
             </div>
-            <p className="text-xxs sm:text-xs text-slate-500 max-w-sm leading-relaxed font-bold">
+            <p className="text-xxs sm:text-xs text-slate-500 max-w-sm leading-relaxed font-bold whitespace-pre-wrap break-words">
               {settings.footer_description}
             </p>
           </div>

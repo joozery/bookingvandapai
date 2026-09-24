@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { reviewCopyUpdates } from '@/lib/reviewCopy';
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -30,6 +31,8 @@ export async function PUT(request: Request, { params }: RouteParams) {
     }
 
     const updates: any = {};
+    try { Object.assign(updates, reviewCopyUpdates(body)); }
+    catch (error) { return NextResponse.json({ success: false, error: (error as Error).message }, { status: 400 }); }
     if (status !== undefined) updates.status = status;
     if (name !== undefined) updates.name = name;
     if (departureDate !== undefined) updates.departureDate = departureDate;
