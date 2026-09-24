@@ -20,12 +20,16 @@ export function referralTripId(event: MessengerEvent): string | null {
   const ref = event.referral?.ref || event.postback?.referral?.ref;
   if (typeof ref !== 'string' || !ref.startsWith('trip:')) return null;
   const id = ref.slice(5);
-  return id.length > 0 && id.length <= 200 ? id : null;
+  return id.length > 0 && id.length <= 200 && id.trim() === id ? id : null;
 }
 
 export function tripReply(trip: { name: string; departureDate: string; departureTime?: string; pickupPoint?: string; status: string } | null): string {
   if (!trip) return 'ไม่พบข้อมูลทริปนี้แล้ว กรุณาสอบถามแอดมินครับ';
-  if (trip.status === 'completed') return `ทริป ${trip.name} จบไปแล้วครับ กรุณาสอบถามแอดมินเกี่ยวกับทริปรอบถัดไป`;
+  if (trip.status === 'completed') return [
+    `ทริป ${trip.name} จบไปแล้วครับ`,
+    `วันที่ออกเดินทาง ${formatThaiDate(trip.departureDate)}`,
+    'กรุณาสอบถามแอดมินเกี่ยวกับทริปรอบถัดไป',
+  ].join('\n').slice(0, 1900);
   return [
     `สนใจทริป ${trip.name} ใช่ไหมครับ?`,
     `วันที่ออกเดินทาง ${formatThaiDate(trip.departureDate)}`,

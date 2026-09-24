@@ -31,6 +31,12 @@ test('signature rejects missing, wrong and tampered requests', () => {
   assert.equal(helpers.verifyMessengerSignature(raw, 'sha256=123', 'secret'), false);
 });
 test('direct referrals and initial postbacks are supported; echoes ignored', () => {
+  const ref = 'trip:trip-1790143030544';
+  assert.equal(helpers.referralTripId({ referral: { ref } }), 'trip-1790143030544');
+  assert.equal(helpers.referralTripId({ postback: { referral: { ref } } }), 'trip-1790143030544');
+  for (const invalid of ['trip:', 'trip:   ', 'trip: one', 'trip:one ', 'trip:' + 'a'.repeat(201)]) {
+    assert.equal(helpers.referralTripId({ referral: { ref: invalid } }), null);
+  }
   assert.equal(helpers.referralTripId({ referral: { ref: 'trip:one' } }), 'one');
   assert.equal(helpers.referralTripId({ postback: { referral: { ref: 'trip:two' } } }), 'two');
   assert.equal(helpers.referralTripId({ message: { is_echo: true }, referral: { ref: 'trip:one' } }), null);
@@ -41,6 +47,8 @@ test('reply has trip details, Thai date, and handles closed/missing trips', () =
   const reply = helpers.tripReply(trip);
   for (const value of ['Chiang Dao', '2569', '06:00', 'Pickup A']) assert.ok(reply.includes(value));
   assert.ok(!helpers.tripReply({ ...trip, status: 'completed' }).includes('06:00'));
+  const completedReply = helpers.tripReply({ ...trip, status: 'completed' });
+  for (const value of ['Chiang Dao', '2569']) assert.ok(completedReply.includes(value));
   assert.ok(helpers.tripReply(null));
 });
 test('webhook verifies challenge and sends only signed trip referrals for the configured page', async () => {
