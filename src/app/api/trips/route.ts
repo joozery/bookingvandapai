@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 import { supabase } from '@/lib/supabase';
 import { reviewCopyUpdates } from '@/lib/reviewCopy';
+import { countAvailableSeats } from '@/lib/seatAvailability';
 import { generateSeatsForVan, Trip, Van } from '@/lib/db';
 
 export async function GET() {
@@ -14,10 +15,7 @@ export async function GET() {
     
     const enrichedTrips = (trips || []).map(trip => {
       const tripVans = (vans || []).filter(v => v.tripId === trip.id);
-      let totalAvailable = 0;
-      tripVans.forEach(van => {
-        totalAvailable += (van.seats || []).filter((s: any) => (s.type === 'customer' || s.type === 'staff') && s.status === 'available').length;
-      });
+      const totalAvailable = countAvailableSeats(tripVans) ?? 0;
       return { ...trip, availableSeats: totalAvailable };
     });
 

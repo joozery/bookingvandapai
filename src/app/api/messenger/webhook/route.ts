@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { referralTripId, tripReply, verifyMessengerSignature, type MessengerEvent } from '@/lib/messenger';
 import { createMessengerLogger, safeErrorFields } from '@/lib/messengerLogging';
+import { countAvailableSeats } from '@/lib/seatAvailability';
 
 export const runtime = 'nodejs';
 
@@ -72,18 +73,27 @@ export async function POST(request: Request) {
         context = { ...context, tripId };
         operation = 'trip_lookup';
         const { data: trip, error } = await supabase.from('trips')
-          .select('name, departureDate, departureTime, pickupPoint, status').eq('id', tripId).maybeSingle();
+          .select('name, departureDate, departureTime, pickupPoint, status, cost').eq('id', tripId).maybeSingle();
         if (error) {
           log('trip_lookup_failed', { ...context, ...safeErrorFields(error) }, 'error');
           throw new Error('Trip lookup failed');
         }
         log('trip_lookup_result', { ...context, found: !!trip });
+        let availableSeats: number | null = null;
+        if (trip && trip.status !== 'completed') {
+          try {
+            const { data: vans, error: vansError } = await supabase.from('vans').select('seats').eq('tripId', tripId);
+            if (!vansError) availableSeats = countAvailableSeats(vans);
+          } catch {
+            // Availability is optional: still reply with the trip details on lookup failure.
+          }
+        }
         operation = 'send_api';
         log('send_response_started', context);
         const response = await fetch(`https://graph.facebook.com/${version}/${pageId}/messages`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ recipient: { id: event.sender!.id }, messaging_type: 'RESPONSE', message: { text: tripReply(trip) } }),
+          body: JSON.stringify({ recipient: { id: event.sender!.id }, messaging_type: 'RESPONSE', message: { text: tripReply(trip ? { ...trip, availableSeats } : null) } }),
           signal: AbortSignal.timeout(8000),
         });
         log('send_response_received', { ...context, httpStatus: response.status, success: response.ok });
