@@ -86,7 +86,7 @@ function TripReviewForm({ trip }: { trip: { id: string; name: string; status?: s
             <textarea value={comment} onChange={e => setComment(e.target.value)} maxLength={2000} rows={5} disabled={saving} className="mt-2 w-full rounded-xl border border-slate-300 p-3 font-normal" placeholder="สิ่งที่ประทับใจ หรือสิ่งที่อยากให้เราปรับปรุง" />
             <span className="text-xs font-normal text-slate-400">{comment.length.toLocaleString()} / 2,000 ตัวอักษร</span>
           </label>
-          <button disabled={!rating || saving} className="w-full rounded-xl bg-purple-800 p-3 font-bold text-white disabled:opacity-50">{saving ? 'กำลังบันทึก…' : 'ส่งแบบประเมิน'}</button>
+          <button disabled={!rating || saving} className="w-full rounded-xl bg-purple-800 p-3 font-bold text-white disabled:opacity-50 theme-action">{saving ? 'กำลังบันทึก…' : 'ส่งแบบประเมิน'}</button>
         </form> : null}
       {error && <div role="alert" className="mt-4 rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{error}<button type="button" className="ml-3 underline" onClick={() => { setLoading(true); setError(''); setEligible(false); setRetry(x => x + 1); }}>ตรวจสอบอีกครั้ง</button></div>}
       <div className="mt-8 flex gap-5 text-sm text-purple-800"><Link href="/tickets" className="underline">ตั๋วและประวัติการจอง</Link><Link href="/" className="underline">กลับหน้าแรก</Link></div>

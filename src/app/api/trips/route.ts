@@ -28,6 +28,9 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    if (body.guideName !== undefined && (typeof body.guideName !== 'string' || body.guideName.trim().length > 200)) {
+      return NextResponse.json({ success: false, error: 'ชื่อไกด์ต้องเป็นข้อความไม่เกิน 200 ตัวอักษร' }, { status: 400 });
+    }
     const { name, departureDate, durationDays, cost, pickupPoint, departureTime, tripPeriod, plateNumber, driverName, driverPhone, image } = body;
 
     if (!name || !departureDate || !durationDays || !cost || !pickupPoint || !departureTime) {
@@ -42,6 +45,7 @@ export async function POST(request: Request) {
     const newTrip = {
       ...reviewCopy,
       id: newTripId,
+      guideName: body.guideName?.trim() || '',
       name,
       departureDate,
       durationDays: Number(durationDays),

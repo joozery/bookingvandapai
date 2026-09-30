@@ -69,7 +69,7 @@ export default function ScannerPage() {
   return (
     <div className="min-h-screen bg-slate-50 font-sans pb-10">
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 px-4 py-4 flex items-center justify-between sticky top-0 z-50 shadow-sm">
+      <header className="theme-chrome bg-white border-b border-slate-200 px-4 py-4 flex items-center justify-between sticky top-0 z-50 shadow-sm">
         <div className="flex items-center gap-3">
           <Link href="/" className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 transition">
             <ArrowLeft className="w-5 h-5" />
@@ -165,7 +165,7 @@ export default function ScannerPage() {
                   className={cn('w-full py-4 rounded-xl font-black text-base flex items-center justify-center gap-2 transition shadow-lg',
                     scannedData.checkedIn
                       ? 'bg-white border-2 border-rose-200 text-rose-600 hover:bg-rose-50'
-                      : 'bg-[#4c1d95] hover:bg-violet-800 text-white'
+                      : 'bg-brand-700 hover:bg-violet-800 text-white'
                   )}
                 >
                   {loading ? (

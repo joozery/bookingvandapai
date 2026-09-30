@@ -3,10 +3,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import TripRatingSummary from '@/components/TripRatingSummary';
+import TripCalendar from '@/components/TripCalendar';
+import BookingLeaderboard from '@/components/BookingLeaderboard';
 import { defaultHomepageSettings } from '@/lib/homepageSettings';
+import { validShareImage } from '@/lib/shareSettings';
 import { formatThaiDate } from '@/lib/dateFormat';
+import { parseCalendarDay } from '@/lib/tripCalendar';
 import { MESSENGER_URL, tripMessengerUrl } from '@/lib/contact';
 import { 
+  User,
   Compass, 
   ArrowRight, 
   Star, 
@@ -79,9 +84,11 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
           id: t.id,
           completed: t.status === 'completed',
           title: t.name,
+          guideName: t.guideName?.trim() || 'ยังไม่ระบุ',
           durationText,
           period,
           departureDate: formatThaiDate(t.departureDate),
+          departureDay: parseCalendarDay(t.departureDate || '') ?? Number.MAX_SAFE_INTEGER,
           pickupPoint: t.pickupPoint || 'ยังไม่ระบุ',
           departureTime: t.departureTime || '',
           price: Number(t.cost || 0).toLocaleString('th-TH'),
@@ -94,10 +101,13 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
     : [];
 
   return (
-    <div className="flex-1 w-full bg-[#f8fafc] text-slate-800 flex flex-col font-sans">
+    <div className="flex-1 w-full bg-canvas text-slate-800 flex flex-col font-sans" style={{
+      '--homepage-banner': settings.banner_image && validShareImage(settings.banner_image) ? `url(${JSON.stringify(settings.banner_image)})` : undefined,
+      '--homepage-background': settings.background_image && validShareImage(settings.background_image) ? `url(${JSON.stringify(settings.background_image)})` : undefined,
+    } as React.CSSProperties}>
       
       {/* Sticky Premium Navbar */}
-      <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-md border-b border-slate-200/50 shadow-sm">
+      <header className="theme-chrome sticky top-0 z-50 w-full bg-white/80 backdrop-blur-md border-b border-slate-200/50 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 sm:h-16 flex items-center justify-between">
           {/* Logo & Brand */}
           <div className="flex items-center gap-3">
@@ -105,15 +115,16 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
               <img src="/logo/logov2.png" alt="DAPAIDERNPAI Logo" className="w-12 h-12 object-contain" />
             </div>
             <div>
-              <span className="text-[#4c1d95] font-black text-base sm:text-xl tracking-tight leading-none block">ด่าไป เดินไป</span>
+              <span className="text-brand-700 font-black text-base sm:text-xl tracking-tight leading-none block">ด่าไป เดินไป</span>
               <span className="text-[10px] text-slate-400 font-bold block mt-0.5">DAPAI DERNPAI VAN BOOKING</span>
             </div>
           </div>
 
           {/* Center Links (Hidden on mobile) */}
           <nav className="hidden md:flex items-center gap-8 text-xs font-bold text-slate-500">
-            <a href="#" className="text-[#4c1d95] font-black hover:text-purple-800 transition">หน้าแรก</a>
+            <a href="#" className="text-brand-700 font-black hover:text-purple-800 transition">หน้าแรก</a>
             <a href="#destinations" className="hover:text-purple-800 transition">ทริปที่เปิดอยู่</a>
+            <a href="#trip-calendar" className="hover:text-purple-800 transition">ปฏิทินทริป</a>
             <a href="#completed-trips" className="hover:text-purple-800 transition">ทริปที่ปิดไปแล้ว</a>
           </nav>
 
@@ -123,14 +134,14 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
               href={MESSENGER_URL}
               target="_blank"
               rel="noreferrer"
-              className="flex items-center gap-1.5 hover:text-[#4c1d95] text-slate-600 transition px-3 py-2 rounded-xl text-xs font-bold hover:bg-slate-100/80"
+              className="flex items-center gap-1.5 hover:text-brand-700 text-slate-600 transition px-3 py-2 rounded-xl text-xs font-bold hover:bg-slate-100/80"
             >
               <MessageSquare className="w-4 h-4 text-slate-400" />
               <span className="hidden sm:inline">ติดต่อแอดมิน</span>
             </a>
             <button
               onClick={onLoginClick}
-              className="bg-[#06C755] hover:bg-[#05b34c] text-white py-2 px-4 rounded-xl font-black text-xs transition-all duration-300 shadow-md shadow-[#06C755]/10 flex items-center gap-1.5 active:scale-97 group relative overflow-hidden"
+              className="bg-line hover:bg-line-hover text-white py-2 px-4 rounded-xl font-black text-xs transition-all duration-300 shadow-md shadow-line/10 flex items-center gap-1.5 active:scale-97 group relative overflow-hidden"
             >
               {/* shine overlay */}
               <span className="absolute inset-0 w-full h-full bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-out" />
@@ -143,12 +154,66 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
         </div>
       </header>
 
+      {/* Action / Invite Floating Card CTA at the bottom - Compact, ultra-professional and centered */}
+      <section className="theme-hero relative overflow-hidden border-b border-purple-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          
+          <div className="relative min-h-[440px] sm:min-h-[420px] flex flex-col justify-center py-10 sm:py-14 text-slate-900 space-y-6">
+            
+            {/* Interactive Glow Effects */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--color-blue-400),transparent_45%)] opacity-20 pointer-events-none" />
+            <div className="absolute -left-20 -bottom-20 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="relative z-10 max-w-xl space-y-4">
+              <h2 className="theme-hero-title text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight whitespace-pre-wrap break-words">
+                {settings.cta_title}
+              </h2>
+              
+              <p className="text-sm sm:text-base text-slate-700 max-w-md leading-relaxed whitespace-pre-wrap break-words">
+                {settings.cta_description}
+              </p>
+            </div>
+
+            <div className="relative z-10 pt-1 flex justify-start">
+              <a
+                href={MESSENGER_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="bg-blue-600 hover:bg-blue-700 text-white py-3 px-8 rounded-xl font-black text-xxs sm:text-xs transition-all duration-300 shadow-md flex items-center gap-2 active:scale-97 group relative overflow-hidden theme-action"
+              >
+                <MessageSquare className="w-4 h-4 text-white" />
+                <span>ติดต่อแอดมินเพื่อขอลิ้งก์จองเลย</span>
+                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+              </a>
+            </div>
+
+            <div className="relative z-10 flex flex-wrap justify-start items-center gap-3 text-brand-900 font-bold text-xs">
+              <span className="flex items-center gap-2 rounded-2xl bg-white/75 px-3 py-3 shadow-sm backdrop-blur-sm">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                ไม่มีค่าธรรมเนียมแอบแฝง
+              </span>
+              <span className="flex items-center gap-2 rounded-2xl bg-white/75 px-3 py-3 shadow-sm backdrop-blur-sm">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                ยกเลิกออนไลน์ได้ง่ายดาย
+              </span>
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+      <div className="theme-page">
       {/* Trip showcase Section - Redesigned to Premium Card Slider */}
       {[false, true].map(completed => {
         const groupTrips = destinations.filter(dest => dest.completed === completed);
+        if (!completed) {
+          groupTrips.sort((a, b) => a.departureDay - b.departureDay || a.departureTime.localeCompare(b.departureTime));
+        }
         const scrollRef = completed ? completedTripsScrollRef : tripsScrollRef;
         return (
-      <section key={String(completed)} id={completed ? 'completed-trips' : 'destinations'} className="py-3 sm:py-2 bg-white border-b border-slate-100 overflow-hidden scroll-mt-20">
+      <React.Fragment key={String(completed)}>
+      <section id={completed ? 'completed-trips' : 'destinations'} className="py-3 sm:py-2 bg-white/40 border-b border-slate-100 overflow-hidden scroll-mt-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
           
           <div className="flex flex-row-reverse items-center justify-end gap-2 mb-2">
@@ -180,7 +245,7 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
                 groupTrips.map((dest) => (
                   <div 
                   key={dest.id}
-                  className="w-[82vw] max-w-[340px] sm:w-[360px] md:w-[380px] shrink-0 snap-center sm:snap-start bg-white rounded-2xl sm:rounded-3xl overflow-hidden border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.03)] hover:shadow-[0_20px_50px_rgb(76,29,149,0.07)] transition-all duration-350 hover:-translate-y-1.5 flex flex-col group"
+                  className="w-[82vw] max-w-[340px] sm:w-[360px] md:w-[380px] shrink-0 snap-center sm:snap-start bg-white rounded-2xl sm:rounded-3xl overflow-hidden border border-slate-100 theme-card hover:shadow-[0_20px_50px_rgb(76,29,149,0.07)] transition-all duration-350 hover:-translate-y-1.5 flex flex-col group"
                 >
                   {/* Image with floating trip status */}
                   <div className="relative overflow-hidden bg-slate-50 shrink-0">
@@ -211,7 +276,7 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
                   <div data-trip-card-content={dest.id} className="p-3 flex flex-col justify-between space-y-2">
                     <div className="space-y-1.5">
                       {/* Trip Title */}
-                      <h3 className="text-sm sm:text-base font-black text-slate-800 leading-snug group-hover:text-[#4c1d95] transition duration-200 line-clamp-1">
+                      <h3 className="text-sm sm:text-base font-black text-slate-800 leading-snug group-hover:text-brand-700 transition duration-200 line-clamp-1">
                         {dest.title}
                       </h3>
                       
@@ -224,6 +289,7 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
                           <p>{dest.period || dest.departureDate}</p>
                         ) : (
                           <div className="space-y-1">
+                            <p className="flex items-start gap-2"><User aria-hidden="true" className="w-3.5 h-3.5 shrink-0 mt-0.5 text-purple-600/70" /><span className="min-w-0 break-words">ไกด์ประจำทริป: {dest.guideName}</span></p>
                             <p className="flex items-start gap-2"><Bus aria-hidden="true" className="w-3.5 h-3.5 shrink-0 mt-0.5 text-purple-600/70" /><span>วันที่ออกเดินทาง {dest.departureDate}</span></p>
                             <p className="flex items-start gap-2"><MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5 text-purple-600/70" /><span>สถานที่ขึ้นรถ: {dest.pickupPoint}</span></p>
                             <p className="flex items-center gap-2"><Clock className="w-3.5 h-3.5 shrink-0 text-purple-600/70" /><span>เวลาออกเดินทาง {dest.departureTime ? `${dest.departureTime} น.` : 'ยังไม่ระบุ'}</span></p>
@@ -236,7 +302,7 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
                     {completed && <Link href={`/trips/${encodeURIComponent(dest.id)}/reviews`} className="flex items-center justify-center gap-2 rounded-xl bg-purple-50 px-4 py-3 text-sm font-bold text-purple-900 hover:bg-purple-100"><Star className="h-4 w-4" />ดูรีวิวและคะแนนเฉลี่ย<ArrowRight className="h-4 w-4" /></Link>}
                     {!completed && <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 text-xs font-bold">
                       <div>
-                        <p className="text-base sm:text-lg font-black text-[#4c1d95] mt-1">
+                        <p className="text-base sm:text-lg font-black text-brand-700 mt-1">
                           ฿{dest.price} <span className="text-[10px] text-slate-400 font-semibold">/ ท่าน</span>
                         </p>
                       </div>
@@ -246,7 +312,7 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
                           href={tripMessengerUrl(dest.id)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="bg-purple-50 text-[#4c1d95] group-hover:bg-[#4c1d95] group-hover:text-white transition-all duration-300 min-h-10 sm:min-h-0 py-2 px-2 sm:px-4 rounded-xl font-black text-[11px] sm:text-xxs flex items-center gap-1 border border-purple-100 group-hover:border-transparent shadow-sm active:scale-95"
+                          className="theme-action bg-brand-700 text-white group-hover:bg-brand-700 group-hover:text-white transition-all duration-300 min-h-10 sm:min-h-0 py-2 px-2 sm:px-4 rounded-xl font-black text-[11px] sm:text-xxs flex items-center gap-1 border border-purple-100 group-hover:border-transparent shadow-sm active:scale-95"
                         >
                           <span>ติดต่อแอดมินเพื่อจอง</span>
                           <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
@@ -262,7 +328,7 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
             {/* Left Floating Arrow Button (Reveals on Hover, Hidden on Mobile Touch) */}
             <button
               onClick={() => scrollRef.current?.scrollBy({ left: -390, behavior: 'smooth' })}
-              className="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full bg-white/95 hover:bg-white text-slate-700 hover:text-[#4c1d95] border border-slate-200/80 shadow-lg hidden md:flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 group focus:outline-none opacity-0 group-hover/carousel:opacity-100"
+              className="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full bg-white/95 hover:bg-white text-slate-700 hover:text-brand-700 border border-slate-200/80 shadow-lg hidden md:flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 group focus:outline-none opacity-0 group-hover/carousel:opacity-100"
               aria-label="เลื่อนซ้าย"
             >
               <ChevronLeft className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" />
@@ -271,7 +337,7 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
             {/* Right Floating Arrow Button (Reveals on Hover, Hidden on Mobile Touch) */}
             <button
               onClick={() => scrollRef.current?.scrollBy({ left: 390, behavior: 'smooth' })}
-              className="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full bg-white/95 hover:bg-white text-slate-700 hover:text-[#4c1d95] border border-slate-200/80 shadow-lg hidden md:flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 group focus:outline-none opacity-0 group-hover/carousel:opacity-100"
+              className="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full bg-white/95 hover:bg-white text-slate-700 hover:text-brand-700 border border-slate-200/80 shadow-lg hidden md:flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 group focus:outline-none opacity-0 group-hover/carousel:opacity-100"
               aria-label="เลื่อนขวา"
             >
               <ChevronRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
@@ -282,6 +348,8 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
 
         </div>
       </section>
+      {completed && <TripCalendar trips={trips} />}
+      </React.Fragment>
         );
       })}
 
@@ -291,57 +359,11 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
 
 
 
-      {/* Action / Invite Floating Card CTA at the bottom - Compact, ultra-professional and centered */}
-      <section className="py-12 sm:py-16 bg-slate-50 border-t border-slate-100 overflow-hidden">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          
-          <div className="relative rounded-2xl sm:rounded-3xl bg-gradient-to-br from-[#4c1d95] via-[#3b137a] to-indigo-950 text-white py-10 px-6 sm:p-12 overflow-hidden shadow-2xl border border-purple-800/10 text-center space-y-6">
-            
-            {/* Interactive Glow Effects */}
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(6,199,85,0.1),transparent_45%)] pointer-events-none" />
-            <div className="absolute -left-20 -bottom-20 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+      <BookingLeaderboard title={settings.leaderboard_title || defaultHomepageSettings.leaderboard_title} />
 
-            <div className="relative z-10 max-w-2xl mx-auto space-y-4">
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight leading-tight whitespace-pre-wrap break-words">
-                {settings.cta_title}
-              </h2>
-              
-              <p className="text-xxs sm:text-xs text-purple-200/80 max-w-md mx-auto leading-relaxed whitespace-pre-wrap break-words">
-                {settings.cta_description}
-              </p>
-            </div>
-
-            <div className="relative z-10 pt-1 flex justify-center">
-              <a
-                href={MESSENGER_URL}
-                target="_blank"
-                rel="noreferrer"
-                className="bg-blue-600 hover:bg-blue-700 text-white py-3 px-8 rounded-xl font-black text-xxs sm:text-xs transition-all duration-300 shadow-md flex items-center gap-2 active:scale-97 group relative overflow-hidden"
-              >
-                <MessageSquare className="w-4 h-4 text-white" />
-                <span>ติดต่อแอดมินเพื่อขอลิ้งก์จองเลย</span>
-                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-              </a>
-            </div>
-
-            <div className="relative z-10 flex justify-center items-center gap-5 text-purple-300/80 font-bold text-[9px] sm:text-[10px]">
-              <span className="flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                ไม่มีค่าธรรมเนียมแอบแฝง
-              </span>
-              <span className="flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                ยกเลิกออนไลน์ได้ง่ายดาย
-              </span>
-            </div>
-
-          </div>
-
-        </div>
-      </section>
-
+      </div>
       {/* Footer Section */}
-      <footer className="bg-slate-900 text-slate-400 py-12 border-t border-slate-800 text-xs sm:text-sm font-bold">
+      <footer className="theme-deep bg-slate-900 text-purple-200 py-12 border-t border-slate-800 text-xs sm:text-sm font-bold">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-8">
           
           {/* Col 1 Brand Info */}
@@ -352,7 +374,7 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
               </div>
               <span className="text-white font-extrabold text-base sm:text-lg">ด่าไป เดินไป</span>
             </div>
-            <p className="text-xxs sm:text-xs text-slate-500 max-w-sm leading-relaxed font-bold whitespace-pre-wrap break-words">
+            <p className="text-xxs sm:text-xs text-purple-200 max-w-sm leading-relaxed font-bold whitespace-pre-wrap break-words">
               {settings.footer_description}
             </p>
           </div>
@@ -360,7 +382,7 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
           {/* Col 2 Links */}
           <div className="space-y-3">
             <h5 className="text-white font-extrabold text-xs tracking-wider uppercase">การช่วยเหลือ</h5>
-            <ul className="space-y-2 text-xxs sm:text-xs font-bold text-slate-500">
+            <ul className="space-y-2 text-xxs sm:text-xs font-bold text-purple-200">
               <li>
                 <a href={MESSENGER_URL} target="_blank" rel="noopener noreferrer" className="hover:text-white transition">
                   ติดต่อแอดมิน / Messenger
@@ -382,7 +404,7 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
           {/* Col 3 Contact */}
           <div className="space-y-3">
             <h5 className="text-white font-extrabold text-xs tracking-wider uppercase">ช่องทางติดต่อ</h5>
-            <ul className="space-y-2 text-xxs sm:text-xs font-bold text-slate-500">
+            <ul className="space-y-2 text-xxs sm:text-xs font-bold text-purple-200">
               <li className="flex items-center gap-2">
                 <Phone className="w-3.5 h-3.5 text-purple-400" />
                 <span>{settings.contact_phone}</span>
@@ -401,7 +423,7 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
         </div>
 
         {/* Bottom copyright */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 pt-6 border-t border-slate-800/80 text-center text-xxs text-slate-600 flex flex-col sm:flex-row items-center justify-between gap-4 font-bold">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 pt-6 border-t border-slate-800/80 text-center text-xxs text-purple-200 flex flex-col sm:flex-row items-center justify-between gap-4 font-bold">
           <p>© {settings.copyright_year} ด่าไป เดินไป (DAPAI DERNPAI) All Rights Reserved.</p>
           <div className="flex gap-4">
             <a href="/privacy-policy" className="hover:underline">นโยบายความเป็นส่วนตัว</a>

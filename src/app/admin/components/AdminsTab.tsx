@@ -30,6 +30,7 @@ const AVAILABLE_PERMISSIONS = [
   { id: 'insurance', label: 'ประกันการเดินทาง (Insurance)' },
   { id: 'reports', label: 'รายงาน (Reports)' },
   { id: 'reviews', label: 'รีวิวและความคิดเห็น (Reviews)' },
+  { id: 'leaderboard', label: 'อันดับคนจองทริป' },
   { id: 'settings', label: 'ตั้งค่า (Settings)' },
 ];
 
@@ -227,7 +228,7 @@ export default function AdminsTab() {
           {!showForm && (
             <button
               onClick={() => setShowForm(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-600 text-white text-sm font-bold shadow-sm hover:bg-violet-700 transition"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-600 text-white text-sm font-bold shadow-sm hover:bg-violet-700 transition theme-action"
             >
               <UserPlus className="w-4 h-4" />
               สร้างแอดมินใหม่
@@ -376,7 +377,7 @@ export default function AdminsTab() {
             <button type="button" onClick={resetForm} className="px-4 py-2 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-100 transition">
               ยกเลิก
             </button>
-            <button type="submit" className="px-5 py-2 rounded-lg bg-violet-600 text-white text-sm font-bold shadow-sm hover:bg-violet-700 transition flex items-center gap-2">
+            <button type="submit" className="px-5 py-2 rounded-lg bg-violet-600 text-white text-sm font-bold shadow-sm hover:bg-violet-700 transition flex items-center gap-2 theme-action">
               <Save className="w-4 h-4" /> บันทึกข้อมูล
             </button>
           </div>

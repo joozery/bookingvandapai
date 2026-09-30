@@ -45,8 +45,8 @@ export default function PublicTripReviews({ tripId }: { tripId: string }) {
   return <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-800 sm:py-12">
     <div className="mx-auto max-w-3xl space-y-6">
       <Link href="/#completed-trips" className="inline-flex items-center gap-2 text-sm font-bold text-purple-800"><ArrowLeft className="h-4 w-4" />กลับไปทริปที่ปิดไปแล้ว</Link>
-      {loading ? <p role="status" className="rounded-2xl bg-white p-10 text-center">กำลังโหลดรีวิว…</p> : error ? <div role="alert" className="rounded-2xl bg-white p-8 text-center"><p>{error}</p><button onClick={() => { setLoading(true); setRetry(value => value + 1); }} className="mt-4 rounded-xl bg-purple-800 px-5 py-2 text-white">ลองใหม่</button></div> : data && <>
-        <header className="rounded-3xl border border-purple-100 bg-white p-6 sm:p-8">
+      {loading ? <p role="status" className="rounded-2xl bg-white p-10 text-center">กำลังโหลดรีวิว…</p> : error ? <div role="alert" className="rounded-2xl bg-white p-8 text-center"><p>{error}</p><button onClick={() => { setLoading(true); setRetry(value => value + 1); }} className="mt-4 rounded-xl bg-purple-800 px-5 py-2 text-white theme-action">ลองใหม่</button></div> : data && <>
+        <header className="theme-chrome rounded-3xl border border-purple-100 bg-white p-6 sm:p-8">
           <p className="text-sm font-bold text-purple-700">ด่าไป เดินไป · รีวิวจากผู้ร่วมทริป</p>
           <h1 className="mt-3 text-2xl font-bold">{data.trip.name}</h1>
           <span className="mt-3 inline-block rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">ทริปที่ปิดไปแล้ว</span>
@@ -54,7 +54,7 @@ export default function PublicTripReviews({ tripId }: { tripId: string }) {
             <Star className="h-10 w-10 fill-amber-400 text-amber-400" aria-hidden="true" />
             <div><p className="text-3xl font-bold text-purple-900">{data.average === null ? '—' : data.average.toFixed(1)} <span className="text-base font-normal">/ 5</span></p><p className="mt-1 text-sm text-slate-600">คะแนนเฉลี่ยจาก {data.count.toLocaleString('th-TH')} รีวิวที่แสดงอยู่</p></div>
           </div>
-          {isTripReviewOpen(data.trip) && <Link href={`/?tripId=${encodeURIComponent(tripId)}`} className="mt-5 inline-flex items-center gap-2 rounded-xl bg-purple-800 px-4 py-3 text-sm font-bold text-white"><MessageSquare className="h-4 w-4" />ร่วมทริปนี้? เขียนรีวิวของคุณ</Link>}
+          {isTripReviewOpen(data.trip) && <Link href={`/?tripId=${encodeURIComponent(tripId)}`} className="mt-5 inline-flex items-center gap-2 rounded-xl bg-purple-800 px-4 py-3 text-sm font-bold text-white theme-action"><MessageSquare className="h-4 w-4" />ร่วมทริปนี้? เขียนรีวิวของคุณ</Link>}
         </header>
         <section aria-label="รีวิวของทริป" className="space-y-4">
           <h2 className="text-lg font-bold">ความคิดเห็นจากผู้ร่วมทริป</h2>

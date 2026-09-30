@@ -8,6 +8,7 @@ import {
   Copy, Check, X, AlertTriangle, Star, SlidersHorizontal, RefreshCw
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import BirthdayCalendar from './BirthdayCalendar';
 
 export interface UserRecord {
   lineUserId: string;
@@ -16,6 +17,7 @@ export interface UserRecord {
   nickname: string;
   fullName: string;
   phone: string;
+  birthDate?: string | null;
   totalBookings: number;
   approvedBookings: number;
   checkedIn: number;
@@ -366,6 +368,7 @@ export default function UsersTab({ users, onRefresh }: Props) {
       </div>
 
       {/* ── Toolbar ────────────────────────────────────────────────────────── */}
+      <BirthdayCalendar users={users} onSelectUser={setSelected} />
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
         
         {requests.length > 0 && (
@@ -497,7 +500,7 @@ export default function UsersTab({ users, onRefresh }: Props) {
         </div>
 
         {/* ── Table ──────────────────────────────────────────────────────────── */}
-        <div className="overflow-x-auto">
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/80">
@@ -637,6 +640,93 @@ export default function UsersTab({ users, onRefresh }: Props) {
               })}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden divide-y divide-slate-100">
+          {filtered.length === 0 ? (
+            <div className="text-center py-12 text-slate-400">
+              <Users className="w-8 h-8 mx-auto mb-2 opacity-30" />
+              <p className="text-sm font-medium">ไม่พบลูกทริป</p>
+              <p className="text-xs">ลองเปลี่ยนคำค้นหา</p>
+            </div>
+          ) : (
+            filtered.map((u, i) => {
+              const roleConf = ROLE_CONFIG[u.role] || ROLE_CONFIG.customer;
+              const RoleIcon = roleConf.icon;
+              return (
+                <div
+                  key={u.lineUserId}
+                  className={cn(
+                    'p-4 space-y-3 bg-white transition-colors cursor-pointer hover:bg-violet-50/40',
+                    u.isBlocked && 'bg-rose-50/30'
+                  )}
+                  onClick={() => setSelected(u)}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="font-mono text-xs text-slate-400 font-bold shrink-0">{i + 1}</span>
+                      <div className="relative shrink-0">
+                        {u.lineUserProfilePic ? (
+                          <img
+                            src={u.lineUserProfilePic}
+                            alt={u.nickname}
+                            className="w-10 h-10 rounded-xl object-cover border border-slate-200"
+                            onError={(e) => { (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(u.nickname)}&background=7c3aed&color=fff&size=80`; }}
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-black text-sm border border-violet-200">
+                            {u.nickname?.charAt(0)?.toUpperCase() || '?'}
+                          </div>
+                        )}
+                        {u.isBlocked && (
+                          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-rose-500 border border-white rounded-full flex items-center justify-center">
+                            <X className="w-2 h-2 text-white" />
+                          </span>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-bold text-slate-800 text-sm leading-tight truncate">{u.nickname}</div>
+                        <div className="text-xs text-slate-400 truncate">{u.lineUserName}</div>
+                      </div>
+                    </div>
+                    <span className={cn('inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0', roleConf.color)}>
+                      <RoleIcon className="w-2.5 h-2.5" />
+                      {roleConf.label}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 text-center bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-xs">
+                    <div>
+                      <span className="text-[10px] text-slate-400 block font-medium">จองทั้งหมด</span>
+                      <span className="font-black text-slate-800 text-sm block mt-0.5">{u.totalBookings}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 block font-medium">อนุมัติ</span>
+                      <span className="font-black text-emerald-600 text-sm block mt-0.5">{u.approvedBookings}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 block font-medium">Check-in</span>
+                      <span className="font-black text-slate-700 text-sm block mt-0.5">{u.checkedIn}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+                    <div className="text-[11px] text-slate-500 min-w-0 truncate">
+                      {u.fullName ? <span className="font-semibold text-slate-700 mr-2">{u.fullName}</span> : null}
+                      {u.phone ? <a href={`tel:${u.phone}`} onClick={e => e.stopPropagation()} className="font-mono text-violet-600 hover:underline">{u.phone}</a> : null}
+                    </div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setSelected(u); }}
+                      className="px-2.5 py-1 rounded-lg bg-violet-50 text-violet-700 text-xs font-bold hover:bg-violet-100 transition shrink-0 flex items-center gap-1"
+                    >
+                      <Eye className="w-3.5 h-3.5" /> ดูรายละเอียด
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
 

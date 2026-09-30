@@ -4,6 +4,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Settings, RefreshCw } from 'lucide-react';
 import { defaultHomepageSettings } from '@/lib/homepageSettings';
 import ReviewCopyFields from '@/components/ReviewCopyFields';
+import ShareSettingsFields from '@/components/ShareSettingsFields';
+import HomepageImageFields from '@/components/HomepageImageFields';
 
 export default function SettingsTab() {
   const [settings, setSettings] = useState({
@@ -104,6 +106,14 @@ export default function SettingsTab() {
       </div>
 
       <form ref={formRef} onSubmit={e => e.preventDefault()} className="bg-white border border-slate-200 rounded-xl shadow-sm p-6 space-y-6">
+        <ShareSettingsFields value={settings} onChange={patch => setSettings(current => ({ ...current, ...patch }))} />
+        <HomepageImageFields value={settings} onChange={patch => setSettings(current => ({ ...current, ...patch }))} />
+        <div className="space-y-2">
+          <label htmlFor="leaderboard-title" className="block text-sm font-bold text-slate-800">ชื่อตารางอันดับคนจองทริป</label>
+          <input id="leaderboard-title" maxLength={150} value={settings.leaderboard_title} placeholder={defaultHomepageSettings.leaderboard_title}
+            onChange={e => setSettings(current => ({ ...current, leaderboard_title: e.target.value }))}
+            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-violet-500" />
+        </div>
         <ReviewCopyFields value={settings} onChange={copy => setSettings({ ...settings, ...copy })} />
         <div className="space-y-4">
           <h3 className="font-bold text-slate-800 border-b border-slate-100 pb-2">ข้อความชวนร่วมเดินทาง (กล่องสีม่วงหน้าแรก)</h3>

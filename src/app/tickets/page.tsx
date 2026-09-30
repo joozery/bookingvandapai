@@ -94,16 +94,16 @@ export default function TicketsPage() {
   };
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center text-[#4c1d95] bg-[#f8fafc]">กำลังโหลดข้อมูลตั๋ว...</div>;
+    return <div className="min-h-screen flex items-center justify-center text-brand-700 bg-canvas">กำลังโหลดข้อมูลตั๋ว...</div>;
   }
 
   if (!lineUser) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center text-slate-600 bg-[#f8fafc] px-4 text-center">
+      <div className="min-h-screen flex flex-col items-center justify-center text-slate-600 bg-canvas px-4 text-center">
         <Armchair className="w-12 h-12 text-slate-300 mb-4" />
         <h2 className="text-xl font-bold mb-2">กรุณาเข้าสู่ระบบก่อน</h2>
         <p className="text-sm text-slate-500 mb-6">คุณต้องเข้าสู่ระบบผ่านหน้าแรกเพื่อดูตั๋วของคุณ</p>
-        <Link href="/" className="px-6 py-3 bg-[#4c1d95] text-white rounded-xl font-bold">
+        <Link href="/" className="px-6 py-3 bg-brand-700 text-white rounded-xl font-bold theme-action">
           ไปที่หน้าแรก
         </Link>
       </div>
@@ -111,15 +111,15 @@ export default function TicketsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-800 pb-20 font-sans">
+    <div className="min-h-screen bg-canvas text-slate-800 pb-20 font-sans">
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-40 px-4 py-4 flex items-center justify-between shadow-sm">
-        <Link href="/" className="flex items-center gap-1 text-slate-500 hover:text-[#4c1d95] transition">
+      <header className="theme-chrome bg-white border-b border-slate-200 sticky top-0 z-40 px-4 py-4 flex items-center justify-between shadow-sm">
+        <Link href="/" className="flex items-center gap-1 text-slate-500 hover:text-brand-700 transition">
           <ChevronLeft className="w-5 h-5" />
           <span className="text-sm font-bold">กลับ</span>
         </Link>
-        <h1 className="text-base font-black text-[#2E1A47] tracking-tight uppercase flex items-center gap-2">
-          <Armchair className="w-4.5 h-4.5 text-[#8B5CF6]" />
+        <h1 className="text-base font-black text-ticket-ink tracking-tight uppercase flex items-center gap-2">
+          <Armchair className="w-4.5 h-4.5 text-violet-500" />
           ตั๋วของฉัน
         </h1>
         <div className="w-8"></div> {/* Spacer for centering */}
@@ -132,7 +132,7 @@ export default function TicketsPage() {
               <Armchair className="w-8 h-8 text-slate-300" />
             </div>
             <p className="text-sm font-bold text-slate-500">ยังไม่มีตั๋วโดยสารในระบบ</p>
-            <Link href="/" className="mt-5 text-xs font-bold text-white bg-[#4c1d95] hover:bg-[#5b21b6] px-5 py-3 rounded-xl transition shadow-sm inline-block">
+            <Link href="/" className="mt-5 text-xs font-bold text-white bg-brand-700 hover:bg-brand-800 px-5 py-3 rounded-xl transition shadow-sm inline-block theme-action">
               ไปค้นหาทริปและจองตั๋วเลย
             </Link>
           </div>
@@ -162,7 +162,7 @@ export default function TicketsPage() {
                   </button>
                   <Link
                     href={`/?tripId=${b.tripId}&step=5`}
-                    className="w-full py-2 sm:py-3 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-200 text-[#4c1d95] text-[10px] sm:text-[12px] font-bold transition duration-200 shadow-sm text-center flex items-center justify-center truncate px-1"
+                    className="w-full py-2 sm:py-3 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-200 text-brand-700 text-[10px] sm:text-[12px] font-bold transition duration-200 shadow-sm text-center flex items-center justify-center truncate px-1"
                   >
                     จัดการตั๋ว
                   </Link>
@@ -187,13 +187,13 @@ export default function TicketsPage() {
 
         {/* Tab 2: ตั๋วของฉัน */}
         <button
-          className={`flex flex-col items-center gap-0.5 transition-colors duration-200 text-[#4c1d95]`}
+          className={`flex flex-col items-center gap-0.5 transition-colors duration-200 text-brand-700`}
         >
           <div className="relative w-5 h-5 flex items-center justify-center">
             <Armchair className="w-5 h-5" />
           </div>
           <span className="text-[9.5px] font-bold">ตั๋วของฉัน</span>
-          <span className="w-1 h-1 bg-[#4c1d95] rounded-full mt-0.5" />
+          <span className="w-1 h-1 bg-brand-700 rounded-full mt-0.5" />
         </button>
 
         {/* Tab 3: โปรไฟล์ */}

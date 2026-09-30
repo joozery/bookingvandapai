@@ -36,6 +36,7 @@ export async function GET() {
           nickname: b.nickname,
           fullName: b.fullName,
           phone: b.phone,
+          birthDate: b.birthDate || null,
           bookings: [],
           firstSeen: b.createdAt,
           lastSeen: b.createdAt,
@@ -45,6 +46,8 @@ export async function GET() {
         };
       }
       const u = userMap[b.lineUserId];
+      // Bookings are newest first; retain the newest recorded birthday.
+      if (!u.birthDate && b.birthDate) u.birthDate = b.birthDate;
       u.bookings.push(b);
       if (new Date(b.createdAt) < new Date(u.firstSeen)) u.firstSeen = b.createdAt;
       if (new Date(b.createdAt) > new Date(u.lastSeen))  u.lastSeen  = b.createdAt;

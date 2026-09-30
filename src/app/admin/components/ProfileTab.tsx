@@ -165,7 +165,7 @@ export default function ProfileTab() {
           <button
             onClick={handleSave}
             disabled={loading || uploading}
-            className="px-8 py-2.5 rounded-xl text-sm font-bold bg-violet-600 hover:bg-violet-700 text-white transition flex items-center gap-2 shadow-sm disabled:opacity-50"
+            className="px-8 py-2.5 rounded-xl text-sm font-bold bg-violet-600 hover:bg-violet-700 text-white transition flex items-center gap-2 shadow-sm disabled:opacity-50 theme-action"
           >
             {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             บันทึกโปรไฟล์

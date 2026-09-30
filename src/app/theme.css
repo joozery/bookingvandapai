@@ -1,0 +1,265 @@
+/* Shared visual theme. Legacy Tailwind palette names are intentional aliases:
+   existing pages, portals and status controls all resolve through these tokens. */
+@theme {
+  --color-brand-50: #f5f1ff;
+  --color-brand-100: #ebe3ff;
+  --color-brand-200: #d8c8fa;
+  --color-brand-300: #bca4ee;
+  --color-brand-400: #9c7bdd;
+  --color-brand-500: #9252f5;
+  --color-brand-600: #7928ed;
+  --color-brand-700: #6020d8;
+  --color-brand-800: #4717a8;
+  --color-brand-900: #30166e;
+  --color-brand-950: #190c43;
+  --color-slate-50: #f8f7fc;
+  --color-slate-100: #eeebf5;
+  --color-slate-200: #ddd7ea;
+  --color-slate-300: #bbb1d0;
+  --color-slate-400: #7a79a5;
+  --color-slate-500: #696b99;
+  --color-slate-600: #505580;
+  --color-slate-700: #343762;
+  --color-slate-800: #20234f;
+  --color-slate-900: #151741;
+  --color-slate-950: #10112e;
+  --color-blue-50: #f0f5ff;
+  --color-blue-100: #e1eaff;
+  --color-blue-200: #c7d8fc;
+  --color-blue-300: #a2bdf1;
+  --color-blue-400: #7b9cde;
+  --color-blue-500: #3975ff;
+  --color-blue-600: #2459f5;
+  --color-blue-700: #2444ce;
+  --color-blue-800: #30477a;
+  --color-blue-900: #2c3d61;
+  --color-blue-950: #1c2741;
+  --shadow-sm: 0 2px 8px -2px rgb(74 48 117 / 9%);
+  --shadow-md: 0 5px 16px -4px rgb(74 48 117 / 13%);
+  --shadow-lg: 0 10px 28px -8px rgb(74 48 117 / 17%);
+  --shadow-xl: 0 18px 42px -12px rgb(74 48 117 / 20%);
+  --shadow-2xl: 0 24px 58px -14px rgb(74 48 117 / 24%);
+}
+
+@theme inline {
+  --color-canvas: var(--background);
+  --color-ticket-surface: var(--ticket-surface);
+  --color-ticket-ink: var(--ticket-ink);
+  --color-ticket-muted: var(--ticket-muted);
+  --color-ticket-border: var(--ticket-border);
+  --color-ticket-start: var(--ticket-start);
+  --color-ticket-end: var(--ticket-end);
+  --color-line: var(--line-brand);
+  --color-line-hover: var(--line-brand-hover);
+  --color-violet-50: var(--color-brand-50);
+  --color-violet-100: var(--color-brand-100);
+  --color-violet-200: var(--color-brand-200);
+  --color-violet-300: var(--color-brand-300);
+  --color-violet-400: var(--color-brand-400);
+  --color-violet-500: var(--color-brand-500);
+  --color-violet-600: var(--color-brand-600);
+  --color-violet-700: var(--color-brand-700);
+  --color-violet-800: var(--color-brand-800);
+  --color-violet-900: var(--color-brand-900);
+  --color-violet-950: var(--color-brand-950);
+  --color-purple-50: var(--color-brand-50);
+  --color-purple-100: var(--color-brand-100);
+  --color-purple-200: var(--color-brand-200);
+  --color-purple-300: var(--color-brand-300);
+  --color-purple-400: var(--color-brand-400);
+  --color-purple-500: var(--color-brand-500);
+  --color-purple-600: var(--color-brand-600);
+  --color-purple-700: var(--color-brand-700);
+  --color-purple-800: var(--color-brand-800);
+  --color-purple-900: var(--color-brand-900);
+  --color-purple-950: var(--color-brand-950);
+  --color-indigo-50: var(--color-blue-50);
+  --color-indigo-100: var(--color-blue-100);
+  --color-indigo-200: var(--color-blue-200);
+  --color-indigo-300: var(--color-blue-300);
+  --color-indigo-400: var(--color-blue-400);
+  --color-indigo-500: var(--color-blue-500);
+  --color-indigo-600: var(--color-blue-600);
+  --color-indigo-700: var(--color-blue-700);
+  --color-indigo-800: var(--color-blue-800);
+  --color-indigo-900: var(--color-blue-900);
+  --color-indigo-950: var(--color-blue-950);
+}
+
+:root {
+  --gradient-action: linear-gradient(110deg, #2468ff 0%, #6630ff 55%, #af26ee 100%);
+  --gradient-action-hover: linear-gradient(110deg, #2055df 0%, #5620e7 55%, #9020ce 100%);
+  --gradient-chrome: linear-gradient(115deg, #eeeaff, #f7eaff 65%, #e7eaff);
+  --gradient-deep: linear-gradient(120deg, #14133e, #29155b 65%, #401b78);
+  --ticket-surface: #f3effc;
+  --ticket-ink: #30166e;
+  --ticket-muted: #695185;
+  --ticket-border: #d8c8fa;
+  --ticket-start: #e1eaff;
+  --ticket-end: #ded0f4;
+  --line-brand: #06c755;
+  --line-brand-hover: #05b34c;
+  --chart-approved: #459586;
+  --chart-pending: #bd8b3e;
+  --chart-rejected: #c36587;
+  --calendar-hatch: rgb(80 61 114 / 5%);
+}
+
+@utility theme-action {
+  background-image: var(--gradient-action);
+  &:hover { background-image: var(--gradient-action-hover); }
+}
+@utility theme-page { position: relative; isolation: isolate; }
+@utility theme-card { box-shadow: 0 6px 22px -5px rgb(96 32 216 / 18%); }
+@utility theme-chrome { background-image: var(--gradient-chrome); }
+@utility theme-deep { background-image: var(--gradient-deep); }
+
+/* Clip a fixed image to the content area. Unlike background-attachment: fixed,
+   this also keeps the artwork stationary in mobile browsers. */
+.theme-page {
+  clip-path: inset(0);
+}
+.theme-page::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: var(--homepage-background, radial-gradient(ellipse at 5% 10%, #f9eaff 0%, transparent 45%), radial-gradient(ellipse at 95% 35%, #eae6ff 0%, transparent 50%));
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.theme-page > section {
+  background-color: rgb(255 255 255 / 35%);
+}
+.theme-page #booking-leaderboard > div {
+  background-color: rgb(255 255 255 / 88%);
+  border-radius: 1.5rem;
+  padding-top: 1.5rem;
+  padding-bottom: 1.5rem;
+}
+
+/* Existing invitation copy is presented as the reference-style hero.
+   Reuse the site's original scenic artwork; trip photographs stay unchanged. */
+.theme-hero {
+  background-color: #e8dcff;
+  background-image: linear-gradient(90deg, #f5eaff 0%, rgb(243 233 255 / 94%) 30%, rgb(230 213 255 / 30%) 65%, rgb(135 91 203 / 12%)), var(--homepage-banner, url('/logo/scenic_van_trip.png'));
+  background-size: cover;
+  background-position: center, right 45%;
+}
+.theme-hero-title {
+  background-image: var(--gradient-action);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+@media (max-width: 639px) {
+  .theme-hero {
+    background-image: linear-gradient(180deg, rgb(246 235 255 / 97%) 0%, rgb(243 232 255 / 94%) 55%, rgb(232 211 255 / 70%) 100%), var(--homepage-banner, url('/logo/scenic_van_trip.png'));
+    background-position: center, 65% center;
+  }
+}
+
+@layer base {
+  :where(input, select, textarea) { accent-color: var(--primary); }
+  :where(input, select, textarea):focus-visible {
+    outline-color: var(--ring);
+    border-color: var(--ring);
+  }
+  ::selection { background: var(--color-brand-200); color: var(--color-brand-950); }
+}
+
+/* Muted semantic status colors retain their success / warning / error meanings. */
+@theme {
+  --color-green-50: #f0faf5;
+  --color-green-100: #e0f1e7;
+  --color-green-200: #c5e4d3;
+  --color-green-300: #a1cdb6;
+  --color-green-400: #74ac90;
+  --color-green-500: #4b9279;
+  --color-green-600: #37785e;
+  --color-green-700: #2d624d;
+  --color-green-800: #28503f;
+  --color-green-900: #244334;
+  --color-green-950: #162b23;
+  --color-red-50: #fff2f5;
+  --color-red-100: #fbe3eb;
+  --color-red-200: #f2c6d5;
+  --color-red-300: #e8a2b9;
+  --color-red-400: #d67998;
+  --color-red-500: #c05a7a;
+  --color-red-600: #a94563;
+  --color-red-700: #8e3652;
+  --color-red-800: #752e45;
+  --color-red-900: #622a3c;
+  --color-red-950: #381622;
+  --color-rose-50: #fff2f7;
+  --color-rose-100: #fbe4ee;
+  --color-rose-200: #f0c6d9;
+  --color-rose-300: #e1a2bf;
+  --color-rose-400: #cc7ba3;
+  --color-rose-500: #b65b88;
+  --color-rose-600: #9f436f;
+  --color-rose-700: #85385c;
+  --color-rose-800: #6d304d;
+  --color-rose-900: #592a40;
+  --color-rose-950: #351724;
+  --color-amber-50: #fff9ef;
+  --color-amber-100: #fbefd7;
+  --color-amber-200: #f2dbb1;
+  --color-amber-300: #e9c88b;
+  --color-amber-400: #dbb36b;
+  --color-amber-500: #c39a4e;
+  --color-amber-600: #a57a32;
+  --color-amber-700: #835d27;
+  --color-amber-800: #684923;
+  --color-amber-900: #553c23;
+  --color-amber-950: #302112;
+}
+@theme inline {
+  --color-gray-50: var(--color-slate-50);
+  --color-gray-100: var(--color-slate-100);
+  --color-gray-200: var(--color-slate-200);
+  --color-gray-300: var(--color-slate-300);
+  --color-gray-400: var(--color-slate-400);
+  --color-gray-500: var(--color-slate-500);
+  --color-gray-600: var(--color-slate-600);
+  --color-gray-700: var(--color-slate-700);
+  --color-gray-800: var(--color-slate-800);
+  --color-gray-900: var(--color-slate-900);
+  --color-gray-950: var(--color-slate-950);
+  --color-zinc-50: var(--color-slate-50);
+  --color-zinc-100: var(--color-slate-100);
+  --color-zinc-200: var(--color-slate-200);
+  --color-zinc-300: var(--color-slate-300);
+  --color-zinc-400: var(--color-slate-400);
+  --color-zinc-500: var(--color-slate-500);
+  --color-zinc-600: var(--color-slate-600);
+  --color-zinc-700: var(--color-slate-700);
+  --color-zinc-800: var(--color-slate-800);
+  --color-zinc-900: var(--color-slate-900);
+  --color-zinc-950: var(--color-slate-950);
+  --color-neutral-50: var(--color-slate-50);
+  --color-neutral-100: var(--color-slate-100);
+  --color-neutral-200: var(--color-slate-200);
+  --color-neutral-300: var(--color-slate-300);
+  --color-neutral-400: var(--color-slate-400);
+  --color-neutral-500: var(--color-slate-500);
+  --color-neutral-600: var(--color-slate-600);
+  --color-neutral-700: var(--color-slate-700);
+  --color-neutral-800: var(--color-slate-800);
+  --color-neutral-900: var(--color-slate-900);
+  --color-neutral-950: var(--color-slate-950);
+  --color-emerald-50: var(--color-green-50);
+  --color-emerald-100: var(--color-green-100);
+  --color-emerald-200: var(--color-green-200);
+  --color-emerald-300: var(--color-green-300);
+  --color-emerald-400: var(--color-green-400);
+  --color-emerald-500: var(--color-green-500);
+  --color-emerald-600: var(--color-green-600);
+  --color-emerald-700: var(--color-green-700);
+  --color-emerald-800: var(--color-green-800);
+  --color-emerald-900: var(--color-green-900);
+  --color-emerald-950: var(--color-green-950);
+}

@@ -25,6 +25,7 @@ import InsuranceTab from '../components/InsuranceTab';
 import ReviewsTab from '../components/ReviewsTab';
 import ProfileTab from '../components/ProfileTab';
 import SettingsTab from '../components/SettingsTab';
+import LeaderboardTab from '../components/LeaderboardTab';
 import type { Trip, Van, Booking } from '../components/types';
 
 // ── Nav structure ─────────────────────────────────────────────────────────────
@@ -45,11 +46,12 @@ const NAV = [
   { id: 'staff',   label: 'ทีมงาน / ผู้จัด', icon: Lock },
   { id: 'insurance', label: 'ประกันการเดินทาง', icon: Shield },
   { id: 'reviews', label: 'รีวิวและความคิดเห็น', icon: FileText },
+  { id: 'leaderboard', label: 'อันดับคนจองทริป', icon: TrendingUp },
   { id: 'settings',  label: 'ตั้งค่าเว็บไซต์', icon: Settings },
   { id: 'profile',   label: 'โปรไฟล์ของฉัน', icon: User },
 ] as const;
 
-type TabId = 'dashboard' | 'bookings' | 'trips' | 'completed-trips' | 'vans' | 'checkin' | 'pending' | 'users' | 'staff' | 'insurance' | 'reviews' | 'profile' | 'settings';
+type TabId = 'dashboard' | 'bookings' | 'trips' | 'completed-trips' | 'vans' | 'checkin' | 'pending' | 'users' | 'staff' | 'insurance' | 'reviews' | 'profile' | 'settings' | 'leaderboard';
 
 export default function AdminPage() {
   const { data: session, status } = useSession();
@@ -224,7 +226,7 @@ export default function AdminPage() {
             <button
               type="submit"
               disabled={isLoggingIn}
-              className="w-full py-2.5 bg-violet-600 text-white text-sm font-bold rounded-lg shadow-sm hover:bg-violet-700 transition flex items-center justify-center gap-2 disabled:opacity-70 mt-2"
+              className="w-full py-2.5 bg-violet-600 text-white text-sm font-bold rounded-lg shadow-sm hover:bg-violet-700 transition flex items-center justify-center gap-2 disabled:opacity-70 mt-2 theme-action"
             >
               {isLoggingIn ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'เข้าสู่ระบบ'}
             </button>
@@ -511,7 +513,7 @@ export default function AdminPage() {
 
   // ── Page Render ─────────────────────────────────────────────────────────────
   return (
-    <div className="h-screen bg-[#f5f6fa] flex overflow-hidden">
+    <div className="h-screen bg-canvas flex overflow-hidden">
 
       {/* Mobile overlay */}
       {mobileSidebar && (
@@ -532,7 +534,7 @@ export default function AdminPage() {
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
 
         {/* ── Top Header ───────────────────────────────────────────────────── */}
-        <header className="h-14 bg-white border-b border-slate-200 shadow-sm flex items-center px-4 gap-3 shrink-0">
+        <header className="theme-chrome h-14 bg-white border-b border-slate-200 shadow-sm flex items-center px-4 gap-3 shrink-0">
           <button
             onClick={() => {
               if (window.innerWidth < 1024) {
@@ -686,6 +688,7 @@ export default function AdminPage() {
                  activeTab === 'users'     ? 'จัดการลูกทริป' : 
                  activeTab === 'staff'     ? 'ทีมงาน / ผู้จัด' : 
                  activeTab === 'insurance' ? 'ประกันการเดินทาง' : 
+                 activeTab === 'leaderboard' ? 'อันดับคนจองทริป' :
                  activeTab === 'profile'   ? 'โปรไฟล์ส่วนตัว' : 'QR Check-in'}
               </h1>
               <p className="text-xs text-slate-400 mt-0.5">
@@ -759,6 +762,7 @@ export default function AdminPage() {
               {activeTab === 'insurance' && <InsuranceTab trips={trips} bookings={bookings} onRefresh={() => fetchAll()} />}
               {activeTab === 'reviews' && <ReviewsTab trips={trips} />}
               {activeTab === 'settings'  && <SettingsTab />}
+              {activeTab === 'leaderboard' && <LeaderboardTab />}
               {activeTab === 'profile'   && <ProfileTab />}
               {activeTab === 'checkin' && (
                 <CheckinTab trips={trips} bookings={bookings} onCheckIn={handleCheckIn} />

@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Send share tags in the initial HTML, including for LINE preview crawlers.
+  htmlLimitedBots: /.*/,
 };
 
 export default nextConfig;

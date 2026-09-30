@@ -11,20 +11,22 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { formatThaiDate } from '@/lib/dateFormat';
+import { parseCalendarDay } from '@/lib/tripCalendar';
 import type { Trip, Van } from './types';
+import TripStaffTable from './TripStaffTable';
 
 interface Props {
   completed?: boolean;
   canToggleCompleted?: boolean;
   trips: Trip[];
   vans: Van[];
-  onCreate: (form: { name: string; departureDate: string; durationDays: number; cost: number; pickupPoint: string; departureTime: string; tripPeriod: string; reviewTitle: string; reviewDescription: string; vansCount: number; vansList: { plateNumber: string; driverName: string; driverPhone: string; }[]; imageFile?: File | null }) => Promise<void>;
-  onUpdate: (id: string, form: { name: string; departureDate: string; durationDays: number; cost: number; pickupPoint: string; departureTime: string; tripPeriod: string; reviewTitle: string; reviewDescription: string; imageFile?: File | null }) => Promise<void>;
+  onCreate: (form: { guideName: string; name: string; departureDate: string; durationDays: number; cost: number; pickupPoint: string; departureTime: string; tripPeriod: string; reviewTitle: string; reviewDescription: string; vansCount: number; vansList: { plateNumber: string; driverName: string; driverPhone: string; }[]; imageFile?: File | null }) => Promise<void>;
+  onUpdate: (id: string, form: { guideName: string; name: string; departureDate: string; durationDays: number; cost: number; pickupPoint: string; departureTime: string; tripPeriod: string; reviewTitle: string; reviewDescription: string; imageFile?: File | null }) => Promise<void>;
   onDelete: (tripId: string) => Promise<void>;
   onStatusChange: (tripId: string, status: Trip['status']) => Promise<void>;
 }
 
-const DEFAULT_FORM = { reviewTitle: '', reviewDescription: '', name: '', departureDate: '', returnDate: '', durationDays: 3, cost: 1500, pickupPoint: '', departureTime: '06:00', tripPeriod: '', durationText: '', vansCount: 1, vansList: [{ plateNumber: '', driverName: '', driverPhone: '' }] };
+const DEFAULT_FORM = { guideName: '', reviewTitle: '', reviewDescription: '', name: '', departureDate: '', returnDate: '', durationDays: 3, cost: 1500, pickupPoint: '', departureTime: '06:00', tripPeriod: '', durationText: '', vansCount: 1, vansList: [{ plateNumber: '', driverName: '', driverPhone: '' }] };
 
 const calculateEndDate = (startDate: string, days: number) => {
   if (!startDate || !days) return '';
@@ -69,31 +71,7 @@ const generatePeriod = (dateStr: string, days: number) => {
   }
 };
 
-const ThaiDatePicker = ({ value, onChange, required, min, max }: { value: string, onChange: (val: string) => void, required?: boolean, min?: string, max?: string }) => {
-  const displayValue = formatThaiDate(value);
-
-  return (
-    <div className="relative w-full h-10">
-      {/* Background visual layer */}
-      <div className="absolute inset-0 flex items-center justify-between px-3 bg-white border border-slate-200 rounded-lg pointer-events-none z-0">
-        <span className={displayValue ? 'text-slate-800 text-sm' : 'text-slate-400 text-sm'}>
-          {displayValue || 'วัน เดือน ปี พ.ศ.'}
-        </span>
-        <Calendar className="w-4 h-4 text-slate-400" />
-      </div>
-      {/* Invisible native date input on top */}
-      <input
-        type="date"
-        required={required}
-        min={min}
-        max={max}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-      />
-    </div>
-  );
-};
+import { ThaiDatePicker } from '@/components/ui/ThaiDatePicker';
 
 export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, onStatusChange, completed = false, canToggleCompleted = true }: Props) {
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
@@ -112,7 +90,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, on
 
   // Edit States
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
-  const [editForm, setEditForm] = useState({ reviewTitle: '', reviewDescription: '', name: '', departureDate: '', returnDate: '', durationDays: 3, cost: 1500, pickupPoint: '', departureTime: '06:00', tripPeriod: '', durationText: '' });
+  const [editForm, setEditForm] = useState({ guideName: '', reviewTitle: '', reviewDescription: '', name: '', departureDate: '', returnDate: '', durationDays: 3, cost: 1500, pickupPoint: '', departureTime: '06:00', tripPeriod: '', durationText: '' });
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
   const [editImagePreview, setEditImagePreview] = useState<string | null>(null);
 
@@ -155,6 +133,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, on
     setEditForm({
       reviewTitle: trip.reviewTitle || '',
       reviewDescription: trip.reviewDescription || '',
+      guideName: trip.guideName || '',
       name: trip.name,
       departureDate: trip.departureDate,
       returnDate: calculateEndDate(trip.departureDate, trip.durationDays),
@@ -209,7 +188,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, on
   };
 
   const filteredTrips = React.useMemo(() => {
-    return trips.filter(trip => {
+    const filtered = trips.filter(trip => {
       const matchSearch =
         trip.name.toLowerCase().includes(search.toLowerCase()) ||
         trip.pickupPoint.toLowerCase().includes(search.toLowerCase()) ||
@@ -219,7 +198,15 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, on
       const matchNameFilter = selectedTripFilter ? trip.name === selectedTripFilter : true;
       return matchSearch && matchNameFilter;
     });
-  }, [trips, search, selectedTripFilter]);
+    if (!completed) {
+      filtered.sort((a, b) =>
+        (parseCalendarDay(a.departureDate) ?? Number.MAX_SAFE_INTEGER) -
+        (parseCalendarDay(b.departureDate) ?? Number.MAX_SAFE_INTEGER) ||
+        (a.departureTime || '').localeCompare(b.departureTime || '')
+      );
+    }
+    return filtered;
+  }, [trips, search, selectedTripFilter, completed]);
 
   const cropperModal = showCropper && originalImage && (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
@@ -257,7 +244,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, on
               className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-violet-600"
             />
           </div>
-          <Button type="button" onClick={handleCroppedImage} className="bg-violet-600 hover:bg-violet-700 text-white font-bold px-6 h-10 gap-2 shadow-sm">
+          <Button type="button" onClick={handleCroppedImage} className="bg-violet-600 hover:bg-violet-700 text-white font-bold px-6 h-10 gap-2 shadow-sm theme-action">
             <Check className="w-4 h-4" /> ใช้รูปภาพนี้
           </Button>
         </div>
@@ -297,6 +284,10 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, on
                   <div>
                     <label className="text-xs font-bold text-slate-700 block mb-1.5">ชื่อทริป <span className="text-rose-500">*</span></label>
                     <Input required value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} placeholder="เช่น ทริปน่านกระซิบรัก 3 วัน 2 คืน" className="h-10 text-sm" />
+                  </div>
+                  <div>
+                    <label htmlFor="editForm-guide-name" className="text-xs font-bold text-slate-700 block mb-1.5">ชื่อไกด์ประจำทริป</label>
+                    <Input id="editForm-guide-name" value={editForm.guideName} onChange={e => setEditForm({ ...editForm, guideName: e.target.value })} maxLength={200} placeholder="เช่น พี่อาร์ต, พี่เมย์" className="h-10 text-sm" />
                   </div>
                   
                   <div className="grid grid-cols-2 gap-4">
@@ -369,7 +360,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, on
                 <Button type="button" variant="outline" onClick={() => setEditingTrip(null)} className="h-10 px-6 font-bold">
                   ยกเลิก
                 </Button>
-                <Button type="submit" className="h-10 px-6 bg-violet-600 hover:bg-violet-700 text-white font-bold gap-2 shadow-md">
+                <Button type="submit" className="h-10 px-6 bg-violet-600 hover:bg-violet-700 text-white font-bold gap-2 shadow-md theme-action">
                   <Check className="w-4 h-4" /> บันทึกการแก้ไข
                 </Button>
               </div>
@@ -414,6 +405,10 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, on
                   <div>
                     <label className="text-xs font-bold text-slate-700 block mb-1.5">ชื่อทริป <span className="text-rose-500">*</span></label>
                     <Input required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="เช่น ทริปน่านกระซิบรัก 3 วัน 2 คืน" className="h-10 text-sm" />
+                  </div>
+                  <div>
+                    <label htmlFor="form-guide-name" className="text-xs font-bold text-slate-700 block mb-1.5">ชื่อไกด์ประจำทริป</label>
+                    <Input id="form-guide-name" value={form.guideName} onChange={e => setForm({ ...form, guideName: e.target.value })} maxLength={200} placeholder="เช่น พี่อาร์ต, พี่เมย์" className="h-10 text-sm" />
                   </div>
                   
                   <div className="grid grid-cols-2 gap-4">
@@ -547,7 +542,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, on
                 <Button type="button" variant="outline" onClick={() => setIsCreating(false)} className="h-10 px-6 font-bold">
                   ยกเลิก
                 </Button>
-                <Button type="submit" className="h-10 px-6 bg-violet-600 hover:bg-violet-700 text-white font-bold gap-2 shadow-md">
+                <Button type="submit" className="h-10 px-6 bg-violet-600 hover:bg-violet-700 text-white font-bold gap-2 shadow-md theme-action">
                   <Check className="w-4 h-4" /> ยืนยันการสร้างทริป
                 </Button>
               </div>
@@ -597,11 +592,13 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, on
               className="w-full pl-9 pr-3 h-9 bg-slate-50 border-slate-200 text-xs rounded-lg"
             />
           </div>
-          {!completed && <Button onClick={() => setIsCreating(true)} className="w-full sm:w-auto bg-violet-600 hover:bg-violet-700 text-white h-9 shadow-sm gap-1.5 text-xs font-bold rounded-lg">
+          {!completed && <Button onClick={() => setIsCreating(true)} className="w-full sm:w-auto bg-violet-600 hover:bg-violet-700 text-white h-9 shadow-sm gap-1.5 text-xs font-bold rounded-lg theme-action">
             <Plus className="w-4 h-4" /> สร้างทริปใหม่
           </Button>}
         </div>
       </div>
+
+      {!completed && <TripStaffTable trips={filteredTrips} vans={vans} />}
 
       {trips.length === 0 ? (
         <div className="text-center py-20 bg-white border border-dashed border-slate-200 rounded-2xl shadow-sm">

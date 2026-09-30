@@ -28,12 +28,12 @@ const fmtShort = (d: Date) =>
   d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
 
 const COLORS = [
-  { dot: '#7c3aed', hatch: 'rgba(124,58,237,0.10)' },
-  { dot: '#0284c7', hatch: 'rgba(2,132,199,0.10)'  },
-  { dot: '#059669', hatch: 'rgba(5,150,105,0.10)'  },
-  { dot: '#e11d48', hatch: 'rgba(225,29,72,0.10)'  },
-  { dot: '#d97706', hatch: 'rgba(217,119,6,0.10)'  },
-  { dot: '#0891b2', hatch: 'rgba(8,145,178,0.10)'  },
+  { dot: 'var(--color-brand-600)', hatch: 'var(--color-brand-100)' },
+  { dot: 'var(--color-blue-600)', hatch: 'var(--color-blue-100)'  },
+  { dot: 'var(--chart-approved)', hatch: 'var(--color-emerald-50)'  },
+  { dot: 'var(--chart-rejected)', hatch: 'var(--color-rose-50)'  },
+  { dot: 'var(--chart-pending)', hatch: 'var(--color-amber-50)'  },
+  { dot: 'var(--color-teal-600)', hatch: 'var(--color-teal-50)'  },
 ];
 
 interface ProcessedTrip {
@@ -111,7 +111,7 @@ export default function TripCalendar({ trips, vans }: { trips: Trip[]; vans: Van
   const DAY_HEADERS = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
 
   return (
-    <div className="bg-[#fafaf8] border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+    <div className="bg-canvas border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 sm:px-6 py-4 bg-white border-b border-slate-100">
         <div className="flex items-center gap-2.5">
@@ -167,13 +167,13 @@ export default function TripCalendar({ trips, vans }: { trips: Trip[]; vans: Van
 
                     // Hatching for out-of-month
                     const cellStyle: React.CSSProperties = !isCurrentMonth ? {
-                      backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(0,0,0,0.04) 4px, rgba(0,0,0,0.04) 7px)',
+                      backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 4px, var(--calendar-hatch) 4px, var(--calendar-hatch) 7px)',
                     } : {};
 
                     return (
                       <div
                         key={di}
-                        style={{ ...cellStyle, ...(isToday ? { backgroundColor: '#FDE047' } : {}) }}
+                        style={{ ...cellStyle, ...(isToday ? { backgroundColor: 'var(--color-brand-200)' } : {}) }}
                         className={`aspect-square sm:aspect-auto sm:min-h-[56px] rounded-xl flex flex-col items-start justify-start p-1.5 sm:p-2 transition
                           ${isCurrentMonth && !isToday ? 'bg-white hover:bg-slate-50' : ''}
                           ${!isCurrentMonth ? 'bg-slate-100/60' : ''}

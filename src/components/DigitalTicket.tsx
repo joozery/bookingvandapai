@@ -52,47 +52,47 @@ export const DigitalTicket = forwardRef<HTMLDivElement, Props>(({ booking, htmlI
     <div id={htmlId} ref={ref} className="relative w-full max-w-[380px] mx-auto bg-white overflow-hidden shadow-xl border border-slate-100 flex flex-col font-sans select-none">
                 
                 {/* 1. Header Section (Gradient purple with climber silhouette moon & birds) */}
-                <div className="relative w-full aspect-[800/296] overflow-hidden shrink-0 bg-[#250A4E]">
+                <div className="relative w-full aspect-[800/296] overflow-hidden shrink-0 bg-brand-950">
                   <img src={coverBase64} alt="Cover Background" className="absolute inset-0 w-full h-full object-cover" />
                 </div>
 
                 {/* Perforation 1 (Header to Body) */}
-                <div className="relative flex items-center justify-center w-full bg-[#f3effa] select-none h-4">
-                  <div className="absolute -left-2 w-4 h-4 rounded-full bg-[#f5f6fa] border-r border-[#EAD6FF]/30 z-10 shadow-inner"></div>
+                <div className="relative flex items-center justify-center w-full bg-ticket-surface select-none h-4">
+                  <div className="absolute -left-2 w-4 h-4 rounded-full bg-canvas border-r border-ticket-border/30 z-10 shadow-inner"></div>
                   <div className="flex items-center justify-between w-full px-4 gap-1 opacity-50 overflow-hidden">
                     {Array.from({ length: 26 }).map((_, i) => (
-                      <div key={i} className="w-1.5 h-1.5 rounded-full bg-[#2E1A47]/40 shrink-0" />
+                      <div key={i} className="w-1.5 h-1.5 rounded-full bg-ticket-ink/40 shrink-0" />
                     ))}
                   </div>
-                  <div className="absolute -right-2 w-4 h-4 rounded-full bg-[#f5f6fa] border-l border-[#EAD6FF]/30 z-10 shadow-inner"></div>
+                  <div className="absolute -right-2 w-4 h-4 rounded-full bg-canvas border-l border-ticket-border/30 z-10 shadow-inner"></div>
                 </div>
 
                 {/* 2. Main Ticket Body (Destination, QR & Booking Details) */}
-                <div className="bg-[#f3effa] px-4 pb-2.5 flex-1 flex flex-col">
+                <div className="bg-ticket-surface px-4 pb-2.5 flex-1 flex flex-col">
                   
                   {/* Trip Title & QR row */}
-                  <div className="flex justify-between items-stretch gap-3 py-1.5 border-b border-[#2E1A47]/15">
+                  <div className="flex justify-between items-stretch gap-3 py-1.5 border-b border-ticket-ink/15">
                     
                     {/* Left Column: Trip Info */}
                     <div className="flex flex-col justify-center flex-1 pr-1 min-w-0">
-                      <span className="text-[9px] font-black text-[#5A3882]/80 uppercase tracking-wider block">ชื่อทริป</span>
-                      <span className="text-[#2E1A47] font-black text-[18px] leading-tight block mt-0.5 tracking-tight truncate-two-lines break-words whitespace-normal" style={{ wordBreak: 'break-word' }}>
+                      <span className="text-[9px] font-black text-ticket-muted/80 uppercase tracking-wider block">ชื่อทริป</span>
+                      <span className="text-ticket-ink font-black text-[18px] leading-tight block mt-0.5 tracking-tight truncate-two-lines break-words whitespace-normal" style={{ wordBreak: 'break-word' }}>
                         {booking.tripName}
                       </span>
                       
                     </div>
                     
                     {/* Vertical Dashed Line Divider */}
-                    <div className="w-[1.5px] border-l border-dashed border-[#2E1A47]/20 my-0.5 shrink-0"></div>
+                    <div className="w-[1.5px] border-l border-dashed border-ticket-ink/20 my-0.5 shrink-0"></div>
                     
                     {/* Right Column: QR Code Container */}
                     <div className="shrink-0 flex flex-col items-center justify-center">
-                      <div className="border border-[#2E1A47]/20 rounded-xl bg-white p-2 flex flex-col items-center justify-center w-[110px] shadow-sm">
-                        <span className="text-[8px] font-black text-[#5A3882] mb-1 tracking-tight">เช็กอินก่อนขึ้นรถ</span>
+                      <div className="border border-ticket-ink/20 rounded-xl bg-white p-2 flex flex-col items-center justify-center w-[110px] shadow-sm">
+                        <span className="text-[8px] font-black text-ticket-muted mb-1 tracking-tight">เช็กอินก่อนขึ้นรถ</span>
                         <div className="bg-white p-0.5 rounded-lg">
                           <QRCodeSVG value={booking.id} size={66} level="M" includeMargin={false} />
                         </div>
-                        <span className="text-[7px] font-bold text-[#5A3882]/85 text-center leading-tight mt-1 max-w-[95px]">
+                        <span className="text-[7px] font-bold text-ticket-muted/85 text-center leading-tight mt-1 max-w-[95px]">
                           สแกน QR Code นี้ เพื่อเช็กอินก่อนขึ้นรถ
                         </span>
                       </div>
@@ -100,80 +100,80 @@ export const DigitalTicket = forwardRef<HTMLDivElement, Props>(({ booking, htmlI
                   </div>
 
                   {/* Booking details table grid */}
-                  <div className="mt-2.5 border border-[#2E1A47]/15 rounded-xl overflow-hidden bg-white/40 backdrop-blur-sm shadow-sm">
+                  <div className="mt-2.5 border border-ticket-ink/15 rounded-xl overflow-hidden bg-white/40 backdrop-blur-sm shadow-sm">
                     {/* Row 1: Van and Seat Label */}
-                    <div className="grid grid-cols-2 divide-x divide-[#2E1A47]/15 border-b border-[#2E1A47]/15">
+                    <div className="grid grid-cols-2 divide-x divide-[#2E1A47]/15 border-b border-ticket-ink/15">
                       <div className="p-2 flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-[#2E1A47]/10 flex items-center justify-center shrink-0">
-                          <Compass className="w-4.5 h-4.5 text-[#2E1A47]" />
+                        <div className="w-7 h-7 rounded-lg bg-ticket-ink/10 flex items-center justify-center shrink-0">
+                          <Compass className="w-4.5 h-4.5 text-ticket-ink" />
                         </div>
                         <div>
-                          <span className="text-[8.5px] font-black text-[#5A3882]/80 block leading-none">คันที่นั่ง</span>
-                          <span className="text-[15px] font-black text-[#2E1A47] block mt-0.5 leading-none">{booking.vanNumber}</span>
+                          <span className="text-[8.5px] font-black text-ticket-muted/80 block leading-none">คันที่นั่ง</span>
+                          <span className="text-[15px] font-black text-ticket-ink block mt-0.5 leading-none">{booking.vanNumber}</span>
                         </div>
                       </div>
                       <div className="p-2 flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-[#2E1A47]/10 flex items-center justify-center shrink-0">
-                          <Armchair className="w-4.5 h-4.5 text-[#2E1A47]" />
+                        <div className="w-7 h-7 rounded-lg bg-ticket-ink/10 flex items-center justify-center shrink-0">
+                          <Armchair className="w-4.5 h-4.5 text-ticket-ink" />
                         </div>
                         <div>
-                          <span className="text-[8.5px] font-black text-[#5A3882]/80 block leading-none">หมายเลขที่นั่ง</span>
-                          <span className="text-[15px] font-black text-[#2E1A47] block mt-0.5 leading-none font-mono">{booking.seatLabel}</span>
+                          <span className="text-[8.5px] font-black text-ticket-muted/80 block leading-none">หมายเลขที่นั่ง</span>
+                          <span className="text-[15px] font-black text-ticket-ink block mt-0.5 leading-none font-mono">{booking.seatLabel}</span>
                         </div>
                       </div>
                     </div>
 
                     {/* Row 2: Departure Date and Time */}
-                    <div className="grid grid-cols-2 divide-x divide-[#2E1A47]/15 border-b border-[#2E1A47]/15">
+                    <div className="grid grid-cols-2 divide-x divide-[#2E1A47]/15 border-b border-ticket-ink/15">
                       <div className="p-2 flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-[#2E1A47]/10 flex items-center justify-center shrink-0">
-                          <Calendar className="w-4.5 h-4.5 text-[#2E1A47]" />
+                        <div className="w-7 h-7 rounded-lg bg-ticket-ink/10 flex items-center justify-center shrink-0">
+                          <Calendar className="w-4.5 h-4.5 text-ticket-ink" />
                         </div>
                         <div>
-                          <span className="text-[8.5px] font-black text-[#5A3882]/80 block leading-none">วันเดินทาง</span>
-                          <span className="text-[11.5px] font-black text-[#2E1A47] block mt-0.5 leading-none">{booking.departureDate}</span>
+                          <span className="text-[8.5px] font-black text-ticket-muted/80 block leading-none">วันเดินทาง</span>
+                          <span className="text-[11.5px] font-black text-ticket-ink block mt-0.5 leading-none">{booking.departureDate}</span>
                         </div>
                       </div>
                       <div className="p-2 flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-[#2E1A47]/10 flex items-center justify-center shrink-0">
-                          <Clock className="w-4.5 h-4.5 text-[#2E1A47]" />
+                        <div className="w-7 h-7 rounded-lg bg-ticket-ink/10 flex items-center justify-center shrink-0">
+                          <Clock className="w-4.5 h-4.5 text-ticket-ink" />
                         </div>
                         <div>
-                          <span className="text-[8.5px] font-black text-[#5A3882]/80 block leading-none">เวลาเดินทาง</span>
-                          <span className="text-[11.5px] font-black text-[#2E1A47] block mt-0.5 leading-none">{booking.departureTime} น.</span>
+                          <span className="text-[8.5px] font-black text-ticket-muted/80 block leading-none">เวลาเดินทาง</span>
+                          <span className="text-[11.5px] font-black text-ticket-ink block mt-0.5 leading-none">{booking.departureTime} น.</span>
                         </div>
                       </div>
                     </div>
 
                     {/* Row 3: Pickup Point */}
-                    <div className="p-2 flex items-center gap-2 border-b border-[#2E1A47]/15">
-                      <div className="w-7 h-7 rounded-lg bg-[#2E1A47]/10 flex items-center justify-center shrink-0">
-                        <MapPin className="w-4.5 h-4.5 text-[#2E1A47]" />
+                    <div className="p-2 flex items-center gap-2 border-b border-ticket-ink/15">
+                      <div className="w-7 h-7 rounded-lg bg-ticket-ink/10 flex items-center justify-center shrink-0">
+                        <MapPin className="w-4.5 h-4.5 text-ticket-ink" />
                       </div>
                       <div className="min-w-0">
-                        <span className="text-[8.5px] font-black text-[#5A3882]/80 block leading-none">สถานที่ขึ้นรถ</span>
-                        <span className="text-[11.5px] font-black text-[#2E1A47] block mt-0.5 leading-tight truncate">{booking.pickupPoint}</span>
+                        <span className="text-[8.5px] font-black text-ticket-muted/80 block leading-none">สถานที่ขึ้นรถ</span>
+                        <span className="text-[11.5px] font-black text-ticket-ink block mt-0.5 leading-tight truncate">{booking.pickupPoint}</span>
                       </div>
                     </div>
 
                     {/* Row 4: Passenger Info */}
                     <div className="grid grid-cols-2 divide-x divide-[#2E1A47]/15">
                       <div className="p-2 flex items-center gap-2 min-w-0">
-                        <div className="w-7 h-7 rounded-lg bg-[#2E1A47]/10 flex items-center justify-center shrink-0">
-                          <User className="w-4.5 h-4.5 text-[#2E1A47]" />
+                        <div className="w-7 h-7 rounded-lg bg-ticket-ink/10 flex items-center justify-center shrink-0">
+                          <User className="w-4.5 h-4.5 text-ticket-ink" />
                         </div>
                         <div className="min-w-0">
-                          <span className="text-[8.5px] font-black text-[#5A3882]/80 block leading-none">ชื่อลูกทริป</span>
-                          <span className="text-[11.5px] font-black text-[#2E1A47] block mt-0.5 leading-tight truncate">{booking.fullName}</span>
+                          <span className="text-[8.5px] font-black text-ticket-muted/80 block leading-none">ชื่อลูกทริป</span>
+                          <span className="text-[11.5px] font-black text-ticket-ink block mt-0.5 leading-tight truncate">{booking.fullName}</span>
                         </div>
                       </div>
                       <div className="p-2 flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-[#2E1A47]/10 flex items-center justify-center shrink-0">
-                          <Phone className="w-4.5 h-4.5 text-[#2E1A47]" />
+                        <div className="w-7 h-7 rounded-lg bg-ticket-ink/10 flex items-center justify-center shrink-0">
+                          <Phone className="w-4.5 h-4.5 text-ticket-ink" />
                         </div>
                         <div>
-                          <span className="text-[8.5px] font-black text-[#5A3882]/80 block leading-none">เบอร์โทรศัพท์ลูกทริป</span>
-                          <span className="text-[11.5px] font-black text-[#2E1A47] block mt-0.5 leading-none">{booking.phone}</span>
+                          <span className="text-[8.5px] font-black text-ticket-muted/80 block leading-none">เบอร์โทรศัพท์ลูกทริป</span>
+                          <span className="text-[11.5px] font-black text-ticket-ink block mt-0.5 leading-none">{booking.phone}</span>
                         </div>
                       </div>
                     </div>
@@ -181,25 +181,25 @@ export const DigitalTicket = forwardRef<HTMLDivElement, Props>(({ booking, htmlI
                   
                   {booking.note && (
                     <div className="mt-2 px-2.5 py-1.5 bg-purple-50/70 border border-purple-100/60 rounded-lg leading-relaxed">
-                      <span className="text-[#5A3882] font-black text-[8px] block leading-none mb-0.5">รายละเอียดเพิ่มเติม (Note):</span>
-                      <span className="text-[#2E1A47] font-bold text-[9.5px] block italic leading-tight">"{booking.note}"</span>
+                      <span className="text-ticket-muted font-black text-[8px] block leading-none mb-0.5">รายละเอียดเพิ่มเติม (Note):</span>
+                      <span className="text-ticket-ink font-bold text-[9.5px] block italic leading-tight">"{booking.note}"</span>
                     </div>
                   )}
                 </div>
 
                 {/* Perforation 2 (Body to Bottom Section) */}
-                <div className="relative flex items-center justify-center w-full bg-[#f3effa] select-none h-4">
-                  <div className="absolute -left-2 w-4 h-4 rounded-full bg-[#f5f6fa] border-r border-[#EAD6FF]/30 z-10 shadow-inner"></div>
+                <div className="relative flex items-center justify-center w-full bg-ticket-surface select-none h-4">
+                  <div className="absolute -left-2 w-4 h-4 rounded-full bg-canvas border-r border-ticket-border/30 z-10 shadow-inner"></div>
                   <div className="flex items-center justify-between w-full px-4 gap-1 opacity-50 overflow-hidden">
                     {Array.from({ length: 26 }).map((_, i) => (
-                      <div key={i} className="w-1.5 h-1.5 rounded-full bg-[#2E1A47]/40 shrink-0" />
+                      <div key={i} className="w-1.5 h-1.5 rounded-full bg-ticket-ink/40 shrink-0" />
                     ))}
                   </div>
-                  <div className="absolute -right-2 w-4 h-4 rounded-full bg-[#f5f6fa] border-l border-[#EAD6FF]/30 z-10 shadow-inner"></div>
+                  <div className="absolute -right-2 w-4 h-4 rounded-full bg-canvas border-l border-ticket-border/30 z-10 shadow-inner"></div>
                 </div>
 
                 {/* 3. Bottom Driver Section with mountain scenery & Van vector graphic */}
-                <div className="relative w-full bg-gradient-to-b from-[#DDCFEA] to-[#C9B6E1] p-4 pb-7 overflow-hidden shrink-0">
+                <div className="relative w-full bg-gradient-to-b from-ticket-start to-ticket-end p-4 pb-7 overflow-hidden shrink-0">
                   
                   {/* Inline Mountain & Van Silhouette vector on the right */}
                   <svg className="absolute right-0 bottom-0 w-[160px] h-[80px] pointer-events-none select-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 80" preserveAspectRatio="none">
@@ -254,39 +254,39 @@ export const DigitalTicket = forwardRef<HTMLDivElement, Props>(({ booking, htmlI
                   </svg>
 
                   {/* Driver information */}
-                  <div className="inline-flex px-2 py-0.5 rounded bg-[#2E1A47] text-white text-[8.5px] font-black mb-2 shadow-sm uppercase tracking-wide relative z-10">
+                  <div className="inline-flex px-2 py-0.5 rounded bg-ticket-ink text-white text-[8.5px] font-black mb-2 shadow-sm uppercase tracking-wide relative z-10">
                     ข้อมูลคนขับรถตู้
                   </div>
 
                   <div className="grid grid-cols-2 gap-x-2 gap-y-2 relative z-10 max-w-[220px]">
                     <div className="flex items-center gap-1.5">
-                      <div className="w-6 h-6 rounded bg-[#2E1A47]/10 flex items-center justify-center shrink-0">
-                        <User className="w-3.5 h-3.5 text-[#2E1A47]" />
+                      <div className="w-6 h-6 rounded bg-ticket-ink/10 flex items-center justify-center shrink-0">
+                        <User className="w-3.5 h-3.5 text-ticket-ink" />
                       </div>
                       <div className="min-w-0">
-                        <span className="text-[7.5px] font-bold text-[#5A3882]/85 block leading-none">ชื่อคนขับรถตู้</span>
-                        <span className="text-[10px] font-black text-[#2E1A47] block mt-0.5 leading-tight line-clamp-2">{booking.driverName || 'ยังไม่ระบุ'}</span>
+                        <span className="text-[7.5px] font-bold text-ticket-muted/85 block leading-none">ชื่อคนขับรถตู้</span>
+                        <span className="text-[10px] font-black text-ticket-ink block mt-0.5 leading-tight line-clamp-2">{booking.driverName || 'ยังไม่ระบุ'}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <div className="w-6 h-6 rounded bg-[#2E1A47]/10 flex items-center justify-center shrink-0">
-                        <Phone className="w-3.5 h-3.5 text-[#2E1A47]" />
+                      <div className="w-6 h-6 rounded bg-ticket-ink/10 flex items-center justify-center shrink-0">
+                        <Phone className="w-3.5 h-3.5 text-ticket-ink" />
                       </div>
                       <div className="min-w-0">
-                        <span className="text-[7.5px] font-bold text-[#5A3882]/85 block leading-none">เบอร์โทรศัพท์คนขับ</span>
-                        <span className="text-[10.5px] font-black text-[#2E1A47] block mt-0.5 truncate leading-none">{booking.driverPhone || 'ยังไม่ระบุ'}</span>
+                        <span className="text-[7.5px] font-bold text-ticket-muted/85 block leading-none">เบอร์โทรศัพท์คนขับ</span>
+                        <span className="text-[10.5px] font-black text-ticket-ink block mt-0.5 truncate leading-none">{booking.driverPhone || 'ยังไม่ระบุ'}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* License Plate Text Only */}
                   <div className="mt-2.5 relative z-10">
-                    <span className="text-[7.5px] font-bold text-[#5A3882]/85 block leading-none">ป้ายทะเบียนรถ</span>
-                    <span className="text-[10.5px] font-black text-[#2E1A47] block mt-0.5 leading-none">{booking.plateNumber || 'ยังไม่ระบุ'}</span>
+                    <span className="text-[7.5px] font-bold text-ticket-muted/85 block leading-none">ป้ายทะเบียนรถ</span>
+                    <span className="text-[10.5px] font-black text-ticket-ink block mt-0.5 leading-none">{booking.plateNumber || 'ยังไม่ระบุ'}</span>
                   </div>
 
                   {/* Bottom slogan centered exactly matching screenshot */}
-                  <div className="absolute bottom-1.5 left-0 right-0 text-center text-[#2E1A47] text-[9.5px] font-black italic tracking-wide select-none">
+                  <div className="absolute bottom-1.5 left-0 right-0 text-center text-ticket-ink text-[9.5px] font-black italic tracking-wide select-none">
                     “แล้วเจอกันวันเดินทางนะจ๊ะ อีพวกปากดี”
                   </div>
                 </div>

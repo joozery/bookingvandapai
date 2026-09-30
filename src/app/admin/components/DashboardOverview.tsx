@@ -45,9 +45,9 @@ export default function DashboardOverview({ trips, vans, bookings }: Props) {
     const r = 40, cx = 50, cy = 50, circumference = 2 * Math.PI * r;
     const gapDeg = 3;
     const segments = [
-      { pct: approved / Math.max(total, 1), color: '#10b981' }, // emerald
-      { pct: pending  / Math.max(total, 1), color: '#f59e0b' }, // amber
-      { pct: rejected / Math.max(total, 1), color: '#f43f5e' }, // rose
+      { pct: approved / Math.max(total, 1), color: 'var(--chart-approved)' }, // emerald
+      { pct: pending  / Math.max(total, 1), color: 'var(--chart-pending)' }, // amber
+      { pct: rejected / Math.max(total, 1), color: 'var(--chart-rejected)' }, // rose
     ];
     let offset = 0;
     const paths = segments.map((s, i) => {
@@ -71,12 +71,12 @@ export default function DashboardOverview({ trips, vans, bookings }: Props) {
     });
     return (
       <svg viewBox="0 0 100 100" className="w-28 h-28">
-        <circle cx={cx} cy={cy} r={r} fill="none" stroke="#f1f5f9" strokeWidth="12" />
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--color-slate-100)" strokeWidth="12" />
         <g style={{ transform: 'rotate(-90deg)', transformOrigin: '50px 50px' }}>
           {paths}
         </g>
-        <text x={cx} y={cy + 4} textAnchor="middle" fontSize="14" fontWeight="bold" fill="#1e293b">{total}</text>
-        <text x={cx} y={cy + 14} textAnchor="middle" fontSize="5" fill="#94a3b8">ทั้งหมด</text>
+        <text x={cx} y={cy + 4} textAnchor="middle" fontSize="14" fontWeight="bold" fill="var(--foreground)">{total}</text>
+        <text x={cx} y={cy + 14} textAnchor="middle" fontSize="5" fill="var(--color-slate-400)">ทั้งหมด</text>
       </svg>
     );
   };

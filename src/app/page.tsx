@@ -61,6 +61,7 @@ interface Van {
 }
 
 interface Trip {
+  guideName?: string | null;
   reviewTitle?: string | null;
   reviewDescription?: string | null;
   id: string;
@@ -96,39 +97,7 @@ interface Booking {
   note?: string;
 }
 
-const ThaiDatePicker = ({ value, onChange, required, id, className }: { value: string, onChange: (val: string) => void, required?: boolean, id?: string, className?: string }) => {
-  const displayValue = React.useMemo(() => {
-    if (!value) return '';
-    const d = new Date(value);
-    if (isNaN(d.getTime())) return '';
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = d.getFullYear() + 543;
-    return `${day}/${month}/${year}`;
-  }, [value]);
-
-  return (
-    <div className="relative w-full">
-      {/* Background visual layer */}
-      <div className={cn("flex items-center justify-between px-3 pointer-events-none", className)}>
-        <span className={displayValue ? 'text-slate-800' : 'text-slate-400'}>
-          {displayValue || 'วว/ดด/ปปปป'}
-        </span>
-        <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
-      </div>
-      {/* Invisible native date input on top */}
-      <input
-        type="date"
-        id={id}
-        required={required}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 m-0 p-0 block"
-        style={{ WebkitAppearance: 'none' }}
-      />
-    </div>
-  );
-};
+import { ThaiDatePicker } from '@/components/ui/ThaiDatePicker';
 
 const MOCK_LINE_USERS = [
   {
@@ -914,7 +883,7 @@ function CustomerPageContent() {
 
   if (isLandingMode) {
     return (
-      <div className="flex-1 flex flex-col bg-[#f8fafc] text-slate-800 min-h-screen">
+      <div className="flex-1 flex flex-col bg-canvas text-slate-800 min-h-screen">
         {/* Global alert messages banner */}
         {message && (
           <div className="fixed top-24 right-4 z-50 animate-bounce max-w-sm">
@@ -951,7 +920,7 @@ function CustomerPageContent() {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-[#f8fafc] text-slate-800 min-h-screen"
+    <div className="flex-1 flex flex-col bg-canvas text-slate-800 min-h-screen"
       onChangeCapture={event => {
         if ((event.target as HTMLElement).closest('form')) hasFormDraft.current = true;
       }}
@@ -977,7 +946,7 @@ function CustomerPageContent() {
       )}
 
       {/* Header Panel matching screenshot */}
-      <header className="bg-white border-b border-slate-200 py-3 sm:py-4 px-4 sm:px-6 2xl:px-8">
+      <header className="theme-chrome bg-white border-b border-slate-200 py-3 sm:py-4 px-4 sm:px-6 2xl:px-8">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 sm:gap-4">
           <div className="flex items-center space-x-3 sm:space-x-4 min-w-0">
             {/* Real Brand Logo */}
@@ -995,7 +964,7 @@ function CustomerPageContent() {
           <div className="flex items-center space-x-2 sm:space-x-3 text-xs font-semibold text-slate-600 shrink-0">
             <button
               onClick={() => setShowHelpCenterModal(true)}
-              className="hidden sm:flex items-center space-x-1 hover:text-[#4c1d95] transition px-2.5 py-1.5 rounded-lg hover:bg-slate-100 mr-2"
+              className="hidden sm:flex items-center space-x-1 hover:text-brand-700 transition px-2.5 py-1.5 rounded-lg hover:bg-slate-100 mr-2"
             >
               <MessageSquare className="w-4 h-4 text-slate-400" />
               <span>ติดต่อแอดมิน</span>
@@ -1004,10 +973,10 @@ function CustomerPageContent() {
             {/* User Profile & Dropdown Menu */}
             {lineUser && (
               <div className="relative group flex items-center">
-                <button className="flex items-center bg-white border border-slate-200 rounded-full py-1 px-1 pr-4 shadow-sm hover:border-[#4c1d95] hover:ring-2 hover:ring-purple-100 transition-all focus:outline-none">
+                <button className="flex items-center bg-white border border-slate-200 rounded-full py-1 px-1 pr-4 shadow-sm hover:border-brand-700 hover:ring-2 hover:ring-purple-100 transition-all focus:outline-none">
                   <img src={lineUser.pictureUrl} alt={lineUser.displayName} className="w-7 h-7 rounded-full border border-slate-100 object-cover mr-2" />
                   <span className="font-bold text-slate-700 text-[11px] mr-2 truncate max-w-[100px]">{lineUser.displayName}</span>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#4c1d95] transition-colors" />
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-brand-700 transition-colors" />
                 </button>
                 
                 {/* Invisible hover bridge to prevent menu closing */}
@@ -1018,32 +987,32 @@ function CustomerPageContent() {
                   <button
                     type="button"
                     onClick={() => setMobileTab('explore')}
-                    className="flex items-center px-4 py-2.5 text-left text-[11px] font-bold text-slate-700 hover:bg-purple-50 hover:text-[#4c1d95] transition"
+                    className="flex items-center px-4 py-2.5 text-left text-[11px] font-bold text-slate-700 hover:bg-purple-50 hover:text-brand-700 transition"
                   >
-                    <Compass className="w-4 h-4 mr-2 text-[#4c1d95]" />
+                    <Compass className="w-4 h-4 mr-2 text-brand-700" />
                     ทริปที่เปิดอยู่
                   </button>
                   <button
                     type="button"
                     onClick={() => setMobileTab('completed')}
                     aria-pressed={mobileTab === 'completed'}
-                    className="flex items-center px-4 py-2.5 text-left text-[11px] font-bold text-slate-700 hover:bg-purple-50 hover:text-[#4c1d95] transition"
+                    className="flex items-center px-4 py-2.5 text-left text-[11px] font-bold text-slate-700 hover:bg-purple-50 hover:text-brand-700 transition"
                   >
-                    <Check className="w-4 h-4 mr-2 text-[#4c1d95]" />
+                    <Check className="w-4 h-4 mr-2 text-brand-700" />
                     ทริปที่จบไปแล้ว
                   </button>
                   <Link
                     href="/tickets"
-                    className="flex items-center px-4 py-2.5 text-left text-[11px] font-bold text-slate-700 hover:bg-purple-50 hover:text-[#4c1d95] transition"
+                    className="flex items-center px-4 py-2.5 text-left text-[11px] font-bold text-slate-700 hover:bg-purple-50 hover:text-brand-700 transition"
                   >
-                    <Armchair className="w-4 h-4 mr-2 text-[#4c1d95]" />
+                    <Armchair className="w-4 h-4 mr-2 text-brand-700" />
                     ตั๋วของฉัน
                   </Link>
                   <button
                     onClick={() => setShowProfileModal(true)}
-                    className="flex items-center px-4 py-2.5 text-left text-[11px] font-bold text-slate-700 hover:bg-purple-50 hover:text-[#4c1d95] transition w-full"
+                    className="flex items-center px-4 py-2.5 text-left text-[11px] font-bold text-slate-700 hover:bg-purple-50 hover:text-brand-700 transition w-full"
                   >
-                    <User className="w-4 h-4 mr-2 text-[#4c1d95]" />
+                    <User className="w-4 h-4 mr-2 text-brand-700" />
                     โปรไฟล์
                   </button>
                   <div className="h-[1px] bg-slate-100 my-1 mx-2"></div>
@@ -1073,14 +1042,14 @@ function CustomerPageContent() {
             className={`relative flex items-center md:space-x-2 shrink-0 group transition ${currentStep > 1 || userBooking ? 'cursor-pointer' : 'cursor-default'}`}
           >
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white transition
-              ${currentStep === 1 ? 'bg-[#4c1d95] ring-4 ring-purple-100' : 'bg-[#4c1d95]'}
+              ${currentStep === 1 ? 'bg-brand-700 ring-4 ring-purple-100' : 'bg-brand-700'}
               ${currentStep > 1 || userBooking ? 'group-hover:brightness-110 group-hover:ring-2 group-hover:ring-purple-300' : ''}
             `}>
               {currentStep > 1 ? <Check className="w-4 h-4" /> : '1'}
             </div>
-            <span className={`absolute top-10 left-0 md:static md:top-auto text-[10px] md:text-sm whitespace-nowrap transition ${currentStep >= 1 ? 'text-[#4c1d95]' : ''} ${currentStep > 1 || userBooking ? 'group-hover:underline' : ''}`}>เลือกทริป</span>
+            <span className={`absolute top-10 left-0 md:static md:top-auto text-[10px] md:text-sm whitespace-nowrap transition ${currentStep >= 1 ? 'text-brand-700' : ''} ${currentStep > 1 || userBooking ? 'group-hover:underline' : ''}`}>เลือกทริป</span>
           </button>
-          <div className={`flex-1 h-0.5 mx-2 min-w-[10px] ${currentStep > 1 ? 'bg-[#4c1d95]' : 'bg-slate-200'}`} />
+          <div className={`flex-1 h-0.5 mx-2 min-w-[10px] ${currentStep > 1 ? 'bg-brand-700' : 'bg-slate-200'}`} />
 
           {/* Step 2 — clickable if past step 2 */}
           <button
@@ -1089,14 +1058,14 @@ function CustomerPageContent() {
             className={`relative flex items-center md:space-x-2 shrink-0 group transition ${!userBooking && currentStep > 2 ? 'cursor-pointer' : 'cursor-default'}`}
           >
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white transition
-              ${currentStep > 2 ? 'bg-[#4c1d95]' : currentStep === 2 ? 'bg-[#4c1d95] ring-4 ring-purple-100' : 'bg-slate-200'}
+              ${currentStep > 2 ? 'bg-brand-700' : currentStep === 2 ? 'bg-brand-700 ring-4 ring-purple-100' : 'bg-slate-200'}
               ${!userBooking && currentStep > 2 ? 'group-hover:brightness-110 group-hover:ring-2 group-hover:ring-purple-300' : ''}
             `}>
               {currentStep > 2 ? <Check className="w-4 h-4" /> : '2'}
             </div>
-            <span className={`absolute top-10 left-1/2 -translate-x-1/2 md:static md:translate-x-0 md:top-auto text-[10px] md:text-sm whitespace-nowrap transition ${currentStep >= 2 ? 'text-[#4c1d95]' : ''} ${!userBooking && currentStep > 2 ? 'group-hover:underline' : ''}`}>เลือกรถตู้</span>
+            <span className={`absolute top-10 left-1/2 -translate-x-1/2 md:static md:translate-x-0 md:top-auto text-[10px] md:text-sm whitespace-nowrap transition ${currentStep >= 2 ? 'text-brand-700' : ''} ${!userBooking && currentStep > 2 ? 'group-hover:underline' : ''}`}>เลือกรถตู้</span>
           </button>
-          <div className={`flex-1 h-0.5 mx-2 min-w-[10px] ${currentStep > 2 ? 'bg-[#4c1d95]' : 'bg-slate-200'}`} />
+          <div className={`flex-1 h-0.5 mx-2 min-w-[10px] ${currentStep > 2 ? 'bg-brand-700' : 'bg-slate-200'}`} />
 
           {/* Step 3 — clickable if past step 3 */}
           <button
@@ -1105,30 +1074,30 @@ function CustomerPageContent() {
             className={`relative flex items-center md:space-x-2 shrink-0 group transition ${!userBooking && currentStep > 3 ? 'cursor-pointer' : 'cursor-default'}`}
           >
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white transition
-              ${currentStep === 3 ? 'bg-[#4c1d95] ring-4 ring-purple-100' : currentStep > 3 ? 'bg-[#4c1d95]' : 'bg-slate-200'}
+              ${currentStep === 3 ? 'bg-brand-700 ring-4 ring-purple-100' : currentStep > 3 ? 'bg-brand-700' : 'bg-slate-200'}
               ${!userBooking && currentStep > 3 ? 'group-hover:brightness-110 group-hover:ring-2 group-hover:ring-purple-300' : ''}
             `}>
               {currentStep > 3 ? <Check className="w-4 h-4" /> : '3'}
             </div>
-            <span className={`absolute top-10 left-1/2 -translate-x-1/2 md:static md:translate-x-0 md:top-auto text-[10px] md:text-sm whitespace-nowrap transition ${currentStep >= 3 ? 'text-[#4c1d95]' : ''} ${!userBooking && currentStep > 3 ? 'group-hover:underline' : ''}`}>เลือกที่นั่ง</span>
+            <span className={`absolute top-10 left-1/2 -translate-x-1/2 md:static md:translate-x-0 md:top-auto text-[10px] md:text-sm whitespace-nowrap transition ${currentStep >= 3 ? 'text-brand-700' : ''} ${!userBooking && currentStep > 3 ? 'group-hover:underline' : ''}`}>เลือกที่นั่ง</span>
           </button>
-          <div className={`flex-1 h-0.5 mx-2 min-w-[10px] ${currentStep > 3 ? 'bg-[#4c1d95]' : 'bg-slate-200'}`} />
+          <div className={`flex-1 h-0.5 mx-2 min-w-[10px] ${currentStep > 3 ? 'bg-brand-700' : 'bg-slate-200'}`} />
 
           {/* Step 4 — not clickable (form step) */}
           <div className="relative flex items-center md:space-x-2 shrink-0">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${currentStep === 4 ? 'bg-[#4c1d95] ring-4 ring-purple-100' : currentStep > 4 ? 'bg-[#4c1d95]' : 'bg-slate-200'}`}>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${currentStep === 4 ? 'bg-brand-700 ring-4 ring-purple-100' : currentStep > 4 ? 'bg-brand-700' : 'bg-slate-200'}`}>
               {currentStep > 4 ? <Check className="w-4 h-4" /> : '4'}
             </div>
-            <span className={`absolute top-10 left-1/2 -translate-x-1/2 md:static md:translate-x-0 md:top-auto text-[10px] md:text-sm whitespace-nowrap transition ${currentStep >= 4 ? 'text-[#4c1d95]' : ''}`}>กรอกข้อมูล</span>
+            <span className={`absolute top-10 left-1/2 -translate-x-1/2 md:static md:translate-x-0 md:top-auto text-[10px] md:text-sm whitespace-nowrap transition ${currentStep >= 4 ? 'text-brand-700' : ''}`}>กรอกข้อมูล</span>
           </div>
-          <div className={`flex-1 h-0.5 mx-2 min-w-[10px] ${currentStep > 4 ? 'bg-[#4c1d95]' : 'bg-slate-200'}`} />
+          <div className={`flex-1 h-0.5 mx-2 min-w-[10px] ${currentStep > 4 ? 'bg-brand-700' : 'bg-slate-200'}`} />
 
           {/* Step 5 */}
           <div className="relative flex items-center md:space-x-2 shrink-0">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${currentStep === 5 ? 'bg-[#4c1d95] ring-4 ring-purple-100' : 'bg-slate-200'}`}>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${currentStep === 5 ? 'bg-brand-700 ring-4 ring-purple-100' : 'bg-slate-200'}`}>
               {currentStep > 5 ? <Check className="w-4 h-4" /> : '5'}
             </div>
-            <span className={`absolute top-10 right-0 md:static md:top-auto text-[10px] md:text-sm whitespace-nowrap transition ${currentStep === 5 ? 'text-[#4c1d95]' : ''}`}>ยืนยันการจอง</span>
+            <span className={`absolute top-10 right-0 md:static md:top-auto text-[10px] md:text-sm whitespace-nowrap transition ${currentStep === 5 ? 'text-brand-700' : ''}`}>ยืนยันการจอง</span>
           </div>
 
         </div>
@@ -1138,7 +1107,7 @@ function CustomerPageContent() {
       {lineUser && (!hasProfile || showProfileModal) ? (
         <div className="flex-1 flex flex-col items-center justify-center p-4 py-8 animate-in fade-in zoom-in-95 duration-500 mt-4">
           <div className="bg-white max-w-md w-full rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
-             <div className="bg-[#4c1d95] p-6 text-center">
+             <div className="bg-brand-700 p-6 text-center">
                 <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3 backdrop-blur-sm">
                    <Shield className="w-8 h-8 text-white" />
                 </div>
@@ -1151,7 +1120,7 @@ function CustomerPageContent() {
                     <label htmlFor="titleName" className="block text-[11px] font-bold text-slate-500 mb-1">
                       คำนำหน้า <span className="text-red-500">*</span>
                     </label>
-                    <select id="titleName" required value={titleName} onChange={(e) => setTitleName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 focus:border-[#4c1d95] rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200">
+                    <select id="titleName" required value={titleName} onChange={(e) => setTitleName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 focus:border-brand-700 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200">
                       <option value="">เลือก</option>
                       <option value="นาย">นาย</option>
                       <option value="นาง">นาง</option>
@@ -1162,7 +1131,7 @@ function CustomerPageContent() {
                     <label htmlFor="fullName" className="block text-[11px] font-bold text-slate-500 mb-1">
                       ชื่อ-นามสกุล (Full Name) <span className="text-red-500">*</span>
                     </label>
-                    <input type="text" id="fullName" required value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="เช่น สมชาย ใจดี" className="w-full bg-slate-50 border border-slate-200 focus:border-[#4c1d95] rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200" />
+                    <input type="text" id="fullName" required value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="เช่น สมชาย ใจดี" className="w-full bg-slate-50 border border-slate-200 focus:border-brand-700 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200" />
                   </div>
                 </div>
                 
@@ -1171,13 +1140,13 @@ function CustomerPageContent() {
                     <label htmlFor="nickname" className="block text-[11px] font-bold text-slate-500 mb-1">
                       ชื่อเล่น (Nickname) <span className="text-red-500">*</span>
                     </label>
-                    <input type="text" id="nickname" required value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="เช่น นัท" className="w-full bg-slate-50 border border-slate-200 focus:border-[#4c1d95] rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200" />
+                    <input type="text" id="nickname" required value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="เช่น นัท" className="w-full bg-slate-50 border border-slate-200 focus:border-brand-700 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200" />
                   </div>
                   <div>
                     <label htmlFor="phone" className="block text-[11px] font-bold text-slate-500 mb-1">
                       เบอร์โทรศัพท์ <span className="text-red-500">*</span>
                     </label>
-                    <input type="tel" id="phone" required maxLength={10} value={phone} onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, '').slice(0, 10))} placeholder="เช่น 0812345678" className="w-full bg-slate-50 border border-slate-200 focus:border-[#4c1d95] rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200" />
+                    <input type="tel" id="phone" required maxLength={10} value={phone} onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, '').slice(0, 10))} placeholder="เช่น 0812345678" className="w-full bg-slate-50 border border-slate-200 focus:border-brand-700 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200" />
                   </div>
                 </div>
 
@@ -1185,7 +1154,7 @@ function CustomerPageContent() {
                   <label htmlFor="nationalId" className="block text-[11px] font-bold text-slate-500 mb-1">
                     เลขบัตรประจำตัวประชาชน (National ID) <span className="text-red-500">*</span>
                   </label>
-                  <input type="tel" id="nationalId" required value={nationalId} onChange={(e) => setNationalId(e.target.value.replace(/[^0-9]/g, '').slice(0, 13))} placeholder="เลข 13 หลัก" maxLength={13} className="w-full bg-slate-50 border border-slate-200 focus:border-[#4c1d95] rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200" />
+                  <input type="tel" id="nationalId" required value={nationalId} onChange={(e) => setNationalId(e.target.value.replace(/[^0-9]/g, '').slice(0, 13))} placeholder="เลข 13 หลัก" maxLength={13} className="w-full bg-slate-50 border border-slate-200 focus:border-brand-700 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200" />
                 </div>
 
                 <div>
@@ -1197,7 +1166,7 @@ function CustomerPageContent() {
                     required 
                     value={birthDate} 
                     onChange={setBirthDate} 
-                    className="w-full bg-slate-50 border border-slate-200 focus:border-[#4c1d95] rounded-xl py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200" 
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-brand-700 rounded-xl py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200"
                   />
                 </div>
 
@@ -1206,24 +1175,24 @@ function CustomerPageContent() {
                     <label htmlFor="emergencyName" className="block text-[11px] font-bold text-slate-500 mb-1">
                       ชื่อผู้ติดต่อฉุกเฉิน <span className="text-red-500">*</span>
                     </label>
-                    <input type="text" id="emergencyName" required value={emergencyName} onChange={(e) => setEmergencyName(e.target.value)} placeholder="เช่น แม่, พ่อ" className="w-full bg-slate-50 border border-slate-200 focus:border-[#4c1d95] rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200" />
+                    <input type="text" id="emergencyName" required value={emergencyName} onChange={(e) => setEmergencyName(e.target.value)} placeholder="เช่น แม่, พ่อ" className="w-full bg-slate-50 border border-slate-200 focus:border-brand-700 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200" />
                   </div>
                   <div>
                     <label htmlFor="emergencyPhone" className="block text-[11px] font-bold text-slate-500 mb-1">
                       เบอร์โทรฉุกเฉิน <span className="text-red-500">*</span>
                     </label>
-                    <input type="tel" id="emergencyPhone" required maxLength={10} value={emergencyPhone} onChange={(e) => setEmergencyPhone(e.target.value.replace(/[^0-9]/g, '').slice(0, 10))} placeholder="เช่น 0891234567" className="w-full bg-slate-50 border border-slate-200 focus:border-[#4c1d95] rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200" />
+                    <input type="tel" id="emergencyPhone" required maxLength={10} value={emergencyPhone} onChange={(e) => setEmergencyPhone(e.target.value.replace(/[^0-9]/g, '').slice(0, 10))} placeholder="เช่น 0891234567" className="w-full bg-slate-50 border border-slate-200 focus:border-brand-700 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200" />
                   </div>
                 </div>
 
                 <div>
                   <label htmlFor="allergies" className="block text-[11px] font-bold text-slate-500 mb-1">แพ้อาหาร (ถ้ามี)</label>
-                  <input type="text" id="allergies" value={allergies} onChange={(e) => setAllergies(e.target.value)} placeholder="เช่น อาหารทะเล, ถั่ว" className="w-full bg-slate-50 border border-slate-200 focus:border-[#4c1d95] rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200" />
+                  <input type="text" id="allergies" value={allergies} onChange={(e) => setAllergies(e.target.value)} placeholder="เช่น อาหารทะเล, ถั่ว" className="w-full bg-slate-50 border border-slate-200 focus:border-brand-700 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200" />
                 </div>
 
                 <div>
                   <label htmlFor="medicalConditions" className="block text-[11px] font-bold text-slate-500 mb-1">โรคประจำตัว (ถ้ามี)</label>
-                  <input type="text" id="medicalConditions" value={medicalConditions} onChange={(e) => setMedicalConditions(e.target.value)} placeholder="เช่น หอบหืด, เบาหวาน" className="w-full bg-slate-50 border border-slate-200 focus:border-[#4c1d95] rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200" />
+                  <input type="text" id="medicalConditions" value={medicalConditions} onChange={(e) => setMedicalConditions(e.target.value)} placeholder="เช่น หอบหืด, เบาหวาน" className="w-full bg-slate-50 border border-slate-200 focus:border-brand-700 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200" />
                 </div>
 
                 <div className="flex items-start gap-2.5 bg-purple-50/50 border border-purple-100 rounded-xl p-3 mt-2">
@@ -1233,7 +1202,7 @@ function CustomerPageContent() {
                     required
                     checked={consentInsurance}
                     onChange={(e) => setConsentInsurance(e.target.checked)}
-                    className="mt-0.5 w-3.5 h-3.5 rounded border-slate-300 text-[#4c1d95] focus:ring-[#4c1d95] accent-[#4c1d95] cursor-pointer"
+                    className="mt-0.5 w-3.5 h-3.5 rounded border-slate-300 text-brand-700 focus:ring-brand-700 accent-primary cursor-pointer"
                   />
                   <label htmlFor="consentInsurance" className="text-[10.5px] leading-relaxed text-slate-600 font-semibold cursor-pointer select-none">
                     ข้าพเจ้ายินยอมให้ผู้จัดทริป “ด่าไป เดินไป” เก็บ ใช้ และเปิดเผยข้อมูลส่วนบุคคลของข้าพเจ้า ได้แก่ ชื่อ-นามสกุล เบอร์โทรศัพท์ เลขบัตรประชาชน วันเดือนปีเกิด ข้อมูลผู้ติดต่อฉุกเฉิน รวมถึงข้อมูลสุขภาพ เช่น โรคประจำตัว และอาการแพ้อาหาร เพื่อใช้ในการ
@@ -1254,7 +1223,7 @@ function CustomerPageContent() {
                       ยกเลิก
                     </button>
                   )}
-                  <button type="submit" disabled={isSubmittingProfile} className="flex-1 bg-[#4c1d95] hover:bg-[#3b1774] text-white text-xs font-bold py-3 rounded-xl transition duration-200 shadow-md flex items-center justify-center space-x-2 disabled:opacity-50">
+                  <button type="submit" disabled={isSubmittingProfile} className="flex-1 bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold py-3 rounded-xl transition duration-200 shadow-md flex items-center justify-center space-x-2 disabled:opacity-50 theme-action">
                     {isSubmittingProfile ? (
                       <>
                         <RefreshCw className="w-4 h-4 animate-spin" />
@@ -1280,7 +1249,7 @@ function CustomerPageContent() {
              </p>
              <button
                onClick={handleLoginClick}
-               className="w-full bg-[#06C755] hover:bg-[#05b34c] text-white py-3.5 px-4 rounded-xl font-black text-xs transition-all duration-300 shadow-md shadow-[#06C755]/20 flex items-center justify-center gap-2 active:scale-95"
+               className="w-full bg-line hover:bg-line-hover text-white py-3.5 px-4 rounded-xl font-black text-xs transition-all duration-300 shadow-md shadow-line/20 flex items-center justify-center gap-2 active:scale-95"
              >
                <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current shrink-0">
                  <path d="M24 10.3c0-4.7-4.8-8.5-10.7-8.5S2.7 5.6 2.7 10.3c0 4.2 3.8 7.7 8.9 8.4.3.1.8.2.9.5.1.2 0 .6-.1.8l-.4 2.6c0 .3-.2 1.1 1 0l7.2-7.2h.1c2.7-1.1 3.9-3.1 3.9-5.1z" />
@@ -1301,7 +1270,7 @@ function CustomerPageContent() {
                 if (currentStep === 3) { setSelectedVan(null); setSelectedSeat(null); }
                 if (currentStep === 4) { setSelectedSeat(null); }
               }}
-              className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-[#4c1d95] transition px-3 py-1.5 rounded-lg hover:bg-purple-50 border border-slate-200 bg-white shadow-sm"
+              className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-brand-700 transition px-3 py-1.5 rounded-lg hover:bg-purple-50 border border-slate-200 bg-white shadow-sm"
             >
               <ChevronRight className="w-3.5 h-3.5 rotate-180" />
               <span>ย้อนกลับ</span>
@@ -1347,7 +1316,7 @@ function CustomerPageContent() {
                 className="w-full flex items-center justify-between py-3.5 px-3 hover:bg-slate-50 rounded-2xl transition duration-200 text-left"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-[#4c1d95]/10 flex items-center justify-center text-[#4c1d95]">
+                  <div className="w-9 h-9 rounded-xl bg-brand-700/10 flex items-center justify-center text-brand-700">
                     <User className="w-4.5 h-4.5" />
                   </div>
                   <span className="text-xs font-bold text-slate-700">ข้อมูลส่วนตัว & ประกันภัย</span>
@@ -1364,7 +1333,7 @@ function CustomerPageContent() {
                 className="w-full flex items-center justify-between py-3.5 px-3 hover:bg-slate-50 rounded-2xl transition duration-200 text-left"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-[#4c1d95]/10 flex items-center justify-center text-[#4c1d95]">
+                  <div className="w-9 h-9 rounded-xl bg-brand-700/10 flex items-center justify-center text-brand-700">
                     <Clock className="w-4.5 h-4.5" />
                   </div>
                   <span className="text-xs font-bold text-slate-700">ประวัติการจองทริป</span>
@@ -1378,7 +1347,7 @@ function CustomerPageContent() {
                 className="w-full flex items-center justify-between py-3.5 px-3 hover:bg-slate-50 rounded-2xl transition duration-200 text-left"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-[#4c1d95]/10 flex items-center justify-center text-[#4c1d95]">
+                  <div className="w-9 h-9 rounded-xl bg-brand-700/10 flex items-center justify-center text-brand-700">
                     <MessageSquare className="w-4.5 h-4.5" />
                   </div>
                   <span className="text-xs font-bold text-slate-700">ศูนย์ช่วยเหลือ & ติดต่อแอดมิน</span>
@@ -1408,7 +1377,7 @@ function CustomerPageContent() {
           <div className="2xl:hidden col-span-1 flex flex-col gap-4 bg-white rounded-3xl p-5 border border-slate-200 shadow-sm animate-in fade-in duration-200">
             <div className="border-b border-slate-100 pb-4 text-center">
               <h2 className="text-base font-bold text-slate-800 flex items-center justify-center gap-2">
-                <Armchair className="w-5 h-5 text-[#4c1d95]" />
+                <Armchair className="w-5 h-5 text-brand-700" />
                 <span>ตั๋วโดยสารของฉัน</span>
               </h2>
             </div>
@@ -1420,7 +1389,7 @@ function CustomerPageContent() {
                     <Armchair className="w-8 h-8 text-slate-300" />
                   </div>
                   <p className="text-sm font-bold text-slate-500">ยังไม่มีตั๋วโดยสาร</p>
-                  <button onClick={() => setMobileTab('explore')} className="mt-4 text-xs font-bold text-[#4c1d95] bg-purple-50 hover:bg-purple-100 px-4 py-2.5 rounded-xl transition border border-purple-100">
+                  <button onClick={() => setMobileTab('explore')} className="mt-4 text-xs font-bold text-brand-700 bg-purple-50 hover:bg-purple-100 px-4 py-2.5 rounded-xl transition border border-purple-100">
                     ดูทริปที่เปิดอยู่
                   </button>
                 </div>
@@ -1477,7 +1446,7 @@ function CustomerPageContent() {
           <div className={mobileTab === 'completed' || (currentStep === 1 && !(userBooking && isRequestingTransfer)) ? 'block' : 'hidden'}>
           <div className={`bg-white border border-slate-200 rounded-2xl p-5 shadow-sm ${mobileTab === 'completed' ? 'hidden' : ''}`}>
             <h2 className="text-sm sm:text-base font-bold text-slate-800 mb-4 flex items-center gap-1.5 uppercase tracking-wide">
-              <Compass className="w-4 h-4 text-[#4c1d95]" />
+              <Compass className="w-4 h-4 text-brand-700" />
               <span>เลือกทริป</span>
             </h2>
 
@@ -1503,7 +1472,7 @@ function CustomerPageContent() {
                     placeholder="ค้นหาทริป..."
                     value={tripSearch}
                     onChange={(e) => setTripSearch(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#4c1d95] focus:ring-1 focus:ring-purple-200 transition-colors placeholder-slate-400"
+                    className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-700 focus:ring-1 focus:ring-purple-200 transition-colors placeholder-slate-400"
                   />
                 </div>
 
@@ -1545,7 +1514,7 @@ function CustomerPageContent() {
                       }}
                       className={`w-full text-left relative rounded-xl border-2 transition-all duration-200 overflow-hidden ${
                         isSelected
-                          ? 'border-[#4c1d95] shadow-lg shadow-purple-200'
+                          ? 'border-brand-700 shadow-lg shadow-purple-200'
                           : userBookedThisTrip
                             ? 'border-slate-300 opacity-60 cursor-not-allowed grayscale-[40%]'
                             : isDisabled
@@ -1603,7 +1572,7 @@ function CustomerPageContent() {
                             {userBookedThisTrip ? 'จองแล้ว' : seatsLeft > 0 ? `ว่าง ${seatsLeft} ที่` : 'เต็ม'}
                           </div>
                           <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-all ${
-                            isSelected ? 'bg-[#4c1d95] border-[#4c1d95] text-white' : 'border-white/60 bg-white/20'
+                            isSelected ? 'bg-brand-700 border-brand-700 text-white' : 'border-white/60 bg-white/20'
                           }`}>
                             {isSelected && <Check className="w-3.5 h-3.5" />}
                           </div>
@@ -1627,7 +1596,7 @@ function CustomerPageContent() {
                 placeholder="ค้นหาทริปที่จบไปแล้ว..."
                 value={completedTripSearch}
                 onChange={e => setCompletedTripSearch(e.target.value)}
-                className="mb-4 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:outline-none focus:border-[#4c1d95]"
+                className="mb-4 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:outline-none focus:border-brand-700"
               />
               <div className="flex max-h-[500px] flex-col gap-3 overflow-y-auto">
                 {trips.filter(t => t.status === 'completed' && t.name.toLowerCase().includes(completedTripSearch.toLowerCase())).map(trip => {
@@ -1666,7 +1635,7 @@ function CustomerPageContent() {
           <div className={mobileTab === 'completed' || (currentStep === 1 && !(userBooking && isRequestingTransfer)) ? 'hidden' : 'block'}>
             <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm animate-in fade-in duration-200">
               <h2 className="text-sm sm:text-base font-bold text-slate-800 mb-4 flex items-center gap-1.5 uppercase tracking-wide">
-                <Armchair className="w-4 h-4 text-[#4c1d95]" />
+                <Armchair className="w-4 h-4 text-brand-700" />
                 <span>เลือกรถตู้</span>
               </h2>
 
@@ -1685,7 +1654,7 @@ function CustomerPageContent() {
                         }}
                         className={`text-left relative rounded-xl border p-3 flex gap-3 transition-all duration-200 items-center ${
                           isVanSelected
-                            ? 'border-[#4c1d95] bg-purple-50/40 ring-1 ring-[#4c1d95]'
+                            ? 'border-brand-700 bg-purple-50/40 ring-1 ring-brand-700'
                             : 'border-slate-200 hover:border-slate-300 bg-white'
                         }`}
                       >
@@ -1705,7 +1674,7 @@ function CustomerPageContent() {
                           <p className="text-[10px] text-slate-500 font-semibold mt-1">
                             คนขับ: {van.driverName}
                           </p>
-                          <span className="text-[9px] text-[#4c1d95] font-bold bg-purple-50 px-1.5 py-0.5 rounded mt-1 inline-block">
+                          <span className="text-[9px] text-brand-700 font-bold bg-purple-50 px-1.5 py-0.5 rounded mt-1 inline-block">
                             11 ที่นั่ง
                           </span>
                         </div>
@@ -1713,7 +1682,7 @@ function CustomerPageContent() {
                         {/* Selected Radio circle */}
                         <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 border ${
                           isVanSelected 
-                            ? 'bg-[#4c1d95] border-[#4c1d95] text-white' 
+                            ? 'bg-brand-700 border-brand-700 text-white'
                             : 'border-slate-300'
                         }`}>
                           {isVanSelected && <Check className="w-2.5 h-2.5" />}
@@ -1741,7 +1710,7 @@ function CustomerPageContent() {
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-4 mb-4">
                   <div className="flex items-center space-x-2">
                     {/* Small van icon */}
-                    <div className="bg-purple-100 text-[#4c1d95] p-2 rounded-xl">
+                    <div className="bg-purple-100 text-brand-700 p-2 rounded-xl">
                       <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current">
                         <path d="M19 15h1V9a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v6h1a2 2 0 0 0 4 0h10a2 2 0 0 0 4 0zM5 15a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm14 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0z" />
                       </svg>
@@ -1914,7 +1883,7 @@ function CustomerPageContent() {
 
               {/* Note information box at bottom */}
               <div className="bg-purple-50 border border-purple-200 rounded-xl p-3.5 flex items-start gap-2.5 text-xs text-purple-950 leading-relaxed font-semibold">
-                <Info className="w-4.5 h-4.5 text-[#4c1d95] shrink-0 mt-0.5" />
+                <Info className="w-4.5 h-4.5 text-brand-700 shrink-0 mt-0.5" />
                 <p>
                   หมายเหตุ: ที่นั่ง D (คนขับ) และ 1 (ผู้จัด) ไม่สามารถจองได้ • สามารถจองได้เฉพาะเบาะ 2 - 10 เท่านั้น
                 </p>
@@ -2015,7 +1984,7 @@ function CustomerPageContent() {
                             });
                             setTimeout(() => setMessage(null), 5000);
                           }}
-                          className="flex-1 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-[#4c1d95] text-[11px] font-bold border border-purple-200 transition duration-200 flex items-center justify-center gap-1"
+                          className="flex-1 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-brand-700 text-[11px] font-bold border border-purple-200 transition duration-200 flex items-center justify-center gap-1"
                         >
                           <RefreshCw className="w-3.5 h-3.5" />
                           <span>ขอย้ายที่นั่ง</span>
@@ -2064,7 +2033,7 @@ function CustomerPageContent() {
               <div className="flex items-center gap-2 mb-4 bg-amber-50 border border-amber-100 rounded-xl p-3">
                 <div className="text-center">
                   <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">ที่นั่งปัจจุบัน</p>
-                  <span className="text-lg font-black text-[#4c1d95] font-mono">{userBooking.seatLabel}</span>
+                  <span className="text-lg font-black text-brand-700 font-mono">{userBooking.seatLabel}</span>
                 </div>
                 <div className="flex-1 flex items-center justify-center">
                   <ChevronRight className="w-5 h-5 text-amber-400" />
@@ -2137,7 +2106,7 @@ function CustomerPageContent() {
           {(!lineUser || (!userBooking && !isRequestingTransfer && selectedSeat)) && (
             <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-300">
               <h2 className="text-sm sm:text-base font-bold text-slate-800 mb-4 border-b border-slate-100 pb-3 flex items-center gap-1.5 uppercase tracking-wide">
-                <User className="w-4.5 h-4.5 text-[#4c1d95]" />
+                <User className="w-4.5 h-4.5 text-brand-700" />
                 <span>ข้อมูลผู้จอง</span>
               </h2>
 
@@ -2147,7 +2116,7 @@ function CustomerPageContent() {
                   <span className="text-xs font-bold text-slate-500 block mb-1">เบาะที่เลือก</span>
                   <div className="bg-purple-50 border border-purple-100 rounded-xl py-3 text-center text-slate-700 font-extrabold text-lg tracking-wide h-[54px] flex items-center justify-center">
                     {selectedSeat ? (
-                      <span className="text-[#4c1d95] font-extrabold font-mono text-base">
+                      <span className="text-brand-700 font-extrabold font-mono text-base">
                         เบาะ {selectedSeat.label}
                       </span>
                     ) : (
@@ -2157,7 +2126,7 @@ function CustomerPageContent() {
                 </div>
                 <div>
                   <span className="text-xs font-bold text-slate-500 block mb-1">ราคาทริป</span>
-                  <div className="bg-purple-50/50 border border-[#4c1d95]/10 rounded-xl py-3 text-center text-[#4c1d95] font-extrabold tracking-wide h-[54px] flex items-center justify-center">
+                  <div className="bg-purple-50/50 border border-brand-700/10 rounded-xl py-3 text-center text-brand-700 font-extrabold tracking-wide h-[54px] flex items-center justify-center">
                     {selectedTrip ? (
                       <span className="font-extrabold text-base font-mono">
                         ฿{selectedTrip.cost?.toLocaleString('th-TH') || '0'}
@@ -2184,7 +2153,7 @@ function CustomerPageContent() {
                     onChange={(e) => setNickname(e.target.value)}
                     placeholder="เช่น นัท, ฝน"
                     disabled={!lineUser}
-                    className="w-full bg-slate-50 border border-slate-200 focus:border-[#4c1d95] rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200 disabled:opacity-50"
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-brand-700 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200 disabled:opacity-50"
                   />
                 </div>
 
@@ -2200,7 +2169,7 @@ function CustomerPageContent() {
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="กรอกชื่อจริง-นามสกุล (ระบุคำนำหน้าด้วย)"
                     disabled={!lineUser}
-                    className="w-full bg-slate-50 border border-slate-200 focus:border-[#4c1d95] rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200 disabled:opacity-50"
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-brand-700 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200 disabled:opacity-50"
                   />
                 </div>
 
@@ -2217,7 +2186,7 @@ function CustomerPageContent() {
                     onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, '').slice(0, 10))}
                     placeholder="เช่น 0812345678"
                     disabled={!lineUser}
-                    className="w-full bg-slate-50 border border-slate-200 focus:border-[#4c1d95] rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200 disabled:opacity-50"
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-brand-700 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200 disabled:opacity-50"
                   />
                 </div>
 
@@ -2227,7 +2196,7 @@ function CustomerPageContent() {
                 <button
                   type="submit"
                   disabled={isSubmitting || !selectedSeat || !lineUser}
-                  className="w-full bg-[#4c1d95] hover:bg-[#3b1774] text-white text-xs font-bold py-2.5 rounded-xl transition duration-200 shadow-md flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold py-2.5 rounded-xl transition duration-200 shadow-md flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed theme-action"
                 >
                   {isSubmitting ? (
                     <>
@@ -2252,7 +2221,7 @@ function CustomerPageContent() {
           {/* Form instructions/notice when logged in but no seat selected */}
           {lineUser && !userBooking && !selectedSeat && (
             <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm text-center">
-              <div className="w-10 h-10 bg-purple-50 rounded-full flex items-center justify-center mx-auto mb-3 text-[#4c1d95] border border-purple-100">
+              <div className="w-10 h-10 bg-purple-50 rounded-full flex items-center justify-center mx-auto mb-3 text-brand-700 border border-purple-100">
                 <Armchair className="w-5 h-5" />
               </div>
               <h3 className="text-xs font-bold text-slate-700">เลือกเบาะนั่งบนแผนผัง</h3>
@@ -2272,10 +2241,10 @@ function CustomerPageContent() {
       {showLoginModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white border border-slate-200 rounded-3xl max-w-md w-full p-6 relative overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 text-slate-800">
-            <div className="absolute top-0 left-0 w-full h-1.5 bg-[#06C755]" />
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-line" />
             
             <div className="text-center mb-5">
-              <span className="inline-flex items-center justify-center bg-[#06C755] text-white w-11 h-11 rounded-2xl shadow-md mb-3 font-extrabold text-2xl">
+              <span className="inline-flex items-center justify-center bg-line text-white w-11 h-11 rounded-2xl shadow-md mb-3 font-extrabold text-2xl">
                 L
               </span>
               <h3 className="text-base sm:text-lg font-bold text-slate-800">LINE Login Simulator</h3>
@@ -2329,7 +2298,7 @@ function CustomerPageContent() {
                   value={customLineName}
                   onChange={(e) => setCustomLineName(e.target.value)}
                   placeholder="เช่น พี่โจ้ สายลุย"
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-[#4c1d95] rounded-xl px-3 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-100 transition duration-200"
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-brand-700 rounded-xl px-3 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-100 transition duration-200"
                 />
               </div>
 
@@ -2347,12 +2316,12 @@ function CustomerPageContent() {
                       key={url}
                       onClick={() => setCustomLinePic(url)}
                       className={`relative rounded-full border-2 overflow-hidden shrink-0 ${
-                        customLinePic === url ? 'border-[#4c1d95] scale-105 shadow' : 'border-slate-100 hover:border-slate-200'
+                        customLinePic === url ? 'border-brand-700 scale-105 shadow' : 'border-slate-100 hover:border-slate-200'
                       }`}
                     >
                       <img src={url} className="w-8 h-8 object-cover" alt="avatar" />
                       {customLinePic === url && (
-                        <div className="absolute inset-0 bg-[#4c1d95]/20 flex items-center justify-center">
+                        <div className="absolute inset-0 bg-brand-700/20 flex items-center justify-center">
                           <Check className="w-2.5 h-2.5 text-white" />
                         </div>
                       )}
@@ -2371,7 +2340,7 @@ function CustomerPageContent() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-[#06C755] hover:bg-[#05b34c] text-white text-xs font-bold py-2.5 rounded-xl transition duration-200 shadow-sm"
+                  className="flex-1 bg-line hover:bg-line-hover text-white text-xs font-bold py-2.5 rounded-xl transition duration-200 shadow-sm"
                 >
                   ยืนยันล็อกอิน
                 </button>
@@ -2385,11 +2354,11 @@ function CustomerPageContent() {
       {showBookingHistoryModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white border border-slate-200 rounded-3xl max-w-md w-full p-6 relative overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 text-slate-800">
-            <div className="absolute top-0 left-0 w-full h-1.5 bg-[#4c1d95]" />
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-brand-700" />
             
             <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
               <h3 className="text-sm sm:text-base font-bold text-slate-800 flex items-center gap-2">
-                <Clock className="w-4.5 h-4.5 text-[#4c1d95]" />
+                <Clock className="w-4.5 h-4.5 text-brand-700" />
                 <span>ประวัติการจองทริปทั้งหมด</span>
               </h3>
               <button
@@ -2428,7 +2397,7 @@ function CustomerPageContent() {
                       <span>เบาะ: {b.seatLabel || b.seatId}</span>
                       <span>วันที่ออกเดินทาง: {formatThaiDate(b.departureDate)} เวลา {b.departureTime || ''} น.</span>
                     </div>
-                    <div className="border-t border-slate-200/50 pt-2 flex items-center justify-between text-[10px] font-black text-[#4c1d95]">
+                    <div className="border-t border-slate-200/50 pt-2 flex items-center justify-between text-[10px] font-black text-brand-700">
                       <span>ราคาทริป</span>
                       <span>฿{b.cost?.toLocaleString('th-TH') || '0'}</span>
                     </div>
@@ -2454,11 +2423,11 @@ function CustomerPageContent() {
       {showHelpCenterModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white border border-slate-200 rounded-3xl max-w-md w-full p-6 relative overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 text-slate-800">
-            <div className="absolute top-0 left-0 w-full h-1.5 bg-[#4c1d95]" />
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-brand-700" />
             
             <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
               <h3 className="text-sm sm:text-base font-bold text-slate-800 flex items-center gap-2">
-                <MessageSquare className="w-4.5 h-4.5 text-[#4c1d95]" />
+                <MessageSquare className="w-4.5 h-4.5 text-brand-700" />
                 <span>ศูนย์ช่วยเหลือ & ติดต่อแอดมิน</span>
               </h3>
               <button
@@ -2472,7 +2441,7 @@ function CustomerPageContent() {
 
             <div className="space-y-4 text-xs leading-relaxed text-slate-600">
               <div className="bg-purple-50/50 border border-purple-100 rounded-xl p-3">
-                <h4 className="font-bold text-[#4c1d95] mb-1">ต้องการยกเลิกหรือขอเปลี่ยนเบาะที่นั่ง?</h4>
+                <h4 className="font-bold text-brand-700 mb-1">ต้องการยกเลิกหรือขอเปลี่ยนเบาะที่นั่ง?</h4>
                 <p className="text-[11px] text-slate-500 leading-normal">
                   ลูกทริปสามารถส่งคำขอย้ายเบาะที่นั่งได้โดยตรงบนแผนผังรถตู้ โดยการคลิกเบาะเดิมของตนเองแล้วเลือกเบาะใหม่ จากนั้นระบบจะส่งเรื่องให้แอดมินทำการอนุมัติทันที
                 </p>
@@ -2488,7 +2457,7 @@ function CustomerPageContent() {
                     href={MESSENGER_URL}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-4 rounded-xl font-bold flex items-center justify-center gap-2 transition"
+                    className="bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-4 rounded-xl font-bold flex items-center justify-center gap-2 transition theme-action"
                   >
                     <MessageSquare className="w-4.5 h-4.5" />
                     <span>ติดต่อแอดมินผ่าน Messenger</span>
@@ -2517,23 +2486,23 @@ function CustomerPageContent() {
           <button
             onClick={() => setMobileTab('explore')}
             className={`flex flex-col items-center gap-0.5 transition-colors duration-200 ${
-              mobileTab === 'explore' ? 'text-[#4c1d95]' : 'text-slate-400 hover:text-slate-600'
+              mobileTab === 'explore' ? 'text-brand-700' : 'text-slate-400 hover:text-slate-600'
             }`}
           >
             <Compass className="w-5 h-5" />
             <span className="text-[9.5px] font-bold">ทริปที่เปิดอยู่</span>
-            {mobileTab === 'explore' && <span className="w-1 h-1 bg-[#4c1d95] rounded-full mt-0.5" />}
+            {mobileTab === 'explore' && <span className="w-1 h-1 bg-brand-700 rounded-full mt-0.5" />}
           </button>
 
           <button
             type="button"
             onClick={() => setMobileTab('completed')}
             aria-pressed={mobileTab === 'completed'}
-            className={`flex flex-col items-center gap-0.5 transition-colors duration-200 ${mobileTab === 'completed' ? 'text-[#4c1d95]' : 'text-slate-400 hover:text-slate-600'}`}
+            className={`flex flex-col items-center gap-0.5 transition-colors duration-200 ${mobileTab === 'completed' ? 'text-brand-700' : 'text-slate-400 hover:text-slate-600'}`}
           >
             <Check className="w-5 h-5" />
             <span className="text-[9.5px] font-bold whitespace-nowrap">ทริปที่จบไปแล้ว</span>
-            {mobileTab === 'completed' && <span className="w-1 h-1 bg-[#4c1d95] rounded-full mt-0.5" />}
+            {mobileTab === 'completed' && <span className="w-1 h-1 bg-brand-700 rounded-full mt-0.5" />}
           </button>
 
           {/* Tab 3: ตั๋วของฉัน */}
@@ -2554,23 +2523,23 @@ function CustomerPageContent() {
           <button
             onClick={() => setMobileTab('profile')}
             className={`flex flex-col items-center gap-0.5 transition-colors duration-200 ${
-              mobileTab === 'profile' ? 'text-[#4c1d95]' : 'text-slate-400 hover:text-slate-600'
+              mobileTab === 'profile' ? 'text-brand-700' : 'text-slate-400 hover:text-slate-600'
             }`}
           >
             <User className="w-5 h-5" />
             <span className="text-[9.5px] font-bold">โปรไฟล์</span>
-            {mobileTab === 'profile' && <span className="w-1 h-1 bg-[#4c1d95] rounded-full mt-0.5" />}
+            {mobileTab === 'profile' && <span className="w-1 h-1 bg-brand-700 rounded-full mt-0.5" />}
           </button>
         </div>
       )}
 
       {/* Modern Footer matching clean light style */}
-      <footer className="border-t border-slate-200 bg-white py-6 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 text-center text-[10px] sm:text-xs text-slate-400 font-bold space-y-1">
+      <footer className="theme-deep border-t border-slate-200 bg-white py-6 mt-auto">
+        <div className="max-w-7xl mx-auto px-4 text-center text-[10px] sm:text-xs text-purple-200 font-bold space-y-1">
           <p>© {new Date().getFullYear()} ด่าไป เดินไป. All rights reserved.</p>
           <div className="flex justify-center items-center gap-1.5 text-slate-300">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-[10px] text-slate-400">ระบบซิงค์ข้อมูลเบาะรถตู้แบบเรียลไทม์ความเสถียรสูง</span>
+            <span className="text-[10px] text-purple-200">ระบบซิงค์ข้อมูลเบาะรถตู้แบบเรียลไทม์ความเสถียรสูง</span>
           </div>
         </div>
       </footer>
@@ -2587,26 +2556,26 @@ function CustomerPageContent() {
 
     if (seat.status === 'available') {
       if (isSelected) {
-        containerStyle = 'bg-[#c084fc] border-[#581c87] border-b-[4px] text-white shadow-purple-900/40 ring-2 ring-purple-400 ring-offset-2 ring-offset-slate-900 scale-105';
-        headrestStyle = 'bg-[#e9d5ff]';
-        cushionStyle = 'bg-[#9333ea]';
+        containerStyle = 'bg-purple-400 border-purple-900 border-b-[4px] text-white shadow-purple-900/40 ring-2 ring-purple-400 ring-offset-2 ring-offset-slate-900 scale-105';
+        headrestStyle = 'bg-purple-200';
+        cushionStyle = 'bg-purple-600';
       } else {
-        containerStyle = 'bg-[#22c55e] border-[#16a34a] border-b-[4px] text-white hover:bg-[#16a34a] shadow-emerald-950/30';
-        headrestStyle = 'bg-[#86efac]';
-        cushionStyle = 'bg-[#15803d]';
+        containerStyle = 'bg-green-500 border-green-600 border-b-[4px] text-white hover:bg-green-600 shadow-emerald-950/30';
+        headrestStyle = 'bg-green-300';
+        cushionStyle = 'bg-green-700';
       }
     } else if (seat.status === 'blocked') {
       containerStyle = 'bg-red-600 border-red-800 border-b-[4px] text-white cursor-not-allowed';
       headrestStyle = 'bg-red-300';
       cushionStyle = 'bg-red-700';
     } else if (seat.status === 'pending') {
-      containerStyle = 'bg-[#fbbf24] border-[#b45309] border-b-[4px] text-amber-950 cursor-not-allowed shadow-amber-950/20';
-      headrestStyle = 'bg-[#fde047]';
-      cushionStyle = 'bg-[#d97706]';
+      containerStyle = 'bg-amber-400 border-amber-700 border-b-[4px] text-amber-950 cursor-not-allowed shadow-amber-950/20';
+      headrestStyle = 'bg-yellow-300';
+      cushionStyle = 'bg-amber-600';
     } else if (seat.status === 'booked') {
-      containerStyle = 'bg-[#6b21a8] border-[#4c1d95] border-b-[4px] text-purple-100 cursor-not-allowed shadow-none';
-      headrestStyle = 'bg-[#d8b4fe]/45';
-      cushionStyle = 'bg-[#581c87]';
+      containerStyle = 'bg-purple-800 border-brand-700 border-b-[4px] text-purple-100 cursor-not-allowed shadow-none';
+      headrestStyle = 'bg-purple-300/45';
+      cushionStyle = 'bg-purple-900';
     }
 
     return (
@@ -2636,7 +2605,7 @@ function CustomerPageContent() {
 
 export default function CustomerPage() {
   return (
-    <React.Suspense fallback={<div className="min-h-screen bg-[#f8fafc] flex items-center justify-center">Loading...</div>}>
+    <React.Suspense fallback={<div className="min-h-screen bg-canvas flex items-center justify-center">Loading...</div>}>
       <CustomerPageContent />
     </React.Suspense>
   );

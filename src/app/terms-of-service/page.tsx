@@ -22,7 +22,7 @@ export default async function TermsOfServicePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-800">
+    <div className="min-h-screen bg-canvas text-slate-800">
       <div className="max-w-4xl mx-auto px-4 py-12">
         <div className="mb-8">
           <Link href="/" className="inline-flex items-center gap-2 text-violet-600 hover:text-violet-800 font-bold transition">

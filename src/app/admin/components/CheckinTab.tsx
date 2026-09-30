@@ -129,7 +129,7 @@ export default function CheckinTab({ trips, bookings, onCheckIn }: Props) {
                   placeholder="พิมพ์ Booking ID..."
                   className="h-9 text-xs flex-1 font-mono"
                 />
-                <Button size="sm" onClick={() => handleScan(manualId)} disabled={loading} className="h-9 text-xs bg-violet-600 hover:bg-violet-700 text-white px-3">
+                <Button size="sm" onClick={() => handleScan(manualId)} disabled={loading} className="h-9 text-xs bg-violet-600 hover:bg-violet-700 text-white px-3 theme-action">
                   สแกน
                 </Button>
               </div>

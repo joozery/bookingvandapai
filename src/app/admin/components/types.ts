@@ -23,6 +23,7 @@ export interface Van {
 }
 
 export interface Trip {
+  guideName?: string | null;
   reviewTitle?: string | null;
   reviewDescription?: string | null;
   id: string;

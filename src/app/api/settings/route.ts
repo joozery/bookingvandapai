@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 import { supabase } from '@/lib/supabase';
 import { defaultHomepageSettings } from '@/lib/homepageSettings';
+import { validShareImage } from '@/lib/shareSettings';
 
 const SETTINGS_FILE = 'settings/footer.json';
 
@@ -44,8 +45,23 @@ export async function GET() {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
+    for (const [key, limit] of [['leaderboard_title', 150], ['share_title', 150], ['share_description', 500], ['share_image', 2048], ['banner_image', 2048], ['background_image', 2048]] as const) {
+      if (body[key] !== undefined && (typeof body[key] !== 'string' || body[key].length > limit)) {
+        return NextResponse.json({ success: false, error: `Invalid ${key}` }, { status: 400 });
+      }
+    }
+    if (body.share_image?.trim() && !validShareImage(body.share_image.trim())) {
+      return NextResponse.json({ success: false, error: 'กรุณาใช้ลิงก์รูปภาพ HTTPS หรือพาธรูปในเว็บไซต์' }, { status: 400 });
+    }
+    for (const key of ['banner_image', 'background_image']) {
+      if (body[key]?.trim() && !validShareImage(body[key].trim())) {
+        return NextResponse.json({ success: false, error: `Invalid ${key}` }, { status: 400 });
+      }
+      if (typeof body[key] === 'string') body[key] = body[key].trim();
+    }
     const { error } = await supabase.storage.from('images').upload(SETTINGS_FILE, JSON.stringify(body), {
       contentType: 'application/json',
+      cacheControl: '0',
       upsert: true
     });
     if (error) throw error;
