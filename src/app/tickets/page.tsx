@@ -20,11 +20,14 @@ import {
   MapPin,
   X,
   CheckCircle2,
-  Bus
+  Bus,
+  Star,
+  MessageSquare
 } from 'lucide-react';
 import Link from 'next/link';
 import { extraSeatId } from '@/lib/extraSeat';
 import VanSeatCard from '@/components/VanSeatCard';
+import { formatThaiDate } from '@/lib/dateFormat';
 
 interface Trip {
   id: string;
@@ -174,6 +177,13 @@ export default function TicketsPage() {
       });
     });
 
+    // Sort by departure date ascending — soonest trip appears first
+    result.sort((a, b) => {
+      const da = a.trip.departureDate || '';
+      const db = b.trip.departureDate || '';
+      return da.localeCompare(db);
+    });
+
     return result;
   }, [bookings, trips]);
 
@@ -186,6 +196,25 @@ export default function TicketsPage() {
       (trip.departureDate && trip.departureDate.toLowerCase().includes(query))
     );
   }, [bookedTrips, searchQuery]);
+
+  // Split into upcoming and past trips
+  const { upcomingTrips, pastTrips } = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const upcoming: typeof filteredBookedTrips = [];
+    const past: typeof filteredBookedTrips = [];
+    filteredBookedTrips.forEach((item) => {
+      const dep = item.trip.departureDate;
+      if (!dep) { upcoming.push(item); return; }
+      const endDate = new Date(dep);
+      endDate.setDate(endDate.getDate() + (item.trip.durationDays || 1));
+      if (endDate < today) past.push(item);
+      else upcoming.push(item);
+    });
+    // For past trips, sort descending so recent past trips appear first
+    past.sort((a, b) => (b.trip.departureDate || '').localeCompare(a.trip.departureDate || ''));
+    return { upcomingTrips: upcoming, pastTrips: past };
+  }, [filteredBookedTrips]);
 
   // Selected Trip Data Memo
   const selectedTripData = useMemo(() => {
@@ -306,11 +335,7 @@ export default function TicketsPage() {
 
   const renderTicketPageSeat = (seat: any, van: any) => {
     if (!seat) {
-      return (
-        <div className="h-16 sm:h-20 w-full rounded-2xl bg-slate-100/40 border border-dashed border-slate-200/80 flex items-center justify-center text-[10px] text-slate-300 font-black select-none">
-          ทางเดิน
-        </div>
-      );
+      return <div className="h-16 sm:h-20 w-full" />;
     }
 
     const isDriver = seat.type === 'driver';
@@ -390,8 +415,8 @@ export default function TicketsPage() {
                   {selectedTripData.trip.name}
                 </h2>
                 <div className="flex flex-wrap items-center gap-3 text-xs font-semibold text-slate-200">
-                  <span>📅 {selectedTripData.trip.durationDays} วัน {selectedTripData.trip.durationDays - 1} คืน</span>
-                  <span>📍 ออกเดินทาง {selectedTripData.trip.departureDate}</span>
+                  <span>📅 {selectedTripData.trip.durationDays - 1} วัน {selectedTripData.trip.durationDays - 2} คืน</span>
+                  <span>📍 ออกเดินทาง {formatThaiDate(selectedTripData.trip.departureDate)}</span>
                   {selectedTripData.trip.departureTime && <span>🕒 {selectedTripData.trip.departureTime} น.</span>}
                 </div>
               </div>
@@ -702,55 +727,129 @@ export default function TicketsPage() {
                 </Link>
               </div>
             ) : (
-              filteredBookedTrips.map(({ trip, userBookings }) => (
-                <div
-                  key={trip.id}
-                  onClick={() => setSelectedTripId(trip.id)}
-                  className="relative overflow-hidden rounded-2xl sm:rounded-3xl p-4 sm:p-5 text-white shadow-lg cursor-pointer transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl group border border-white/20 select-none min-h-[135px] flex flex-col justify-between"
-                >
-                  {/* Background Image with Dark Gradient Overlay */}
-                  <img
-                    src={trip.image || 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&auto=format&fit=crop&q=80'}
-                    alt={trip.name}
-                    className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-900/80 to-slate-950/65 group-hover:from-slate-950/95 transition-colors" />
-
-                  {/* Top Details & Status Badge */}
-                  <div className="relative z-10 flex items-start justify-between gap-3">
-                    <div className="space-y-1 max-w-[78%]">
-                      <h3 className="text-base sm:text-lg font-black text-white leading-snug drop-shadow-sm group-hover:text-purple-200 transition-colors">
-                        {trip.name}
-                      </h3>
-                      <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-slate-300">
-                        <span>📅 {trip.durationDays} วัน {trip.durationDays - 1} คืน</span>
-                        {trip.tripPeriod && <span className="font-normal text-slate-300">({trip.tripPeriod})</span>}
+              <div className="space-y-6">
+                {/* Upcoming trips */}
+                {upcomingTrips.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black text-purple-700 bg-purple-100 border border-purple-200 px-3 py-1 rounded-full">🚐 ทริปที่กำลังจะมาถึง</span>
+                    </div>
+                    {upcomingTrips.map(({ trip, userBookings }) => (
+                      <div
+                        key={trip.id}
+                        onClick={() => setSelectedTripId(trip.id)}
+                        className="relative overflow-hidden rounded-2xl sm:rounded-3xl p-4 sm:p-5 text-white shadow-lg cursor-pointer transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl group border border-white/20 select-none min-h-[135px] flex flex-col justify-between"
+                      >
+                        <img src={trip.image || 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&auto=format&fit=crop&q=80'} alt={trip.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-900/80 to-slate-950/65 group-hover:from-slate-950/95 transition-colors" />
+                        <div className="relative z-10 flex items-start justify-between gap-3">
+                          <div className="space-y-1 max-w-[78%]">
+                            <h3 className="text-base sm:text-lg font-black text-white leading-snug drop-shadow-sm group-hover:text-purple-200 transition-colors">{trip.name}</h3>
+                            <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-slate-300">
+                              <span>📅 {trip.durationDays - 1} วัน {trip.durationDays - 2} คืน</span>
+                              {trip.tripPeriod && (() => { const p = trip.tripPeriod.split('||'); const dateOnly = (p[1] || p[0]).trim(); return dateOnly ? <span className="font-normal text-slate-300">({dateOnly})</span> : null; })()}
+                            </div>
+                          </div>
+                          <span className="bg-purple-600/90 backdrop-blur-md text-white px-3 py-1 rounded-full text-[10.5px] font-black border border-white/20 shadow-md shrink-0 flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                            <span>มีตั๋ว ({userBookings.length} ใบ)</span>
+                          </span>
+                        </div>
+                        <div className="relative z-10 flex items-end justify-between gap-3 pt-3 mt-2 border-t border-white/10">
+                          <div className="space-y-0.5 text-[11px] sm:text-xs font-medium text-slate-300">
+                            <p>📍 วันที่ออกเดินทาง {formatThaiDate(trip.departureDate)} {trip.departureTime ? `🕒 ${trip.departureTime} น.` : ''}</p>
+                            <p className="text-amber-300 font-black text-xs sm:text-sm">฿{trip.cost?.toLocaleString('th-TH')} <span className="text-[10px] text-slate-300 font-normal">/ ท่าน</span></p>
+                          </div>
+                          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/20 backdrop-blur-md border border-white/40 flex items-center justify-center text-white group-hover:bg-purple-600 transition-colors shadow-md shrink-0">
+                            <ChevronRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
+                          </div>
+                        </div>
                       </div>
-                    </div>
-
-                    {/* Status Pill Badge */}
-                    <span className="bg-purple-600/90 backdrop-blur-md text-white px-3 py-1 rounded-full text-[10.5px] font-black border border-white/20 shadow-md shrink-0 flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                      <span>มีตั๋ว ({userBookings.length} ใบ)</span>
-                    </span>
+                    ))}
                   </div>
+                )}
 
-                  {/* Bottom Details & Selection Indicator */}
-                  <div className="relative z-10 flex items-end justify-between gap-3 pt-3 mt-2 border-t border-white/10">
-                    <div className="space-y-0.5 text-[11px] sm:text-xs font-medium text-slate-300">
-                      <p>📍 วันที่ออกเดินทาง {trip.departureDate} {trip.departureTime ? `🕒 ${trip.departureTime} น.` : ''}</p>
-                      <p className="text-amber-300 font-black text-xs sm:text-sm">
-                        ฿{trip.cost?.toLocaleString('th-TH')} <span className="text-[10px] text-slate-300 font-normal">/ ท่าน</span>
-                      </p>
+                {/* Past trips */}
+                {pastTrips.length > 0 && (
+                  <div className="space-y-3 pt-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-black text-slate-600 bg-slate-100 border border-slate-200 px-3 py-1 rounded-full flex items-center gap-1.5">
+                        <span>🏁</span>
+                        <span>ทริปที่จบแล้ว · ร่วมแสดงความคิดเห็น</span>
+                      </span>
+                      <span className="text-[11px] font-bold text-slate-400">
+                        {pastTrips.length} ทริป
+                      </span>
                     </div>
+                    {pastTrips.map(({ trip, userBookings }) => (
+                      <Link
+                        key={trip.id}
+                        href={`/?tripId=${encodeURIComponent(trip.id)}`}
+                        className="relative overflow-hidden rounded-2xl sm:rounded-3xl p-4 sm:p-5 text-white shadow-md cursor-pointer transition-all duration-300 hover:scale-[1.01] hover:shadow-xl group border border-purple-200/40 select-none min-h-[140px] flex flex-col justify-between block"
+                      >
+                        <img
+                          src={trip.image || 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&auto=format&fit=crop&q=80'}
+                          alt={trip.name}
+                          className="absolute inset-0 w-full h-full object-cover grayscale-[40%] group-hover:grayscale-0 group-hover:scale-105 transition-all duration-700"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/95 via-slate-900/85 to-purple-950/70 group-hover:from-slate-950/95 group-hover:to-purple-900/80 transition-colors" />
+                        
+                        {/* Top info */}
+                        <div className="relative z-10 flex items-start justify-between gap-3">
+                          <div className="space-y-1 max-w-[72%] sm:max-w-[78%]">
+                            <h3 className="text-base sm:text-lg font-black text-white leading-snug drop-shadow-sm group-hover:text-purple-200 transition-colors">
+                              {trip.name}
+                            </h3>
+                            <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-slate-300">
+                              <span>📅 {trip.durationDays - 1} วัน {trip.durationDays - 2} คืน</span>
+                              {trip.tripPeriod && (() => {
+                                const p = trip.tripPeriod.split('||');
+                                const dateOnly = (p[1] || p[0]).trim();
+                                return dateOnly ? <span className="font-normal text-slate-300">({dateOnly})</span> : null;
+                              })()}
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end gap-1 shrink-0">
+                            <span className="bg-amber-500/90 text-slate-950 px-2.5 py-1 rounded-full text-[10.5px] font-black border border-amber-300/40 shadow-sm flex items-center gap-1">
+                              <Star className="w-3 h-3 fill-slate-950 text-slate-950" />
+                              <span>แสดงความคิดเห็น</span>
+                            </span>
+                            <span className="text-[10px] font-bold text-slate-400">
+                              ตั๋ว {userBookings.length} ใบ
+                            </span>
+                          </div>
+                        </div>
 
-                    {/* Selection Radio Circle / Arrow */}
-                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/20 backdrop-blur-md border border-white/40 flex items-center justify-center text-white group-hover:bg-purple-600 transition-colors shadow-md shrink-0">
-                      <ChevronRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
-                    </div>
+                        {/* Bottom action row */}
+                        <div className="relative z-10 flex items-end justify-between gap-3 pt-3 mt-2 border-t border-white/10">
+                          <div className="space-y-0.5 text-[11px] sm:text-xs font-medium text-slate-300">
+                            <p>📍 วันที่ออกเดินทาง {formatThaiDate(trip.departureDate)} {trip.departureTime ? `🕒 ${trip.departureTime} น.` : ''}</p>
+                            <div className="flex items-center gap-3">
+                              <p className="text-slate-300 font-bold text-xs">฿{trip.cost?.toLocaleString('th-TH')} <span className="text-[10px] text-slate-400 font-normal">/ ท่าน</span></p>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setSelectedTripId(trip.id);
+                                }}
+                                className="text-[10.5px] font-bold text-purple-300 hover:text-white underline hover:no-underline"
+                              >
+                                ดูตั๋วโดยสาร
+                              </button>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5 bg-purple-600/90 hover:bg-purple-600 text-white px-3 py-1.5 rounded-full text-xs font-bold border border-white/20 shadow-md group-hover:translate-x-0.5 transition-transform shrink-0">
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            <span>เขียนรีวิว</span>
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
                   </div>
-                </div>
-              ))
+                )}
+              </div>
             )}
           </div>
         </div>

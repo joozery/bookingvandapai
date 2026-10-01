@@ -33,11 +33,7 @@ export default function VanSeatCard({
   compact = false,
 }: VanSeatCardProps) {
   if (!seat) {
-    return (
-      <div className="h-16 sm:h-20 w-full rounded-2xl bg-slate-100/40 border border-dashed border-slate-200 flex items-center justify-center text-[10px] text-slate-300 font-black select-none">
-        ทางเดิน
-      </div>
-    );
+    return <div className="h-16 sm:h-20 w-full" />;
   }
 
   const label = seat.label || '';
@@ -71,7 +67,6 @@ export default function VanSeatCard({
               <path d="M10 80 L45 25 L75 60 L105 35 L120 80 Z" fill="#60a5fa" opacity="0.4" />
               <circle cx="28" cy="22" r="9" fill="#fde047" opacity="0.95" />
               <path d="M 0 50 Q 20 40 40 52 T 80 48 T 100 55 L 100 80 L 0 80 Z" fill="#a78bfa" opacity="0.3" />
-              {/* Birds */}
               <path d="M60 20 Q65 15 70 20 Q75 15 80 20" stroke="#4c1d95" strokeWidth="1.2" fill="none" opacity="0.6" />
             </svg>
           </div>
@@ -87,7 +82,6 @@ export default function VanSeatCard({
               <line x1="7" y1="30" x2="33" y2="30" stroke="#312e81" strokeWidth="1.5" />
               <circle cx="11" cy="47" r="3" fill="#1e1b4b" />
               <circle cx="29" cy="47" r="3" fill="#1e1b4b" />
-              {/* Travel sticker */}
               <rect x="13" y="21" width="7" height="5" rx="1" fill="#f43f5e" />
             </svg>
           </div>
@@ -126,7 +120,6 @@ export default function VanSeatCard({
               <path d="M42 8 C30 3 18 10 18 10" stroke="#15803d" strokeWidth="3" fill="none" />
               <path d="M42 8 C50 2 54 12 54 12" stroke="#16a34a" strokeWidth="3" fill="none" />
               <circle cx="14" cy="12" r="7" fill="#f97316" opacity="0.9" />
-              {/* Waves */}
               <path d="M0 45 Q12 40 25 45 Q37 40 50 45" stroke="#38bdf8" strokeWidth="2" fill="none" />
             </svg>
           </div>
@@ -151,7 +144,6 @@ export default function VanSeatCard({
             <svg viewBox="0 0 45 50" className="w-full h-full">
               <rect x="20" y="34" width="5" height="12" fill="#78350f" />
               <polygon points="22.5,4 6,24 15,24 4,36 41,36 30,24 39,24" fill="#10b981" stroke="#047857" strokeWidth="1.8" />
-              {/* Small back tree */}
               <rect x="7" y="36" width="3" height="8" fill="#78350f" />
               <polygon points="8.5,18 0,34 17,34" fill="#34d399" opacity="0.8" />
             </svg>
@@ -248,8 +240,8 @@ export default function VanSeatCard({
       disabled={disabled || isDriver || isBlocked}
       className={`relative w-full h-16 sm:h-20 rounded-2xl p-1 sm:p-1.5 flex flex-col items-center justify-center overflow-hidden select-none transition-all duration-300 group ${getContainerStyle()}`}
     >
-      {/* Background Graphic Illustration */}
-      {renderThemeIllustration()}
+      {/* Background Graphic Illustration — only for your own seat */}
+      {isUser && renderThemeIllustration()}
 
       {/* Centered Stacked Seat Number & Passenger Name with Contrast Backdrop */}
       <div className="relative z-10 flex flex-col items-center justify-center w-full px-0.5 text-center my-auto">
@@ -281,17 +273,13 @@ export default function VanSeatCard({
             คนขับ
           </span>
         ) : passengerName ? (
-          <div className="mt-0.5 w-full px-0.5">
-            <span
-              className={`block truncate w-full font-black text-xs sm:text-sm px-1.5 py-0.5 rounded-lg transition-all ${
-                isUser || isSelected
-                  ? 'bg-purple-900/70 text-white border border-purple-300/40 shadow-xs backdrop-blur-xs'
-                  : 'bg-white/90 text-slate-950 border border-purple-200/80 shadow-xs backdrop-blur-xs'
-              }`}
-            >
-              {passengerName}
-            </span>
-          </div>
+          <span
+            className={`mt-0.5 block truncate w-full text-center font-black text-xs sm:text-sm leading-tight ${
+              isUser || isSelected ? 'text-white/90' : 'text-slate-700'
+            }`}
+          >
+            {passengerName}
+          </span>
         ) : isAvailable ? (
           <span className="inline-block text-[9.5px] sm:text-xs font-black text-purple-700 bg-purple-50/95 border border-purple-300 px-2 py-0.5 rounded-md mt-0.5 shadow-xs">
             ว่าง
