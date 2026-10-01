@@ -9,6 +9,7 @@ export interface CalendarTrip {
   pickupPoint?: string;
   departureTime?: string;
   guideName?: string | null;
+  tripPeriod?: string;
 }
 const DAY = 86_400_000;
 
@@ -26,10 +27,40 @@ export function dayKey(day: number): string {
 }
 export function calendarTrips(trips: CalendarTrip[]) {
   return trips.flatMap(trip => {
-    const start = parseCalendarDay(trip.departureDate);
+    const depStart = parseCalendarDay(trip.departureDate);
     const duration = Number(trip.durationDays);
-    if (trip.status !== 'active' || start === null || !Number.isSafeInteger(duration) || duration < 1) return [];
-    const end = start + duration - 1;
+    if (trip.status !== 'active' || depStart === null || !Number.isSafeInteger(duration) || duration < 1) return [];
+
+    let isNightDeparture = false;
+
+    if (trip.departureTime) {
+      const hour = parseInt(trip.departureTime.split(':')[0], 10);
+      if (!isNaN(hour) && hour >= 12) {
+        isNightDeparture = true;
+      }
+    }
+
+    if (trip.tripPeriod) {
+      const depDateObj = new Date(depStart * DAY);
+      const depDayNum = depDateObj.getUTCDate();
+      const match = /^(\d{1,2})\s*-\s*(\d{1,2})/.exec(trip.tripPeriod.trim());
+      if (match) {
+        const periodStartDay = parseInt(match[1], 10);
+        if (periodStartDay === depDayNum + 1 || (depDayNum >= 28 && periodStartDay === 1)) {
+          isNightDeparture = true;
+        }
+      }
+    }
+
+    const depEnd = depStart + duration - 1;
+    let start = depStart;
+    let end = depEnd;
+
+    if (isNightDeparture) {
+      start = depStart + 1;
+      end = Math.max(start, depEnd);
+    }
+
     if (!Number.isFinite(new Date(end * DAY).getTime())) return [];
     return [{ ...trip, start, end }];
   }).sort((a, b) => a.start - b.start || a.id.localeCompare(b.id));

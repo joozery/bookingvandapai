@@ -4,7 +4,7 @@ import { defaultShareSettings } from './shareSettings';
 export const defaultHomepageSettings = {
   banner_image: '',
   background_image: '',
-  leaderboard_title: 'สถิติเวทคนปากดี',
+  leaderboard_title: 'สถิติคนมีปาก',
   ...defaultShareSettings,
   ...defaultReviewCopy,
   cta_title: 'พร้อมร่วมเดินทางเก็บความทรงจำดีๆ กับเราหรือยัง?',

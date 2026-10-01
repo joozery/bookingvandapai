@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  Shield, LayoutDashboard, Compass, Bus, Users, QrCode, Settings,
+  Shield, LayoutDashboard, Calendar, Compass, Bus, Users, QrCode, Settings,
   ChevronDown, ChevronRight, RefreshCw, Check, AlertCircle,
   Activity, UserCheck, Bell, Menu, X, Headphones,
   FileText, Lock, TrendingUp, Key, User, LogOut
@@ -26,11 +26,13 @@ import ReviewsTab from '../components/ReviewsTab';
 import ProfileTab from '../components/ProfileTab';
 import SettingsTab from '../components/SettingsTab';
 import LeaderboardTab from '../components/LeaderboardTab';
+import TripCalendar from '../components/TripCalendar';
 import type { Trip, Van, Booking } from '../components/types';
 
 // ── Nav structure ─────────────────────────────────────────────────────────────
 const NAV = [
   { id: 'dashboard', label: 'แดชบอร์ด', icon: LayoutDashboard },
+  { id: 'calendar',  label: 'ปฏิทินการเดินทาง', icon: Calendar },
   { id: 'trips',     label: 'จัดการทริป', icon: Compass },
   { id: 'completed-trips', label: 'ทริปที่จบไปแล้ว', icon: Check },
   { id: 'vans',      label: 'จัดการรถ', icon: Bus },
@@ -51,7 +53,7 @@ const NAV = [
   { id: 'profile',   label: 'โปรไฟล์ของฉัน', icon: User },
 ] as const;
 
-type TabId = 'dashboard' | 'bookings' | 'trips' | 'completed-trips' | 'vans' | 'checkin' | 'pending' | 'users' | 'staff' | 'insurance' | 'reviews' | 'profile' | 'settings' | 'leaderboard';
+type TabId = 'dashboard' | 'calendar' | 'bookings' | 'trips' | 'completed-trips' | 'vans' | 'checkin' | 'pending' | 'users' | 'staff' | 'insurance' | 'reviews' | 'profile' | 'settings' | 'leaderboard';
 
 export default function AdminPage() {
   const { data: session, status } = useSession();
@@ -368,7 +370,7 @@ export default function AdminPage() {
           const isAdmin = (session?.user as any)?.role === 'admin';
           const isSuperAdmin = (session?.user as any)?.username === 'admin';
           const perms = (session?.user as any)?.permissions || [];
-          if (isAdmin && !isSuperAdmin && !perms.includes(item.id === 'completed-trips' ? 'completed-trips' : item.id) && !(item.id === 'completed-trips' && perms.includes('trips'))) return null;
+          if (isAdmin && !isSuperAdmin && !perms.includes(item.id === 'completed-trips' ? 'completed-trips' : item.id) && !(item.id === 'completed-trips' && perms.includes('trips')) && !(item.id === 'calendar' && (perms.includes('trips') || perms.includes('dashboard')))) return null;
 
           const Icon    = item.icon;
           const hasChildren = 'children' in item && item.children;
@@ -680,6 +682,7 @@ export default function AdminPage() {
             <div>
               <h1 className="text-lg font-black text-slate-800">
                 {activeTab === 'dashboard' ? 'แดชบอร์ด' :
+                 activeTab === 'calendar'  ? 'ปฏิทินการเดินทาง' :
                  activeTab === 'bookings'  ? 'การจองและลูกทริป' :
                  activeTab === 'pending'   ? 'รออนุมัติเปลี่ยนที่นั่ง' :
                  activeTab === 'trips'     ? 'จัดการทริป' :
@@ -693,6 +696,7 @@ export default function AdminPage() {
               </h1>
               <p className="text-xs text-slate-400 mt-0.5">
                 {activeTab === 'dashboard' ? 'ภาพรวมการจองและการเดินทาง' :
+                 activeTab === 'calendar'  ? 'แพลนการเดินทางและตารางทริปทั้งหมดของระบบ' :
                  activeTab === 'bookings'  ? 'จัดการคำขอจองและอนุมัติที่นั่ง' :
                  activeTab === 'users'     ? 'ดูและจัดการข้อมูลลูกทริปทั้งหมด' : 
                  activeTab === 'insurance' ? 'จัดการข้อมูลและประวัติประกันการเดินทางของลูกทริป' : 
@@ -716,14 +720,17 @@ export default function AdminPage() {
             <>
               {(activeTab === 'dashboard') && (
                 <div className="space-y-5">
+                  <DashboardOverview trips={trips} vans={vans} bookings={bookings} />
                   <BookingsTab
                     trips={trips} vans={vans} bookings={bookings}
                     onApprove={handleApprove} onReject={handleReject}
                     onDelete={handleDelBook} onCheckIn={handleCheckIn}
                     onManualSubmit={handleManual}
                   />
-                  <DashboardOverview trips={trips} vans={vans} bookings={bookings} />
                 </div>
+              )}
+              {activeTab === 'calendar' && (
+                <TripCalendar trips={trips} vans={vans} />
               )}
               {(activeTab === 'bookings' || activeTab === 'pending') && (
                 <BookingsTab

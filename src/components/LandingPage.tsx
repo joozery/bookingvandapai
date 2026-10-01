@@ -187,16 +187,16 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
               </a>
             </div>
 
-            <div className="relative z-10 flex flex-wrap justify-start items-center gap-3 text-brand-900 font-bold text-xs">
-              <span className="flex items-center gap-2 rounded-2xl bg-white/75 px-3 py-3 shadow-sm backdrop-blur-sm">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                ไม่มีค่าธรรมเนียมแอบแฝง
-              </span>
-              <span className="flex items-center gap-2 rounded-2xl bg-white/75 px-3 py-3 shadow-sm backdrop-blur-sm">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                ยกเลิกออนไลน์ได้ง่ายดาย
-              </span>
-            </div>
+
+
+
+
+
+
+
+
+
+
 
           </div>
 
@@ -289,7 +289,7 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
                           <p>{dest.period || dest.departureDate}</p>
                         ) : (
                           <div className="space-y-1">
-                            <p className="flex items-start gap-2"><User aria-hidden="true" className="w-3.5 h-3.5 shrink-0 mt-0.5 text-purple-600/70" /><span className="min-w-0 break-words">ไกด์ประจำทริป: {dest.guideName}</span></p>
+                            <p className="flex items-start gap-2"><User aria-hidden="true" className="w-3.5 h-3.5 shrink-0 mt-0.5 text-purple-600/70" /><span className="min-w-0 break-words">สตาฟประจำทริป: {dest.guideName}</span></p>
                             <p className="flex items-start gap-2"><Bus aria-hidden="true" className="w-3.5 h-3.5 shrink-0 mt-0.5 text-purple-600/70" /><span>วันที่ออกเดินทาง {dest.departureDate}</span></p>
                             <p className="flex items-start gap-2"><MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5 text-purple-600/70" /><span>สถานที่ขึ้นรถ: {dest.pickupPoint}</span></p>
                             <p className="flex items-center gap-2"><Clock className="w-3.5 h-3.5 shrink-0 text-purple-600/70" /><span>เวลาออกเดินทาง {dest.departureTime ? `${dest.departureTime} น.` : 'ยังไม่ระบุ'}</span></p>
@@ -359,7 +359,7 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
 
 
 
-      <BookingLeaderboard title={settings.leaderboard_title || defaultHomepageSettings.leaderboard_title} />
+      <BookingLeaderboard title={!settings.leaderboard_title || settings.leaderboard_title === 'สถิติเวทคนปากดี' ? 'สถิติคนมีปาก' : settings.leaderboard_title} />
 
       </div>
       {/* Footer Section */}
@@ -369,10 +369,13 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
           {/* Col 1 Brand Info */}
           <div className="space-y-4 col-span-1 md:col-span-2">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl overflow-hidden bg-white p-1 border border-slate-700 flex items-center justify-center shrink-0">
-                <img src="/logo/logov2.png" alt="DAPAIDERNPAI Logo" className="w-8 h-8 object-contain" />
+              <div className="shrink-0 flex items-center justify-center">
+                <img src="/logo/logov2.png" alt="DAPAIDERNPAI Logo" className="w-12 h-12 object-contain" />
               </div>
-              <span className="text-white font-extrabold text-base sm:text-lg">ด่าไป เดินไป</span>
+              <div>
+                <span className="text-white font-extrabold text-base sm:text-lg block">ด่าไป เดินไป</span>
+                <span className="text-[10px] text-purple-300 font-bold block mt-0.5">DAPAI DERNPAI VAN BOOKING</span>
+              </div>
             </div>
             <p className="text-xxs sm:text-xs text-purple-200 max-w-sm leading-relaxed font-bold whitespace-pre-wrap break-words">
               {settings.footer_description}

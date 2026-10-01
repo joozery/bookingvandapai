@@ -96,11 +96,11 @@ export default function TripCalendar({ trips }: { trips: CalendarTrip[] }) {
         {!grid ? <p role="status" className="text-sm text-slate-500">กำลังเตรียมปฏิทิน…</p> : <>
           <div className="flex items-center justify-between gap-2"><h3 className="font-bold text-violet-950" aria-live="polite">{monthLabel(month)}</h3><span className="text-xs text-slate-500">{monthEvents.length} รอบเดินทาง</span></div>
           <p className="text-xs text-rose-700">สีแดง: วันหยุดราชการ / วันหยุดชดเชย • กดวันที่เพื่ออ่านชื่อเต็ม</p>
-          <p role="status" className="text-xs text-slate-500">
-            {holidaysLoading ? 'กำลังอัปเดตวันหยุด…' : holidayData.stale ? 'ต้นทางวันหยุดไม่พร้อมใช้งาน กำลังแสดงข้อมูลสำรอง' : 'อัปเดตวันหยุดอัตโนมัติทุก 1 ชั่วโมงเมื่อใช้งาน'}
-            {holidayData.updatedAt && <span> • ดึงข้อมูลล่าสุด {new Date(holidayData.updatedAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })}</span>}
-            {' • '}<a href="https://calendar.google.com/calendar/ical/th.th%23holiday%40group.v.calendar.google.com/public/basic.ics" className="underline" target="_blank" rel="noopener noreferrer">Google Calendar</a> และข้อมูลราชการที่ตรวจสอบแล้ว
-          </p>
+
+
+
+
+
           {!holidaysLoading && !holidayData.years.includes(Number(month.slice(0, 4))) && <p role="status" className="text-xs text-slate-500">แหล่งข้อมูลยังไม่มีวันหยุดสำหรับปี {Number(month.slice(0, 4)) + 543}</p>}
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
             <div className="grid grid-cols-7 bg-violet-50 text-center text-xs font-bold text-violet-900">{['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'].map(day => <div key={day} className="py-3">{day}</div>)}</div>
@@ -160,7 +160,7 @@ export default function TripCalendar({ trips }: { trips: CalendarTrip[] }) {
                   <p>{trip.durationDays} วัน • <span className="font-bold">{Number(trip.availableSeats ?? 0) > 0 ? `ว่าง ${trip.availableSeats} ที่` : 'เต็ม'}</span></p>
                   <p>จุดขึ้นรถ: {trip.pickupPoint || 'ยังไม่ระบุ'}</p>
                   <p>เวลาออกเดินทาง: {trip.departureTime ? `${trip.departureTime} น.` : 'ยังไม่ระบุ'}</p>
-                  {trip.guideName && <p>ไกด์: {trip.guideName}</p>}
+                  {trip.guideName && <p>สตาฟ: {trip.guideName}</p>}
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100"><span className="font-black text-violet-900">฿{Number(trip.cost || 0).toLocaleString('th-TH')} <span className="text-xs font-normal text-slate-500">/ ท่าน</span></span><a href={tripMessengerUrl(trip.id)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-violet-50 px-3 py-2 text-xs font-bold text-violet-900 hover:bg-violet-100"><MessageSquare className="h-3.5 w-3.5" />{Number(trip.availableSeats ?? 0) > 0 ? 'ติดต่อจอง' : 'สอบถามแอดมิน'}</a></div>
               </article>)}

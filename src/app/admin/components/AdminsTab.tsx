@@ -20,6 +20,7 @@ export interface AdminUser {
 
 const AVAILABLE_PERMISSIONS = [
   { id: 'dashboard', label: 'แดชบอร์ด (Dashboard)' },
+  { id: 'calendar', label: 'ปฏิทินการเดินทาง (Calendar)' },
   { id: 'trips', label: 'จัดการทริป (Trips)' },
   { id: 'completed-trips', label: 'ทริปที่จบไปแล้ว (Completed Trips)' },
   { id: 'vans', label: 'จัดการรถ (Vans)' },

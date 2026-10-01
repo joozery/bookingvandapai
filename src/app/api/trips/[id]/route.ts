@@ -25,7 +25,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
     const { id } = await params;
     const body = await request.json();
     if (body.guideName !== undefined && (typeof body.guideName !== 'string' || body.guideName.trim().length > 200)) {
-      return NextResponse.json({ success: false, error: 'ชื่อไกด์ต้องเป็นข้อความไม่เกิน 200 ตัวอักษร' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'ชื่อสตาฟต้องเป็นข้อความไม่เกิน 200 ตัวอักษร' }, { status: 400 });
     }
     const { name, departureDate, durationDays, cost, pickupPoint, departureTime, tripPeriod, image, status } = body;
 

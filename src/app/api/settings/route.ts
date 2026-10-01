@@ -36,7 +36,9 @@ export async function GET() {
     }
     const text = await data.text();
     const settings = JSON.parse(text);
-    return NextResponse.json({ success: true, settings: { ...defaultSettings, ...settings } });
+    const merged = { ...defaultSettings, ...settings };
+    if (merged.leaderboard_title === 'สถิติเวทคนปากดี') merged.leaderboard_title = 'สถิติคนมีปาก';
+    return NextResponse.json({ success: true, settings: merged });
   } catch (err: any) {
     return NextResponse.json({ success: true, settings: defaultSettings });
   }

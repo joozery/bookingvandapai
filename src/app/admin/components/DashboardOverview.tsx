@@ -12,8 +12,6 @@ interface Props {
   bookings: Booking[];
 }
 
-import TripCalendar from './TripCalendar';
-
 export default function DashboardOverview({ trips, vans, bookings }: Props) {
   const approved = bookings.filter(b => b.status === 'approved').length;
   const pending  = bookings.filter(b => b.status === 'pending').length;
@@ -180,9 +178,6 @@ export default function DashboardOverview({ trips, vans, bookings }: Props) {
           )}
         </div>
       </div>
-
-      {/* ── Trip Calendar View ────────────────────────────────────────── */}
-      <TripCalendar trips={trips} vans={vans} />
     </div>
   );
 }

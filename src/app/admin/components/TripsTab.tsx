@@ -14,6 +14,7 @@ import { formatThaiDate } from '@/lib/dateFormat';
 import { parseCalendarDay } from '@/lib/tripCalendar';
 import type { Trip, Van } from './types';
 import TripStaffTable from './TripStaffTable';
+import { getTripTheme } from '@/lib/tripThemes';
 
 interface Props {
   completed?: boolean;
@@ -286,7 +287,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, on
                     <Input required value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} placeholder="เช่น ทริปน่านกระซิบรัก 3 วัน 2 คืน" className="h-10 text-sm" />
                   </div>
                   <div>
-                    <label htmlFor="editForm-guide-name" className="text-xs font-bold text-slate-700 block mb-1.5">ชื่อไกด์ประจำทริป</label>
+                    <label htmlFor="editForm-guide-name" className="text-xs font-bold text-slate-700 block mb-1.5">ชื่อสตาฟประจำทริป</label>
                     <Input id="editForm-guide-name" value={editForm.guideName} onChange={e => setEditForm({ ...editForm, guideName: e.target.value })} maxLength={200} placeholder="เช่น พี่อาร์ต, พี่เมย์" className="h-10 text-sm" />
                   </div>
                   
@@ -407,7 +408,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, on
                     <Input required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="เช่น ทริปน่านกระซิบรัก 3 วัน 2 คืน" className="h-10 text-sm" />
                   </div>
                   <div>
-                    <label htmlFor="form-guide-name" className="text-xs font-bold text-slate-700 block mb-1.5">ชื่อไกด์ประจำทริป</label>
+                    <label htmlFor="form-guide-name" className="text-xs font-bold text-slate-700 block mb-1.5">ชื่อสตาฟประจำทริป</label>
                     <Input id="form-guide-name" value={form.guideName} onChange={e => setForm({ ...form, guideName: e.target.value })} maxLength={200} placeholder="เช่น พี่อาร์ต, พี่เมย์" className="h-10 text-sm" />
                   </div>
                   
@@ -598,7 +599,18 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, on
         </div>
       </div>
 
-      {!completed && <TripStaffTable trips={filteredTrips} vans={vans} />}
+      {!completed && (
+        <TripStaffTable
+          trips={filteredTrips}
+          vans={vans}
+          onEdit={startEditing}
+          onDelete={onDelete}
+          onStatusChange={onStatusChange}
+          canToggleCompleted={canToggleCompleted}
+          onCopyLink={copyLink}
+          copiedId={copiedId}
+        />
+      )}
 
       {trips.length === 0 ? (
         <div className="text-center py-20 bg-white border border-dashed border-slate-200 rounded-2xl shadow-sm">
@@ -618,7 +630,8 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, on
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4">
-          {filteredTrips.map(trip => {
+          {filteredTrips.map((trip, idx) => {
+            const theme = getTripTheme(idx);
             const tripVans = vans.filter(v => v.tripId === trip.id);
             let total = 0, occupied = 0;
             tripVans.forEach(van => van.seats.forEach(s => {
@@ -628,7 +641,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, on
             const pct = total > 0 ? Math.round((occupied / total) * 100) : 0;
 
             return (
-              <Card key={trip.id} className="border-slate-200 shadow-sm hover:border-violet-300 transition hover:shadow-md group overflow-hidden flex flex-col">
+              <Card key={trip.id} className={cn("border-slate-200 shadow-sm transition hover:shadow-md group overflow-hidden flex flex-col border-l-4", theme.borderLeft, theme.cardHover)}>
                 {trip.image && (
                   <div className="w-full h-32 relative shrink-0">
                     <img src={trip.image} alt={trip.name} className="w-full h-full object-cover" />
@@ -639,14 +652,17 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, on
                   <div className="flex flex-col h-full gap-4">
                     <div className="flex justify-between items-start gap-4">
                       <div className="space-y-1">
-                        <h4 className="font-bold text-slate-800 text-base leading-tight group-hover:text-violet-700 transition">{trip.name}</h4>
+                        <h4 className={cn("font-bold text-base leading-tight transition flex items-center gap-2", theme.titleColor)}>
+                          <span className={cn("w-2 h-2 rounded-full shrink-0", theme.dotBg)} />
+                          <span>{trip.name}</span>
+                        </h4>
                         <div className="text-[11px] text-slate-500 font-semibold flex items-center gap-1.5">
                           <Calendar className="w-3.5 h-3.5 text-slate-400" /> {formatThaiDate(trip.departureDate)}
                           {trip.tripPeriod && <span className="text-slate-400 font-normal">({trip.tripPeriod.split('||').pop()})</span>}
                         </div>
                       </div>
                       <div className="text-right shrink-0">
-                        <div className="text-lg font-black text-violet-600 tracking-tight">฿{trip.cost.toLocaleString()}</div>
+                        <div className={cn("text-lg font-black tracking-tight", theme.priceColor)}>฿{trip.cost.toLocaleString()}</div>
                         <div className="text-[10px] text-slate-400 font-semibold">
                           {(trip.tripPeriod || '').includes('||') 
                             ? (trip.tripPeriod || '').split('||')[0] 
@@ -691,7 +707,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, on
                     <div className="flex items-end justify-between mt-auto pt-2">
                       <div className="flex-1 max-w-[200px]">
                         <div className="flex items-center justify-between mb-1.5">
-                          <Badge variant="secondary" className="text-[9px] bg-slate-100 text-slate-600 px-1.5 py-0">มี {tripVans.length} รถตู้</Badge>
+                          <Badge variant="secondary" className={cn("text-[9px] px-1.5 py-0 border", theme.badgeBg)}>มี {tripVans.length} รถตู้</Badge>
                           <span className="text-[10px] font-bold text-slate-600">
                             ว่าง <strong className={vacant === 0 ? 'text-rose-500' : 'text-emerald-600'}>{vacant}</strong>/{total}
                           </span>
@@ -705,7 +721,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, on
                         <button
                           onClick={() => copyLink(trip.id)}
                           className={cn("flex items-center justify-center gap-1.5 px-3 h-8 rounded-lg border transition text-[11px] font-bold",
-                            copiedId === trip.id ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100'
+                            copiedId === trip.id ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : theme.shareBtn
                           )}
                         >
                           {copiedId === trip.id ? <Check className="w-3.5 h-3.5" /> : <Link2 className="w-3.5 h-3.5" />}
@@ -713,7 +729,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, on
                         </button>
                         <button
                           onClick={() => startEditing(trip)}
-                          className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 bg-white hover:bg-violet-50 hover:border-violet-200 hover:text-violet-600 text-slate-400 transition"
+                          className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-400 transition"
                           title="แก้ไขทริป"
                         >
                           <Pencil className="w-4 h-4" />

@@ -9,7 +9,7 @@ export async function loadLeaderboardBookings() {
   const bookings: LeaderboardBooking[] = [];
   for (let offset = 0; ; offset += 1000) {
     const { data, error } = await supabase.from('bookings')
-      .select('lineUserId, tripId, nickname, status, createdAt')
+      .select('lineUserId, tripId, nickname, status, createdAt, lineUserProfilePic')
       .eq('status', 'approved').order('id').range(offset, offset + 999);
     if (error) throw error;
     bookings.push(...(data || []));
