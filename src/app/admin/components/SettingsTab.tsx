@@ -6,6 +6,7 @@ import { defaultHomepageSettings } from '@/lib/homepageSettings';
 import ReviewCopyFields from '@/components/ReviewCopyFields';
 import ShareSettingsFields from '@/components/ShareSettingsFields';
 import HomepageImageFields from '@/components/HomepageImageFields';
+import TeamCardsManager from '@/components/TeamCardsManager';
 
 export default function SettingsTab() {
   const [settings, setSettings] = useState({
@@ -108,6 +109,7 @@ export default function SettingsTab() {
       <form ref={formRef} onSubmit={e => e.preventDefault()} className="bg-white border border-slate-200 rounded-xl shadow-sm p-6 space-y-6">
         <ShareSettingsFields value={settings} onChange={patch => setSettings(current => ({ ...current, ...patch }))} />
         <HomepageImageFields value={settings} onChange={patch => setSettings(current => ({ ...current, ...patch }))} />
+        <TeamCardsManager cards={(settings as any).team_cards} onChange={cards => setSettings(current => ({ ...current, team_cards: cards }))} />
         <div className="space-y-2">
           <label htmlFor="leaderboard-title" className="block text-sm font-bold text-slate-800">ชื่อตารางอันดับคนจองทริป</label>
           <input id="leaderboard-title" maxLength={150} value={settings.leaderboard_title} placeholder={defaultHomepageSettings.leaderboard_title}

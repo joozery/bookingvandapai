@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import LandingPage from '../components/LandingPage';
 import TripReviewPage from '@/components/TripReviewPage';
+import TeamCardsSection from '@/components/TeamCardsSection';
 import { isTripReviewOpen } from '@/lib/tripReview';
 import { MESSENGER_URL } from '@/lib/contact';
 
@@ -921,7 +922,7 @@ function CustomerPageContent() {
 
               {/* Logo Image with Intense Brightness & Glow */}
               <img
-                src="/logo/logov2.png"
+                src={(settings as any).logo_image || "/logo/logov2.png"}
                 alt="DAPAIDERNPAI Logo"
                 className="w-24 h-24 sm:w-28 sm:h-28 object-contain relative z-10 filter brightness-125 drop-shadow-[0_0_35px_rgba(236,72,153,0.9)]"
               />
@@ -1017,7 +1018,7 @@ function CustomerPageContent() {
           <div className="flex items-center space-x-3 sm:space-x-4 min-w-0">
             {/* Real Brand Logo */}
             <div className="shrink-0 flex items-center justify-center">
-              <img src="/logo/logov2.png" alt="DAPAIDERNPAI Logo" className="w-10 h-10 sm:w-14 sm:h-14 object-contain" />
+              <img src={(settings as any).logo_image || "/logo/logov2.png"} alt="DAPAIDERNPAI Logo" className="w-10 h-10 sm:w-14 sm:h-14 object-contain" />
             </div>
             <div className="flex-1 min-w-0 flex items-center">
               <h1 className="text-base sm:text-2xl font-extrabold text-slate-800 tracking-tight leading-tight truncate">
@@ -2299,7 +2300,6 @@ function CustomerPageContent() {
 
 
         </section>
-
       </main>
       )}
 

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { defaultShareSettings, normalizeShareSettings, validShareImage } from '@/lib/shareSettings';
+import { Share2, Upload } from 'lucide-react';
 
 type ShareSettings = typeof defaultShareSettings;
 
@@ -37,34 +38,56 @@ export default function ShareSettingsFields({ value, onChange }: {
 
   return (
     <section className="space-y-4">
-      <h3 className="font-bold text-slate-800 border-b border-slate-100 pb-2">ข้อความและรูปเวลาแชร์ลิงก์</h3>
-      <p className="text-xs text-slate-500">ใช้กับลิงก์เว็บไซต์ที่แชร์ลง LINE และโซเชียล บันทึกอัตโนมัติเมื่อหยุดพิมพ์ หากเว้นว่างจะใช้ค่าเริ่มต้น</p>
+      <h3 className="font-bold text-slate-800 border-b border-slate-100 pb-2 flex items-center gap-2">
+        <Share2 className="w-4 h-4 text-violet-600" />
+        ข้อความและรูปภาพสำหรับแชร์ลิงก์ (LINE / Social Media Card)
+      </h3>
+      <p className="text-xs text-slate-500">
+        ใช้เมื่อมีคนคัดลอกลิงก์เว็บไซต์ไปวางในแอป LINE, Facebook หรือโซเชียลมิเดียอื่นๆ เพื่อแสดงเป็นการ์ดพรีวิว
+      </p>
+
       <div className="space-y-1.5">
-        <label htmlFor="share-title" className="text-xs font-bold text-slate-600">หัวข้อ</label>
+        <label htmlFor="share-title" className="text-xs font-bold text-slate-600">หัวข้อแชร์ลิงก์</label>
         <input id="share-title" maxLength={150} value={value.share_title} placeholder={defaultShareSettings.share_title} onChange={e => onChange({ share_title: e.target.value })} className={fieldClass} />
       </div>
+
       <div className="space-y-1.5">
         <label htmlFor="share-description" className="text-xs font-bold text-slate-600">คำอธิบายใต้หัวข้อ</label>
         <textarea id="share-description" rows={3} maxLength={500} value={value.share_description} placeholder={defaultShareSettings.share_description} onChange={e => onChange({ share_description: e.target.value })} className={fieldClass} />
       </div>
+
       <div className="space-y-2">
-        <label htmlFor="share-image" className="block text-xs font-bold text-slate-600">ลิงก์รูปภาพ</label>
+        <label htmlFor="share-upload" className="block text-xs font-bold text-slate-600">อัปโหลดรูปภาพปกแชร์ลิงก์ (JPG, PNG, WebP)</label>
+        <input
+          id="share-upload"
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          disabled={uploading}
+          onChange={e => { void upload(e.target.files?.[0]); e.target.value = ''; }}
+          className="block w-full text-xs text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-violet-600 file:px-3 file:py-2 file:font-bold file:text-white hover:file:bg-violet-700 cursor-pointer disabled:opacity-50"
+        />
+        {uploading && <p role="status" className="text-xs text-violet-700 font-medium flex items-center gap-1.5"><Upload className="w-3.5 h-3.5 animate-bounce" /> กำลังอัปโหลดรูปภาพปก…</p>}
+        {error && <p role="alert" className="text-xs text-red-600 font-medium">{error}</p>}
+      </div>
+
+      <div className="space-y-1.5">
+        <label htmlFor="share-image" className="block text-xs font-bold text-slate-600">หรือระบุ URL ลิงก์รูปภาพปกแชร์</label>
         <input id="share-image" maxLength={2048} disabled={uploading} value={value.share_image} placeholder="https://… หรือ /logo/logo.jpg"
           ref={node => node?.setCustomValidity(value.share_image.trim() && !validShareImage(value.share_image.trim()) ? 'กรุณาใช้ลิงก์ HTTPS หรือพาธรูปในเว็บไซต์' : '')}
           onChange={e => onChange({ share_image: e.target.value })} className={fieldClass} />
-        <label htmlFor="share-upload" className="block text-xs font-bold text-slate-600">หรืออัปโหลดรูป (JPG, PNG, WebP ไม่เกิน 5 MB)</label>
-        <input id="share-upload" type="file" accept="image/jpeg,image/png,image/webp" disabled={uploading} onChange={e => { void upload(e.target.files?.[0]); e.target.value = ''; }} className="block w-full text-xs" />
-        {uploading && <p role="status" className="text-xs text-violet-700">กำลังอัปโหลดรูป…</p>}
-        {error && <p role="alert" className="text-xs text-red-600">{error}</p>}
       </div>
-      <div className="max-w-sm overflow-hidden rounded-xl border border-slate-200">
-        <img key={preview.share_image} src={preview.share_image} alt="ตัวอย่างรูปเวลาแชร์" className="w-full aspect-[1.91/1] object-cover bg-slate-100" />
-        <div className="p-3 space-y-1">
-          <p className="text-sm font-bold break-words">{preview.share_title}</p>
-          <p className="text-xs text-slate-500 whitespace-pre-wrap break-words">{preview.share_description}</p>
+
+      <div className="space-y-2 pt-2">
+        <p className="text-xs font-bold text-slate-600">ตัวอย่างการ์ดพรีวิวเวลานำลิงก์ไปแชร์ลง LINE:</p>
+        <div className="max-w-sm overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <img key={preview.share_image} src={preview.share_image} alt="ตัวอย่างรูปเวลาแชร์" className="w-full aspect-[1.91/1] object-cover bg-slate-100" />
+          <div className="p-3.5 space-y-1 bg-white">
+            <p className="text-sm font-bold text-slate-900 break-words leading-snug">{preview.share_title}</p>
+            <p className="text-xs text-slate-500 whitespace-pre-wrap break-words leading-relaxed">{preview.share_description}</p>
+          </div>
         </div>
+        <p className="text-[11px] text-slate-400">ตัวอย่างโดยประมาณ (รูปแบบจริงขึ้นอยู่กับแต่ละแอป เช่น LINE, Facebook, Messenger)</p>
       </div>
-      <p className="text-xs text-slate-400">ตัวอย่างโดยประมาณ รูปแบบจริงขึ้นอยู่กับแอปที่แชร์</p>
     </section>
   );
 }

@@ -353,7 +353,7 @@ export default function AdminPage() {
       {/* Logo Section */}
       <div className="h-16 flex items-center gap-3 px-4 border-b border-slate-100 shrink-0 bg-white">
         <div className="w-9 h-9 flex items-center justify-center shrink-0 relative transition-transform duration-300 hover:scale-105">
-          <img src="/logo/logov2.png" alt="DAPAIDERNPAI Logo" className="w-full h-full object-contain" />
+          <img src={(settings as any)?.logo_image || "/logo/logov2.png"} alt="DAPAIDERNPAI Logo" className="w-full h-full object-contain" />
         </div>
         {sidebarOpen && (
           <div className="min-w-0 flex flex-col">

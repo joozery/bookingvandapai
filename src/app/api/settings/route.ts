@@ -38,6 +38,9 @@ export async function GET() {
     const settings = JSON.parse(text);
     const merged = { ...defaultSettings, ...settings };
     if (merged.leaderboard_title === 'สถิติเวทคนปากดี') merged.leaderboard_title = 'สถิติคนมีปาก';
+    if (!Array.isArray(merged.team_cards) || merged.team_cards.length === 0) {
+      merged.team_cards = defaultHomepageSettings.team_cards;
+    }
     return NextResponse.json({ success: true, settings: merged });
   } catch (err: any) {
     return NextResponse.json({ success: true, settings: defaultSettings });
@@ -47,7 +50,7 @@ export async function GET() {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    for (const [key, limit] of [['leaderboard_title', 150], ['share_title', 150], ['share_description', 500], ['share_image', 2048], ['banner_image', 2048], ['background_image', 2048]] as const) {
+    for (const [key, limit] of [['leaderboard_title', 150], ['share_title', 150], ['share_description', 500], ['share_image', 2048], ['logo_image', 2048], ['banner_image', 2048], ['background_image', 2048]] as const) {
       if (body[key] !== undefined && (typeof body[key] !== 'string' || body[key].length > limit)) {
         return NextResponse.json({ success: false, error: `Invalid ${key}` }, { status: 400 });
       }
@@ -55,7 +58,7 @@ export async function PUT(request: Request) {
     if (body.share_image?.trim() && !validShareImage(body.share_image.trim())) {
       return NextResponse.json({ success: false, error: 'กรุณาใช้ลิงก์รูปภาพ HTTPS หรือพาธรูปในเว็บไซต์' }, { status: 400 });
     }
-    for (const key of ['banner_image', 'background_image']) {
+    for (const key of ['logo_image', 'banner_image', 'background_image'] as const) {
       if (body[key]?.trim() && !validShareImage(body[key].trim())) {
         return NextResponse.json({ success: false, error: `Invalid ${key}` }, { status: 400 });
       }

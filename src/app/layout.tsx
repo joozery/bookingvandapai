@@ -1,8 +1,14 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { loadShareMetadata } from "@/lib/shareMetadata";
 import { Noto_Sans_Thai } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+};
 
 const notoSansThai = Noto_Sans_Thai({
   weight: ["300", "400", "500", "600", "700", "800", "900"],

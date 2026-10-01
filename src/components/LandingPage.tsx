@@ -5,6 +5,7 @@ import Link from 'next/link';
 import TripRatingSummary from '@/components/TripRatingSummary';
 import TripCalendar from '@/components/TripCalendar';
 import BookingLeaderboard from '@/components/BookingLeaderboard';
+import TeamCardsSection from '@/components/TeamCardsSection';
 import { defaultHomepageSettings } from '@/lib/homepageSettings';
 import { validShareImage } from '@/lib/shareSettings';
 import { formatThaiDate } from '@/lib/dateFormat';
@@ -112,11 +113,11 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
           {/* Logo & Brand */}
           <div className="flex items-center gap-3">
             <div className="shrink-0 flex items-center justify-center">
-              <img src="/logo/logov2.png" alt="DAPAIDERNPAI Logo" className="w-12 h-12 object-contain" />
+              <img src={settings.logo_image || "/logo/logov2.png"} alt="DAPAIDERNPAI Logo" className="w-9 h-9 sm:w-12 sm:h-12 object-contain" />
             </div>
             <div>
-              <span className="text-brand-700 font-black text-base sm:text-xl tracking-tight leading-none block">ด่าไป เดินไป</span>
-              <span className="text-[10px] text-slate-400 font-bold block mt-0.5">DAPAI DERNPAI VAN BOOKING</span>
+              <span className="text-brand-700 font-black text-xs sm:text-xl tracking-tight leading-none block truncate">ด่าไป เดินไป</span>
+              <span className="text-[9px] sm:text-[10px] text-slate-400 font-bold block mt-0.5 truncate">DAPAI DERNPAI</span>
             </div>
           </div>
 
@@ -165,7 +166,7 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
             <div className="absolute -left-20 -bottom-20 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
 
             <div className="relative z-10 max-w-xl space-y-4">
-              <h2 className="theme-hero-title text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight whitespace-pre-wrap break-words">
+              <h2 className="theme-hero-title text-xl sm:text-3xl lg:text-5xl font-black tracking-tight leading-snug sm:leading-tight whitespace-pre-wrap break-words">
                 {settings.cta_title}
               </h2>
               
@@ -195,6 +196,12 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
                 <ArrowRight className="w-4 h-4 text-white relative z-10 group-hover:translate-x-1 transition-transform drop-shadow" />
               </a>
             </div>
+
+            {/* Right Column: Member Motto Cards on Hero Banner */}
+            <div className="pt-4 lg:pt-0">
+              <TeamCardsSection cards={(settings as any).team_cards} />
+            </div>
+
 
 
 
@@ -417,7 +424,6 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
 
 
       <BookingLeaderboard title={!settings.leaderboard_title || settings.leaderboard_title === 'สถิติเวทคนปากดี' ? 'สถิติคนมีปาก' : settings.leaderboard_title} />
-
       </div>
       {/* Footer Section */}
       <footer className="theme-deep bg-slate-900 text-purple-200 py-12 border-t border-slate-800 text-xs sm:text-sm font-bold">
@@ -427,7 +433,7 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
           <div className="space-y-4 col-span-1 md:col-span-2">
             <div className="flex items-center gap-3">
               <div className="shrink-0 flex items-center justify-center">
-                <img src="/logo/logov2.png" alt="DAPAIDERNPAI Logo" className="w-12 h-12 object-contain" />
+                <img src={settings.logo_image || "/logo/logov2.png"} alt="DAPAIDERNPAI Logo" className="w-12 h-12 object-contain" />
               </div>
               <div>
                 <span className="text-white font-extrabold text-base sm:text-lg block">ด่าไป เดินไป</span>
