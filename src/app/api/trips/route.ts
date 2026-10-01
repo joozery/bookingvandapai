@@ -10,13 +10,13 @@ export async function GET() {
     const { data: trips, error: tripsError } = await supabase.from('trips').select('*').order('created_at', { ascending: false });
     if (tripsError) throw tripsError;
 
-    const { data: vans, error: vansError } = await supabase.from('vans').select('*');
+    const { data: vans, error: vansError } = await supabase.from('vans').select('*').order('vanNumber', { ascending: true });
     if (vansError) throw vansError;
     
     const enrichedTrips = (trips || []).map(trip => {
-      const tripVans = (vans || []).filter(v => v.tripId === trip.id);
+      const tripVans = (vans || []).filter(v => v.tripId === trip.id).sort((a, b) => (a.vanNumber || 0) - (b.vanNumber || 0));
       const totalAvailable = countAvailableSeats(tripVans) ?? 0;
-      return { ...trip, availableSeats: totalAvailable };
+      return { ...trip, availableSeats: totalAvailable, vans: tripVans };
     });
 
     return NextResponse.json({ success: true, trips: enrichedTrips });

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Bus, Plus, Trash2, Edit2, Save, X, Users, Phone, LayoutGrid, ChevronDown, ChevronUp, Search } from 'lucide-react';
+import { Bus, Plus, Trash2, Edit2, Save, X, Users, Phone, LayoutGrid, ChevronDown, ChevronUp, Search, UserCheck } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,13 +9,14 @@ import { Input } from '@/components/ui/input';
 import type { Trip, Van, Seat } from './types';
 import { cn } from '@/lib/utils';
 import { extraSeatId } from '@/lib/extraSeat';
+import { parseCalendarDay } from '@/lib/tripCalendar';
 
 interface Props {
   trips: Trip[];
   vans: Van[];
   onAddVan: (tripId: string) => Promise<void>;
   onDeleteVan: (vanId: string) => Promise<void>;
-  onUpdateVan: (vanId: string, data: { plateNumber: string; driverName: string; driverPhone: string }) => Promise<void>;
+  onUpdateVan: (vanId: string, data: { plateNumber: string; driverName: string; driverPhone: string; staffName?: string }) => Promise<void>;
   onUpdateStaff: (vanId: string, seatId: string, staffName: string) => Promise<void>;
   onToggleSeat: (vanId: string, seatId: string, enabled: boolean) => Promise<void>;
   onToggleExtraSeat: (vanId: string, enabled: boolean) => Promise<void>;
@@ -25,7 +26,7 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
   const [savingSeat, setSavingSeat] = useState<string | null>(null);
   const [savingExtraSeat, setSavingExtraSeat] = useState<string | null>(null);
   const [editingVanId, setEditingVanId] = useState<string | null>(null);
-  const [vanForm, setVanForm] = useState({ plateNumber: '', driverName: '', driverPhone: '' });
+  const [vanForm, setVanForm] = useState({ plateNumber: '', driverName: '', driverPhone: '', staffName: '' });
   const [editingStaff, setEditingStaff] = useState<{ vanId: string; seatId: string; staffName: string } | null>(null);
   const [viewSeatVanId, setViewSeatVanId] = useState<string | null>(null);
   const [tripStatusFilter, setTripStatusFilter] = useState<'all' | 'active' | 'completed'>('active');
@@ -46,7 +47,12 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
       const q = tripSearch.toLowerCase();
       arr = arr.filter(t => t.name.toLowerCase().includes(q));
     }
-    return arr;
+    return [...arr].sort((a, b) =>
+      (parseCalendarDay(a.departureDate) ?? Number.MAX_SAFE_INTEGER) -
+      (parseCalendarDay(b.departureDate) ?? Number.MAX_SAFE_INTEGER) ||
+      (a.departureDate || '').localeCompare(b.departureDate || '') ||
+      (a.departureTime || '').localeCompare(b.departureTime || '')
+    );
   }, [trips, tripStatusFilter, selectedTripId, tripSearch]);
 
   const renderAdminSeat = (s: Seat | undefined, vanId: string, fitCell = false) => {
@@ -86,7 +92,9 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
 
   const startEdit = (van: Van) => {
     setEditingVanId(van.id);
-    setVanForm({ plateNumber: van.plateNumber, driverName: van.driverName, driverPhone: van.driverPhone });
+    const staffSeat = van.seats?.find(s => s.type === 'staff');
+    const existingStaff = van.staffName || staffSeat?.staffName || staffSeat?.passengerName || '';
+    setVanForm({ plateNumber: van.plateNumber, driverName: van.driverName, driverPhone: van.driverPhone, staffName: existingStaff });
   };
 
   const handleStaffSubmit = async (e: React.FormEvent) => {
@@ -238,7 +246,7 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
 
                     {/* Edit Form */}
                     {isEditing ? (
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-slate-200">
+                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-200">
                         <div>
                           <label className="text-[10px] font-bold text-slate-500 block mb-1">ป้ายทะเบียน</label>
                           <Input value={vanForm.plateNumber} onChange={e => setVanForm({ ...vanForm, plateNumber: e.target.value })} className="h-7 text-xs" />
@@ -251,6 +259,10 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
                           <label className="text-[10px] font-bold text-slate-500 block mb-1">เบอร์คนขับ</label>
                           <Input value={vanForm.driverPhone} onChange={e => setVanForm({ ...vanForm, driverPhone: e.target.value })} className="h-7 text-xs" />
                         </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-500 block mb-1">ชื่อสตาฟ</label>
+                          <Input value={vanForm.staffName} onChange={e => setVanForm({ ...vanForm, staffName: e.target.value })} placeholder="เช่น พี่อาร์ต" className="h-7 text-xs" />
+                        </div>
                       </div>
                     ) : (
                       <div className="flex flex-wrap gap-4 text-[10px] text-slate-500 pt-1 border-t border-slate-100">
@@ -259,6 +271,9 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
                         </span>
                         <span className="flex items-center gap-1">
                           <Phone className="w-3 h-3" />{van.driverPhone || 'ไม่ระบุเบอร์'}
+                        </span>
+                        <span className="flex items-center gap-1 text-purple-700 font-semibold">
+                          <UserCheck className="w-3 h-3 text-purple-600" />สตาฟ: <strong className="text-purple-900">{van.staffName || staffSeat?.staffName || staffSeat?.passengerName || 'ยังไม่ระบุ'}</strong>
                         </span>
                       </div>
                     )}

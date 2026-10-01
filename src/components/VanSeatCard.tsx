@@ -222,7 +222,7 @@ export default function VanSeatCard({
     }
 
     if (isBooked) {
-      return 'bg-gradient-to-br from-purple-50/90 via-indigo-50/95 to-purple-100/90 text-slate-800 border-2 border-purple-300/80 shadow-sm';
+      return 'bg-gradient-to-br from-purple-200/90 via-indigo-200/95 to-purple-300/90 text-purple-950 border-2 border-purple-400 shadow-sm';
     }
 
     if (isAvailable) {
@@ -275,7 +275,7 @@ export default function VanSeatCard({
         ) : passengerName ? (
           <span
             className={`mt-0.5 block truncate w-full text-center font-black text-xs sm:text-sm leading-tight ${
-              isUser || isSelected ? 'text-white/90' : 'text-slate-700'
+              isUser || isSelected ? 'text-white/90' : 'text-purple-950'
             }`}
           >
             {passengerName}

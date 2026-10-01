@@ -286,10 +286,6 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, on
                     <label className="text-xs font-bold text-slate-700 block mb-1.5">ชื่อทริป <span className="text-rose-500">*</span></label>
                     <Input required value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} placeholder="เช่น ทริปน่านกระซิบรัก 3 วัน 2 คืน" className="h-10 text-sm" />
                   </div>
-                  <div>
-                    <label htmlFor="editForm-guide-name" className="text-xs font-bold text-slate-700 block mb-1.5">ชื่อสตาฟประจำทริป</label>
-                    <Input id="editForm-guide-name" value={editForm.guideName} onChange={e => setEditForm({ ...editForm, guideName: e.target.value })} maxLength={200} placeholder="เช่น พี่อาร์ต, พี่เมย์" className="h-10 text-sm" />
-                  </div>
                   
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -406,10 +402,6 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, on
                   <div>
                     <label className="text-xs font-bold text-slate-700 block mb-1.5">ชื่อทริป <span className="text-rose-500">*</span></label>
                     <Input required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="เช่น ทริปน่านกระซิบรัก 3 วัน 2 คืน" className="h-10 text-sm" />
-                  </div>
-                  <div>
-                    <label htmlFor="form-guide-name" className="text-xs font-bold text-slate-700 block mb-1.5">ชื่อสตาฟประจำทริป</label>
-                    <Input id="form-guide-name" value={form.guideName} onChange={e => setForm({ ...form, guideName: e.target.value })} maxLength={200} placeholder="เช่น พี่อาร์ต, พี่เมย์" className="h-10 text-sm" />
                   </div>
                   
                   <div className="grid grid-cols-2 gap-4">

@@ -92,6 +92,15 @@ export async function PUT(request: Request, { params }: RouteParams) {
       if (body.plateNumber !== undefined) updates.plateNumber = body.plateNumber;
       if (body.driverName !== undefined) updates.driverName = body.driverName;
       if (body.driverPhone !== undefined) updates.driverPhone = body.driverPhone;
+      if (body.staffName !== undefined) {
+        updates.staffName = body.staffName;
+        const seats = [...(van.seats || [])];
+        const staffIndex = seats.findIndex((s: any) => s.type === 'staff');
+        if (staffIndex !== -1) {
+          seats[staffIndex].staffName = body.staffName;
+          updates.seats = seats;
+        }
+      }
 
       const { error: updateError } = await supabase.from('vans').update(updates).eq('id', id);
       if (updateError) throw updateError;

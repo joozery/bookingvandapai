@@ -73,7 +73,7 @@ export default function TripStaffTable({
                     {tripVans.length === 0 ? <span className="text-xs text-slate-500">ยังไม่มีรถในทริปนี้</span> : (
                       <ul className="space-y-2">
                         {tripVans.map(van => {
-                          const staff = [...new Set(van.seats.filter(seat => seat.type === 'staff').map(seat => seat.staffName?.trim() || seat.passengerName?.trim()).filter(Boolean))];
+                          const staff = [...new Set([van.staffName?.trim(), ...van.seats.filter(seat => seat.type === 'staff').map(seat => seat.staffName?.trim() || seat.passengerName?.trim())].filter(Boolean))];
                           return (
                             <li key={van.id} className={cn("max-w-xs rounded-lg px-3 py-2 text-xs border", theme.vanBg)}>
                               <span className={cn("font-bold", theme.vanTitle)}>รถคันที่ {van.vanNumber}</span>
@@ -217,7 +217,7 @@ export default function TripStaffTable({
                   ) : (
                     <div className="space-y-1.5">
                       {tripVans.map(van => {
-                        const staff = [...new Set(van.seats.filter(seat => seat.type === 'staff').map(seat => seat.staffName?.trim() || seat.passengerName?.trim()).filter(Boolean))];
+                        const staff = [...new Set([van.staffName?.trim(), ...van.seats.filter(seat => seat.type === 'staff').map(seat => seat.staffName?.trim() || seat.passengerName?.trim())].filter(Boolean))];
                         return (
                           <div key={van.id} className={cn("flex items-start justify-between gap-2 p-2 rounded-lg text-xs border", theme.vanBg)}>
                             <span className={cn("font-bold shrink-0", theme.vanTitle)}>รถคันที่ {van.vanNumber}</span>

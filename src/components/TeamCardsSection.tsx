@@ -67,7 +67,7 @@ export default function TeamCardsSection({ cards }: TeamCardsSectionProps) {
           {loopedCards.map((card, idx) => (
             <div
               key={`${card.id}-${idx}`}
-              className="w-[330px] sm:w-[420px] shrink-0 group/card relative bg-gradient-to-r from-[#1c1033] via-[#170c2c] to-[#0e071e] p-4 sm:p-5 rounded-3xl border border-purple-500/40 shadow-[0_0_25px_rgba(168,85,247,0.25)] hover:border-purple-400/80 hover:shadow-[0_0_35px_rgba(168,85,247,0.45)] transition-all duration-300 flex items-center gap-4 overflow-hidden"
+              className="w-[360px] sm:w-[470px] shrink-0 group/card relative bg-gradient-to-r from-[#1c1033] via-[#170c2c] to-[#0e071e] p-4 sm:p-5 rounded-3xl border border-purple-500/40 shadow-[0_0_25px_rgba(168,85,247,0.25)] hover:border-purple-400/80 hover:shadow-[0_0_35px_rgba(168,85,247,0.45)] transition-all duration-300 flex items-center gap-4.5 overflow-hidden"
             >
               {/* Glow Background Decor */}
               <div className="absolute top-0 right-0 -mt-6 -mr-6 w-32 h-32 bg-purple-600/20 rounded-full blur-2xl group-hover/card:bg-purple-600/35 transition-all" />
@@ -75,7 +75,7 @@ export default function TeamCardsSection({ cards }: TeamCardsSectionProps) {
 
               {/* Avatar Image */}
               <div className="relative shrink-0 z-10">
-                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden border-2 border-cyan-400/90 shadow-[0_0_18px_rgba(6,182,212,0.7)] group-hover/card:scale-105 transition duration-500 bg-slate-950 flex items-center justify-center">
+                <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-2xl sm:rounded-3xl overflow-hidden border-2 border-cyan-400/90 shadow-[0_0_22px_rgba(6,182,212,0.8)] group-hover/card:scale-105 transition duration-500 bg-slate-950 flex items-center justify-center">
                   <img
                     src={card.image || '/logo/logov2.png'}
                     alt={card.name}

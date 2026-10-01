@@ -57,7 +57,23 @@ export default function TripCalendar({ trips }: { trips: CalendarTrip[] }) {
     setToday(date);
     setMonth(date.slice(0, 7));
   }, []);
-  const events = useMemo(() => calendarTrips(trips).map((trip, index) => ({ ...trip, color: colors[index % colors.length] })), [trips]);
+  const mappedTrips = useMemo(() => {
+    return trips.map((t: any) => {
+      let guide = t.guideName?.trim();
+      if (Array.isArray(t.vans) && t.vans.length > 0) {
+        const sortedVans = [...t.vans].sort((a: any, b: any) => (Number(a.vanNumber) || 0) - (Number(b.vanNumber) || 0));
+        const vanStaffList = sortedVans.map((v: any) => {
+          const staffSeat = (v.seats || []).find((s: any) => s.type === 'staff');
+          return v.staffName?.trim() || staffSeat?.staffName?.trim() || staffSeat?.passengerName?.trim() || null;
+        }).filter(Boolean);
+        if (vanStaffList.length > 0) {
+          guide = vanStaffList.join(' / ');
+        }
+      }
+      return { ...t, guideName: guide };
+    });
+  }, [trips]);
+  const events = useMemo(() => calendarTrips(mappedTrips).map((trip, index) => ({ ...trip, color: colors[index % colors.length] })), [mappedTrips]);
   function choose(day: number, tripId: string | null = null) {
     setSelectedDay(day);
     setSelectedTrip(tripId);

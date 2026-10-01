@@ -58,6 +58,7 @@ interface Van {
   plateNumber: string;
   driverName: string;
   driverPhone: string;
+  staffName?: string;
   seats: Seat[];
 }
 
@@ -894,14 +895,14 @@ function CustomerPageContent() {
         {/* Fullscreen Loading Screen Overlay - Music Visualizer Ultra-Bright Neon Style */}
         <div
           className={cn(
-            "fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-950 text-white transition-all duration-700 ease-in-out select-none overflow-hidden",
+            "fixed inset-0 z-[100] flex flex-col items-center justify-center bg-gradient-to-br from-[#1e0a38] via-[#120524] to-[#0c0218] text-white transition-all duration-700 ease-in-out select-none overflow-hidden",
             !loading ? "opacity-0 pointer-events-none scale-105" : "opacity-100 scale-100"
           )}
         >
-          {/* Ambient Ultra-Bright Music Stage Spotlights */}
-          <div className="absolute w-[450px] h-[450px] rounded-full bg-gradient-to-r from-pink-600 via-fuchsia-500 to-purple-600 blur-[130px] opacity-60 animate-pulse pointer-events-none" />
-          <div className="absolute w-[500px] h-[500px] rounded-full bg-gradient-to-r from-cyan-500 via-teal-400 to-blue-600 blur-[140px] opacity-50 animate-pulse [animation-delay:0.7s] pointer-events-none" />
-          <div className="absolute w-[350px] h-[350px] rounded-full bg-amber-400/30 blur-[100px] animate-pulse [animation-delay:1.4s] pointer-events-none" />
+          {/* Ambient Ultra-Bright Music Stage Purple Spotlights */}
+          <div className="absolute w-[500px] h-[500px] rounded-full bg-gradient-to-r from-purple-600 via-fuchsia-500 to-pink-600 blur-[130px] opacity-70 animate-pulse pointer-events-none" />
+          <div className="absolute w-[550px] h-[550px] rounded-full bg-gradient-to-r from-indigo-700 via-purple-700 to-violet-900 blur-[150px] opacity-60 animate-pulse [animation-delay:0.7s] pointer-events-none" />
+          <div className="absolute w-[400px] h-[400px] rounded-full bg-fuchsia-500/30 blur-[110px] animate-pulse [animation-delay:1.4s] pointer-events-none" />
 
           <div className="relative z-10 flex flex-col items-center text-center space-y-7 px-4">
             {/* Logo with Intense Music Visualizer Rings & Beat Pulse */}
@@ -911,7 +912,7 @@ function CustomerPageContent() {
 
               {/* Ring 1: High Brightness Spinning Rainbow Spectrum */}
               <div className="absolute -inset-6 rounded-full bg-gradient-to-r from-pink-500 via-purple-500 via-cyan-400 via-emerald-400 via-yellow-400 to-pink-500 animate-[spin_2.5s_linear_infinite] blur-[3px] opacity-100 p-[3px] shadow-[0_0_30px_#ec4899]">
-                <div className="w-full h-full bg-slate-950/90 rounded-full" />
+                <div className="w-full h-full bg-[#130629]/95 rounded-full" />
               </div>
 
               {/* Ring 2: Outer Counter-Spinning Neon Laser Arc */}
@@ -1018,7 +1019,7 @@ function CustomerPageContent() {
           <div className="flex items-center space-x-3 sm:space-x-4 min-w-0">
             {/* Real Brand Logo */}
             <div className="shrink-0 flex items-center justify-center">
-              <img src={(settings as any).logo_image || "/logo/logov2.png"} alt="DAPAIDERNPAI Logo" className="w-10 h-10 sm:w-14 sm:h-14 object-contain" />
+              <img src={(settings as any).logo_image || "/logo/logov2.png"} alt="DAPAIDERNPAI Logo" className="w-14 h-14 sm:w-16 sm:h-16 object-contain drop-shadow-sm" />
             </div>
             <div className="flex-1 min-w-0 flex items-center">
               <h1 className="text-base sm:text-2xl font-extrabold text-slate-800 tracking-tight leading-tight truncate">

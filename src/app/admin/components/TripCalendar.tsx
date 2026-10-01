@@ -68,11 +68,27 @@ export default function TripCalendar({ trips, vans }: { trips: Trip[]; vans: Van
 
   // Map trips to CalendarTrip format with guaranteed active status for admin calendar rendering
   const mappedTrips = useMemo<CalendarTrip[]>(() => {
-    return trips.map(t => ({
-      ...t,
-      status: 'active', // treat as active so calendarTrips utility calculates date span correctly
-    }));
-  }, [trips]);
+    return trips.map(t => {
+      let guide = t.guideName?.trim() || '';
+      const tripVans = (vans || [])
+        .filter(v => v.tripId === t.id)
+        .sort((a, b) => (Number(a.vanNumber) || 0) - (Number(b.vanNumber) || 0));
+      const vanStaffList = tripVans
+        .map(v => {
+          const staffSeat = (v.seats || []).find(s => s.type === 'staff');
+          return v.staffName?.trim() || staffSeat?.staffName?.trim() || staffSeat?.passengerName?.trim() || null;
+        })
+        .filter(Boolean);
+      if (vanStaffList.length > 0) {
+        guide = vanStaffList.join(' / ');
+      }
+      return {
+        ...t,
+        guideName: guide,
+        status: 'active', // treat as active so calendarTrips utility calculates date span correctly
+      };
+    });
+  }, [trips, vans]);
 
   const events = useMemo(() => {
     return calendarTrips(mappedTrips).map((trip, index) => ({
@@ -402,7 +418,7 @@ export default function TripCalendar({ trips, vans }: { trips: Trip[]; vans: Van
                                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">สตาฟประจำรถ:</span>
                                 <div className="space-y-1">
                                   {tripVans.map(van => {
-                                    const vanStaff = [...new Set(van.seats.filter(s => s.type === 'staff').map(s => s.staffName?.trim() || s.passengerName?.trim()).filter(Boolean))];
+                                    const vanStaff = [...new Set([van.staffName?.trim(), ...van.seats.filter(s => s.type === 'staff').map(s => s.staffName?.trim() || s.passengerName?.trim())].filter(Boolean))];
                                     return (
                                       <div key={van.id} className={cn("px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between border", theme.vanBg)}>
                                         <span className={cn("font-bold shrink-0", theme.vanTitle)}>รถคันที่ {van.vanNumber}</span>

@@ -24,6 +24,7 @@ export interface Van {
   plateNumber: string;
   driverName: string;
   driverPhone: string;
+  staffName?: string;
   seats: Seat[];
 }
 

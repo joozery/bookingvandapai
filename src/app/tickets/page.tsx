@@ -551,6 +551,9 @@ export default function TicketsPage() {
                                   📞 {activeVan.driverPhone}
                                 </a>
                               )}
+                              {(activeVan.staffName || activeVan.seats?.find((s: any) => s.type === 'staff')?.staffName || activeVan.seats?.find((s: any) => s.type === 'staff')?.passengerName) && (
+                                <span>สตาฟ: <strong className="text-purple-900">{activeVan.staffName || activeVan.seats?.find((s: any) => s.type === 'staff')?.staffName || activeVan.seats?.find((s: any) => s.type === 'staff')?.passengerName}</strong></span>
+                              )}
                             </div>
                           </div>
 
@@ -643,11 +646,11 @@ export default function TicketsPage() {
                               <span>ที่นั่งของคุณ</span>
                             </div>
                             <div className="flex items-center gap-1.5">
-                              <span className="w-3 h-3 rounded-md bg-slate-100 border border-slate-300" />
+                              <span className="w-3 h-3 rounded-md bg-gradient-to-br from-purple-200 to-indigo-200 border border-purple-400" />
                               <span>จองแล้ว</span>
                             </div>
                             <div className="flex items-center gap-1.5">
-                              <span className="w-3 h-3 rounded-md bg-emerald-50 border border-emerald-300" />
+                              <span className="w-3 h-3 rounded-md bg-white border border-purple-300" />
                               <span>ว่าง</span>
                             </div>
                             <div className="flex items-center gap-1.5">

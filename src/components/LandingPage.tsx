@@ -85,7 +85,16 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
           id: t.id,
           completed: t.status === 'completed',
           title: t.name,
-          guideName: t.guideName?.trim() || 'ยังไม่ระบุ',
+          guideName: (() => {
+            const sortedVans = Array.isArray(t.vans)
+              ? [...t.vans].sort((a: any, b: any) => (Number(a.vanNumber) || 0) - (Number(b.vanNumber) || 0))
+              : [];
+            const vanStaffList = sortedVans.map((v: any) => {
+              const staffSeat = (v.seats || []).find((s: any) => s.type === 'staff');
+              return v.staffName?.trim() || staffSeat?.staffName?.trim() || staffSeat?.passengerName?.trim() || null;
+            }).filter(Boolean);
+            return vanStaffList.length > 0 ? vanStaffList.join(' / ') : (t.guideName?.trim() || 'ยังไม่ระบุ');
+          })(),
           durationText,
           period,
           departureDate: formatThaiDate(t.departureDate),
@@ -109,11 +118,11 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
       
       {/* Sticky Premium Navbar */}
       <header className="theme-chrome sticky top-0 z-50 w-full bg-white/80 backdrop-blur-md border-b border-slate-200/50 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 sm:h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 sm:py-2.5 min-h-[64px] sm:min-h-[76px] flex items-center justify-between">
           {/* Logo & Brand */}
           <div className="flex items-center gap-3">
             <div className="shrink-0 flex items-center justify-center">
-              <img src={settings.logo_image || "/logo/logov2.png"} alt="DAPAIDERNPAI Logo" className="w-9 h-9 sm:w-12 sm:h-12 object-contain" />
+              <img src={settings.logo_image || "/logo/logov2.png"} alt="DAPAIDERNPAI Logo" className="w-12 h-12 sm:w-16 sm:h-16 object-contain hover:scale-105 transition-transform duration-300 drop-shadow-sm" />
             </div>
             <div>
               <span className="text-brand-700 font-black text-xs sm:text-xl tracking-tight leading-none block truncate">ด่าไป เดินไป</span>
@@ -298,7 +307,20 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
                         </span>
                       )}
                     </div>
-                    {completed && <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-10"><TripRatingSummary key={dest.id} tripId={dest.id} /></div>}
+                    {completed ? (
+                      <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-10">
+                        <TripRatingSummary key={dest.id} tripId={dest.id} />
+                      </div>
+                    ) : (
+                      dest.guideName && dest.guideName !== 'ยังไม่ระบุ' ? (
+                        <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-10 max-w-[65%]">
+                          <span className="inline-flex items-center gap-1.5 bg-slate-900/80 backdrop-blur-md text-white text-[10px] sm:text-xs font-bold py-1 px-2.5 rounded-full shadow-md border border-white/20 truncate">
+                            <User aria-hidden="true" className="w-3 h-3 text-purple-300 shrink-0" />
+                            <span className="truncate">สตาฟ: {dest.guideName}</span>
+                          </span>
+                        </div>
+                      ) : null
+                    )}
                   </div>
 
                   {/* Body details */}
@@ -319,7 +341,7 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
                           <p>{dest.period || dest.departureDate}</p>
                         ) : (
                           <div className="space-y-1">
-                            <p className="flex items-start gap-2"><User aria-hidden="true" className="w-3.5 h-3.5 shrink-0 mt-0.5 text-purple-600/70" /><span className="min-w-0 break-words">สตาฟประจำทริป: {dest.guideName}</span></p>
+
                             <p className="flex items-start gap-2"><Bus aria-hidden="true" className="w-3.5 h-3.5 shrink-0 mt-0.5 text-purple-600/70" /><span>วันที่ออกเดินทาง {dest.departureDate}</span></p>
                             <p className="flex items-start gap-2"><MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5 text-purple-600/70" /><span>สถานที่ขึ้นรถ: {dest.pickupPoint}</span></p>
                             <p className="flex items-center gap-2"><Clock className="w-3.5 h-3.5 shrink-0 text-purple-600/70" /><span>เวลาออกเดินทาง {dest.departureTime ? `${dest.departureTime} น.` : 'ยังไม่ระบุ'}</span></p>
