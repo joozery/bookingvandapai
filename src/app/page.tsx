@@ -231,6 +231,12 @@ function CustomerPageContent() {
     fetch('/api/settings').then(res => res.json()).then(data => {
       if (data.success && data.settings) setSettings(data.settings);
     }).catch(console.error);
+
+    // Fallback safety timer
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 3000);
+    return () => clearTimeout(timer);
   }, []);
 
   // Handle URL parameter changes for soft navigation (e.g. returning from tickets page)
@@ -350,7 +356,7 @@ function CustomerPageContent() {
     } catch (err) {
       console.error(err);
     } finally {
-      setLoading(false);
+      setTimeout(() => setLoading(false), 300);
     }
   };
 
@@ -883,7 +889,67 @@ function CustomerPageContent() {
 
   if (isLandingMode) {
     return (
-      <div className="flex-1 flex flex-col bg-canvas text-slate-800 min-h-screen">
+      <div className="flex-1 flex flex-col bg-canvas text-slate-800 min-h-screen relative">
+        {/* Fullscreen Loading Screen Overlay - Music Visualizer Ultra-Bright Neon Style */}
+        <div
+          className={cn(
+            "fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-950 text-white transition-all duration-700 ease-in-out select-none overflow-hidden",
+            !loading ? "opacity-0 pointer-events-none scale-105" : "opacity-100 scale-100"
+          )}
+        >
+          {/* Ambient Ultra-Bright Music Stage Spotlights */}
+          <div className="absolute w-[450px] h-[450px] rounded-full bg-gradient-to-r from-pink-600 via-fuchsia-500 to-purple-600 blur-[130px] opacity-60 animate-pulse pointer-events-none" />
+          <div className="absolute w-[500px] h-[500px] rounded-full bg-gradient-to-r from-cyan-500 via-teal-400 to-blue-600 blur-[140px] opacity-50 animate-pulse [animation-delay:0.7s] pointer-events-none" />
+          <div className="absolute w-[350px] h-[350px] rounded-full bg-amber-400/30 blur-[100px] animate-pulse [animation-delay:1.4s] pointer-events-none" />
+
+          <div className="relative z-10 flex flex-col items-center text-center space-y-7 px-4">
+            {/* Logo with Intense Music Visualizer Rings & Beat Pulse */}
+            <div className="relative p-6 flex items-center justify-center">
+              {/* Beat Ping Aura */}
+              <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-pink-500/50 via-purple-500/50 to-cyan-400/50 blur-3xl animate-ping [animation-duration:1.8s]" />
+
+              {/* Ring 1: High Brightness Spinning Rainbow Spectrum */}
+              <div className="absolute -inset-6 rounded-full bg-gradient-to-r from-pink-500 via-purple-500 via-cyan-400 via-emerald-400 via-yellow-400 to-pink-500 animate-[spin_2.5s_linear_infinite] blur-[3px] opacity-100 p-[3px] shadow-[0_0_30px_#ec4899]">
+                <div className="w-full h-full bg-slate-950/90 rounded-full" />
+              </div>
+
+              {/* Ring 2: Outer Counter-Spinning Neon Laser Arc */}
+              <div className="absolute -inset-4 rounded-full border-2 border-dashed border-cyan-400 animate-[spin_1.8s_linear_infinite] drop-shadow-[0_0_15px_#06b6d4]" />
+              
+              {/* Ring 3: Inner Fast-Spinning Magenta Laser Arc */}
+              <div className="absolute -inset-1.5 rounded-full border-2 border-pink-500 border-t-yellow-300 border-l-transparent animate-[spin_0.9s_linear_infinite_reverse] drop-shadow-[0_0_20px_#ec4899]" />
+
+              {/* Logo Image with Intense Brightness & Glow */}
+              <img
+                src="/logo/logov2.png"
+                alt="DAPAIDERNPAI Logo"
+                className="w-24 h-24 sm:w-28 sm:h-28 object-contain relative z-10 filter brightness-125 drop-shadow-[0_0_35px_rgba(236,72,153,0.9)]"
+              />
+            </div>
+
+            {/* Brand Title with Glowing Text Effect */}
+            <div className="space-y-2 flex flex-col items-center">
+              <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white drop-shadow-[0_0_20px_rgba(217,70,239,0.9)]">
+                ด่าไป เดินไป
+              </h1>
+              <p className="text-[10px] sm:text-xs font-black text-cyan-300 tracking-[0.25em] uppercase drop-shadow-[0_0_10px_rgba(6,182,212,0.8)]">
+                DAPAI DERNPAI VAN BOOKING
+              </p>
+
+              {/* Music Soundwave Equalizer Bars */}
+              <div className="flex items-end gap-1.5 h-7 pt-2 select-none">
+                <span className="w-1.5 bg-gradient-to-t from-pink-500 to-cyan-400 rounded-full animate-[bounce_0.6s_ease-in-out_infinite_100ms] h-full shadow-[0_0_10px_#ec4899]" />
+                <span className="w-1.5 bg-gradient-to-t from-purple-500 to-pink-400 rounded-full animate-[bounce_0.7s_ease-in-out_infinite_200ms] h-3/4 shadow-[0_0_10px_#a855f7]" />
+                <span className="w-1.5 bg-gradient-to-t from-cyan-400 to-emerald-400 rounded-full animate-[bounce_0.5s_ease-in-out_infinite_300ms] h-full shadow-[0_0_10px_#22d3ee]" />
+                <span className="w-1.5 bg-gradient-to-t from-yellow-400 to-pink-500 rounded-full animate-[bounce_0.8s_ease-in-out_infinite_150ms] h-1/2 shadow-[0_0_10px_#facc15]" />
+                <span className="w-1.5 bg-gradient-to-t from-pink-500 to-cyan-400 rounded-full animate-[bounce_0.5s_ease-in-out_infinite_250ms] h-full shadow-[0_0_10px_#ec4899]" />
+                <span className="w-1.5 bg-gradient-to-t from-cyan-400 to-purple-500 rounded-full animate-[bounce_0.7s_ease-in-out_infinite_180ms] h-3/4 shadow-[0_0_10px_#22d3ee]" />
+                <span className="w-1.5 bg-gradient-to-t from-fuchsia-500 to-yellow-400 rounded-full animate-[bounce_0.6s_ease-in-out_infinite_350ms] h-full shadow-[0_0_10px_#d946ef]" />
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Global alert messages banner */}
         {message && (
           <div className="fixed top-24 right-4 z-50 animate-bounce max-w-sm">

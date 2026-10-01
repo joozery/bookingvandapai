@@ -179,11 +179,20 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
                 href={MESSENGER_URL}
                 target="_blank"
                 rel="noreferrer"
-                className="bg-blue-600 hover:bg-blue-700 text-white py-3 px-8 rounded-xl font-black text-xxs sm:text-xs transition-all duration-300 shadow-md flex items-center gap-2 active:scale-97 group relative overflow-hidden theme-action"
+                className="relative overflow-hidden py-3.5 px-7 rounded-2xl font-black text-xs sm:text-sm text-white shadow-xl shadow-blue-600/30 flex items-center gap-2.5 active:scale-95 transition-transform group select-none border border-white/25"
               >
-                <MessageSquare className="w-4 h-4 text-white" />
-                <span>ติดต่อแอดมินเพื่อขอลิ้งก์จองเลย</span>
-                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                {/* Flowing Color Fill Inside Button (สีวิ่งภายในปุ่ม) */}
+                <div 
+                  className="absolute -inset-[150%] animate-[spin_5s_linear_infinite] group-hover:animate-[spin_2.5s_linear_infinite] opacity-100 pointer-events-none"
+                  style={{
+                    background: 'conic-gradient(from 0deg, #2563eb, #7c3aed, #f59e0b, #06b6d4, #2563eb)',
+                  }}
+                />
+                <div className="absolute inset-0 bg-black/10 backdrop-blur-[1px]" />
+
+                <MessageSquare className="w-4.5 h-4.5 text-white relative z-10 drop-shadow" />
+                <span className="relative z-10 drop-shadow">ติดต่อแอดมินเพื่อขอลิ้งก์จองเลย</span>
+                <ArrowRight className="w-4 h-4 text-white relative z-10 group-hover:translate-x-1 transition-transform drop-shadow" />
               </a>
             </div>
 
@@ -245,8 +254,22 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
                 groupTrips.map((dest) => (
                   <div 
                   key={dest.id}
-                  className="w-[82vw] max-w-[340px] sm:w-[360px] md:w-[380px] shrink-0 snap-center sm:snap-start bg-white rounded-2xl sm:rounded-3xl overflow-hidden border border-slate-100 theme-card hover:shadow-[0_20px_50px_rgb(76,29,149,0.07)] transition-all duration-350 hover:-translate-y-1.5 flex flex-col group"
+                  className="w-[82vw] max-w-[340px] sm:w-[360px] md:w-[380px] shrink-0 snap-center sm:snap-start relative p-[5px] rounded-2xl sm:rounded-3xl overflow-hidden group transition-all duration-300 hover:-translate-y-1.5 shadow-[0_12px_40px_rgba(236,72,153,0.25)] hover:shadow-[0_20px_50px_rgba(236,72,153,0.45)] flex flex-col"
                 >
+                  {/* Animated Thick Running Light Gradient Border (กรอบไฟวิ่งวนขนาดใหญ่) */}
+                  <div 
+                    className="absolute -inset-[150%] animate-[spin_4s_linear_infinite] group-hover:animate-[spin_2s_linear_infinite] opacity-100 transition-opacity pointer-events-none"
+                    style={{
+                      background: 'conic-gradient(from 0deg, #ff007f, #a855f7, #00f3ff, #ff007f)',
+                    }}
+                  />
+
+                  {/* Outer Neon Glow Aura around card frame */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-pink-500/40 via-purple-500/40 to-cyan-400/40 rounded-2xl sm:rounded-3xl blur-lg opacity-80 group-hover:opacity-100 transition-opacity pointer-events-none" />
+
+                  {/* Inner Card Content */}
+                  <div className="relative w-full h-full bg-white rounded-[11px] sm:rounded-[19px] overflow-hidden flex flex-col theme-card">
+
                   {/* Image with floating trip status */}
                   <div className="relative overflow-hidden bg-slate-50 shrink-0">
                     <div aria-hidden="true" className="h-28 sm:h-[clamp(112px,14vh,160px)]" />
@@ -299,7 +322,25 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
                     </div>
 
                     {/* Footer: Price on the left, interactive book button on the right */}
-                    {completed && <Link href={`/trips/${encodeURIComponent(dest.id)}/reviews`} className="flex items-center justify-center gap-2 rounded-xl bg-purple-50 px-4 py-3 text-sm font-bold text-purple-900 hover:bg-purple-100"><Star className="h-4 w-4" />ดูรีวิวและคะแนนเฉลี่ย<ArrowRight className="h-4 w-4" /></Link>}
+                    {completed && (
+                      <Link 
+                        href={`/trips/${encodeURIComponent(dest.id)}/reviews`} 
+                        className="relative overflow-hidden flex items-center justify-center gap-2 rounded-xl py-3 px-4 text-xs sm:text-sm font-black text-white shadow-md active:scale-95 transition-transform group border border-white/20"
+                      >
+                        {/* Flowing Color Fill Inside Button (สีวิ่งภายในปุ่ม) */}
+                        <div 
+                          className="absolute -inset-[150%] animate-[spin_5s_linear_infinite] group-hover:animate-[spin_2.5s_linear_infinite] opacity-100 pointer-events-none"
+                          style={{
+                            background: 'conic-gradient(from 0deg, #6366f1, #d946ef, #f59e0b, #14b8a6, #6366f1)',
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-black/15 backdrop-blur-[1px]" />
+
+                        <Star className="h-4 w-4 text-yellow-300 fill-yellow-300 relative z-10 drop-shadow" />
+                        <span className="relative z-10 drop-shadow">ดูรีวิวและคะแนนเฉลี่ย</span>
+                        <ArrowRight className="h-4 w-4 text-white relative z-10 group-hover:translate-x-1 transition-transform drop-shadow" />
+                      </Link>
+                    )}
                     {!completed && <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 text-xs font-bold">
                       <div>
                         <p className="text-base sm:text-lg font-black text-brand-700 mt-1">
@@ -312,16 +353,32 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
                           href={tripMessengerUrl(dest.id)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="theme-action bg-brand-700 text-white group-hover:bg-brand-700 group-hover:text-white transition-all duration-300 min-h-10 sm:min-h-0 py-2 px-2 sm:px-4 rounded-xl font-black text-[11px] sm:text-xxs flex items-center gap-1 border border-purple-100 group-hover:border-transparent shadow-sm active:scale-95"
+                          className="relative p-[2px] rounded-xl overflow-hidden group/btn inline-flex items-center justify-center transition-all duration-300 active:scale-95 shadow-md hover:shadow-purple-500/40 shrink-0"
                         >
+                          {/* Animated Running Light Border for Button (ไฟวิ่งวนรอบปุ่ม) */}
+                          <div 
+                            className="absolute -inset-[150%] animate-[spin_3s_linear_infinite] group-hover/btn:animate-[spin_1.5s_linear_infinite] opacity-100 pointer-events-none"
+                            style={{
+                              background: 'conic-gradient(from 0deg, #ff007f, #a855f7, #00f3ff, #ff007f)',
+                            }}
+                          />
+
+                          {/* Outer Neon Glow Aura */}
+                          <div className="absolute inset-0 bg-gradient-to-r from-pink-500/50 via-purple-500/50 to-cyan-400/50 rounded-xl blur-xs opacity-80 group-hover/btn:opacity-100 transition-opacity pointer-events-none" />
+
+                          {/* Button Content */}
+                          <div className="relative z-10 bg-gradient-to-r from-brand-700 via-purple-700 to-indigo-700 text-white py-2 px-2.5 sm:px-4 rounded-[10px] font-black text-[11px] sm:text-xxs flex items-center gap-1 min-h-10 sm:min-h-0">
+
                           <span>ติดต่อแอดมินเพื่อจอง</span>
                           <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                          </div>
                         </a>
                       </div>
                     </div>}
                   </div>
                   </div>
                 </div>
+                  </div>
               )))}
             </div>
 
