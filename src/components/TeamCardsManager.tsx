@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { TeamCard, defaultTeamCards } from '@/lib/homepageSettings';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/browserSupabase';
 import { Users, Plus, Edit2, Trash2, Upload, Quote, Check, X } from 'lucide-react';
 
 interface TeamCardsManagerProps {

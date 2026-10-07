@@ -6,7 +6,7 @@ import {
   UserPlus, UserCog, UserX, AlertCircle, Key, User, Eye, EyeOff
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/browserSupabase';
 
 export interface AdminUser {
   id: string;

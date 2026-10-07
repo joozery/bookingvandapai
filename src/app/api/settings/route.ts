@@ -5,6 +5,19 @@ import { defaultHomepageSettings } from '@/lib/homepageSettings';
 import { validShareImage } from '@/lib/shareSettings';
 
 const SETTINGS_FILE = 'settings/footer.json';
+const r2PublicUrl = process.env.R2_PUBLIC_URL?.replace(/\/$/, '');
+
+function resolveStoredImage(value: unknown) {
+  if (typeof value !== 'string' || !value || !r2PublicUrl || value.startsWith('data:') || /^https?:\/\//i.test(value)) return value;
+  return `${r2PublicUrl}/${value.replace(/^\/+/, '')}`;
+}
+
+function resolveImageFields(settings: Record<string, unknown>) {
+  for (const key of ['share_image', 'logo_image', 'banner_image', 'background_image']) {
+    if (settings[key]) settings[key] = resolveStoredImage(settings[key]);
+  }
+  return settings;
+}
 
 const defaultSettings = {
   ...defaultHomepageSettings,
@@ -36,14 +49,14 @@ export async function GET() {
     }
     const text = await data.text();
     const settings = JSON.parse(text);
-    const merged = { ...defaultSettings, ...settings };
+    const merged = resolveImageFields({ ...defaultSettings, ...settings });
     if (merged.leaderboard_title === 'สถิติเวทคนปากดี') merged.leaderboard_title = 'สถิติคนมีปาก';
     if (!Array.isArray(merged.team_cards) || merged.team_cards.length === 0) {
       merged.team_cards = defaultHomepageSettings.team_cards;
     }
     return NextResponse.json({ success: true, settings: merged });
   } catch (err: any) {
-    return NextResponse.json({ success: true, settings: defaultSettings });
+    return NextResponse.json({ success: true, settings: resolveImageFields({ ...defaultSettings }) });
   }
 }
 
@@ -63,6 +76,11 @@ export async function PUT(request: Request) {
         return NextResponse.json({ success: false, error: `Invalid ${key}` }, { status: 400 });
       }
       if (typeof body[key] === 'string') body[key] = body[key].trim();
+    }
+    for (const key of ['share_image', 'logo_image', 'banner_image', 'background_image'] as const) {
+      if (typeof body[key] === 'string' && body[key].startsWith(r2PublicUrl ? `${r2PublicUrl}/` : '\u0000')) {
+        body[key] = body[key].slice((r2PublicUrl || '').length + 1);
+      }
     }
     const { error } = await supabase.storage.from('images').upload(SETTINGS_FILE, JSON.stringify(body), {
       contentType: 'application/json',

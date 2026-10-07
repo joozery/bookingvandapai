@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/browserSupabase';
 import { defaultShareSettings, normalizeShareSettings, validShareImage } from '@/lib/shareSettings';
 import { Share2, Upload } from 'lucide-react';
 

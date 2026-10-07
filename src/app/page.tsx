@@ -6,7 +6,7 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { QRCodeSVG } from 'qrcode.react';
 import DigitalTicket from '@/components/DigitalTicket';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/browserSupabase';
 import { toPng } from 'html-to-image';
 import { cn } from '@/lib/utils';
 import { formatThaiDate } from '@/lib/dateFormat';

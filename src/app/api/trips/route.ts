@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     // Auto-create Vans for this trip
     const vansCount = Math.max(1, Number(body.vansCount || 1));
     const vansList = body.vansList || [];
-    const vansToInsert = [];
+    const vansToInsert: any[] = [];
     
     for (let i = 1; i <= vansCount; i++) {
       const newVanId = `van-${newTripId}-${i}`;

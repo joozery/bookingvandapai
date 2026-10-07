@@ -115,7 +115,7 @@ export async function POST(request: Request) {
     let replacesBookingId: string | null = null;
 
     if (userBookings && userBookings.length > 0) {
-      const hasPendingChange = userBookings.some((b) => b.status === 'pending' && b.replacesBookingId);
+      const hasPendingChange = userBookings.some((b: any) => b.status === 'pending' && b.replacesBookingId);
       if (hasPendingChange) {
         return NextResponse.json({
           success: false,
@@ -123,7 +123,7 @@ export async function POST(request: Request) {
         }, { status: 400 });
       }
 
-      const activeBooking = userBookings.find((b) => b.status === 'approved') || userBookings.find((b) => b.status === 'pending');
+      const activeBooking = userBookings.find((b: any) => b.status === 'approved') || userBookings.find((b: any) => b.status === 'pending');
       
       if (activeBooking) {
         replacesBookingId = activeBooking.id;

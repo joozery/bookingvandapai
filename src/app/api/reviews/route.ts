@@ -35,7 +35,7 @@ export async function GET(request: Request) {
     const params = new URL(request.url).searchParams;
     if (params.get('admin') === '1') {
       if (!await canManageReviews(user)) return fail('ไม่มีสิทธิ์ดูรีวิว', 403);
-      const reviews = [];
+    const reviews: any[] = [];
       for (let offset = 0; ; offset += 1000) {
         const { data, error } = await supabase.from('trip_reviews').select(`${fields}, isHidden`).order('createdAt', { ascending: false }).order('id').range(offset, offset + 999);
         if (error) throw error;

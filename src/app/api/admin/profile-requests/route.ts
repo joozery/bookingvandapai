@@ -7,7 +7,7 @@ export async function GET() {
     const { data: files, error: listError } = await supabase.storage.from('images').list('profile-edits');
     if (listError) throw listError;
 
-    const requests = [];
+    const requests: any[] = [];
     for (const file of files || []) {
       if (!file.name.endsWith('.json')) continue;
       

@@ -200,7 +200,7 @@ export function ThaiDatePicker({
     const currentYr = new Date().getFullYear();
     const startYr = currentYr - 10;
     const endYr = currentYr + 10;
-    const years = [];
+    const years: { greg: number; thai: number }[] = [];
     for (let y = startYr; y <= endYr; y++) {
       years.push({ greg: y, thai: y + 543 });
     }

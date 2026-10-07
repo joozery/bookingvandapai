@@ -3,7 +3,7 @@
 import React, { useState, useRef } from 'react';
 import { User, Save, Upload, Key, RefreshCw, LogOut } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/browserSupabase';
 
 export default function ProfileTab() {
   const { data: session, update } = useSession();

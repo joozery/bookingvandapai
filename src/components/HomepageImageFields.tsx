@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/browserSupabase';
 import { Upload, Image as ImageIcon, RotateCcw, Link2 } from 'lucide-react';
 
 type Images = { logo_image?: string; banner_image?: string; background_image?: string };

@@ -21,7 +21,19 @@ export async function GET(request: Request) {
       throw error;
     }
 
-    return NextResponse.json({ success: true, profile: profile || null });
+    if (profile) return NextResponse.json({ success: true, profile });
+
+    // Older users may have insurance fields stored on bookings but no profile row.
+    // Reuse the latest booking data so migration/login never forces re-entry.
+    const { data: booking } = await supabase
+      .from('bookings')
+      .select('lineUserId, fullName, nickname, phone, nationalId, birthDate, emergencyName, emergencyPhone, allergies, medicalConditions')
+      .eq('lineUserId', lineUserId)
+      .order('createdAt', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    return NextResponse.json({ success: true, profile: booking || null });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }

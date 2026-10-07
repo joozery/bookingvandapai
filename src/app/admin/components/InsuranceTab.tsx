@@ -112,7 +112,7 @@ export default function InsuranceTab({ trips, onRefresh }: Props) {
       'เลขบัตรประชาชน', 'วันเดือนปีเกิด', 'ผู้ติดต่อฉุกเฉิน', 'เบอร์โทรฉุกเฉิน',
       'แพ้อาหาร', 'โรคประจำตัว'
     ];
-    const csvRows = [];
+    const csvRows: string[] = [];
     csvRows.push(headers.join(','));
     
     passengers.forEach((p, idx) => {

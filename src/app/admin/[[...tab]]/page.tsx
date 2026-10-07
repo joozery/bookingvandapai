@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 import { useParams, useRouter } from 'next/navigation';
 import { useSession, signIn, signOut } from 'next-auth/react';
 
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/browserSupabase';
 
 import BookingsTab from '../components/BookingsTab';
 import TripsTab from '../components/TripsTab';
