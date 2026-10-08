@@ -13,7 +13,6 @@ import { cn } from '@/lib/utils';
 import { formatThaiDate } from '@/lib/dateFormat';
 import { parseCalendarDay } from '@/lib/tripCalendar';
 import type { Trip, Van } from './types';
-import TripStaffTable from './TripStaffTable';
 import { getTripTheme } from '@/lib/tripThemes';
 
 interface Props {
@@ -22,7 +21,7 @@ interface Props {
   trips: Trip[];
   vans: Van[];
   onCreate: (form: { guideName: string; name: string; departureDate: string; durationDays: number; cost: number; pickupPoint: string; departureTime: string; tripPeriod: string; reviewTitle: string; reviewDescription: string; vansCount: number; vansList: { plateNumber: string; driverName: string; driverPhone: string; }[]; imageFile?: File | null }) => Promise<void>;
-  onUpdate: (id: string, form: { guideName: string; name: string; departureDate: string; durationDays: number; cost: number; pickupPoint: string; departureTime: string; tripPeriod: string; reviewTitle: string; reviewDescription: string; imageFile?: File | null }) => Promise<void>;
+  onUpdate: (id: string, form: { guideName: string; name: string; departureDate: string; durationDays: number; cost: number; pickupPoint: string; departureTime: string; tripPeriod: string; reviewTitle: string; reviewDescription: string; imageFile?: File | null }) => Promise<boolean>;
   onDelete: (tripId: string) => Promise<void>;
   onStatusChange: (tripId: string, status: Trip['status']) => Promise<void>;
 }
@@ -153,10 +152,12 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, on
     e.preventDefault();
     if (!editingTrip || !editForm.name || !editForm.departureDate || !editForm.pickupPoint) return;
     const finalTripPeriod = editForm.durationText ? `${editForm.durationText}||${editForm.tripPeriod}` : editForm.tripPeriod;
-    await onUpdate(editingTrip.id, { ...editForm, tripPeriod: finalTripPeriod, imageFile: editImageFile });
-    setEditingTrip(null);
-    setEditImageFile(null);
-    setEditImagePreview(null);
+    const updated = await onUpdate(editingTrip.id, { ...editForm, tripPeriod: finalTripPeriod, imageFile: editImageFile });
+    if (updated) {
+      setEditingTrip(null);
+      setEditImageFile(null);
+      setEditImagePreview(null);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -591,19 +592,6 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, on
         </div>
       </div>
 
-      {!completed && (
-        <TripStaffTable
-          trips={filteredTrips}
-          vans={vans}
-          onEdit={startEditing}
-          onDelete={onDelete}
-          onStatusChange={onStatusChange}
-          canToggleCompleted={canToggleCompleted}
-          onCopyLink={copyLink}
-          copiedId={copiedId}
-        />
-      )}
-
       {trips.length === 0 ? (
         <div className="text-center py-20 bg-white border border-dashed border-slate-200 rounded-2xl shadow-sm">
           <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -663,13 +651,28 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, on
                       </div>
                     </div>
                     
-                    <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-600 font-medium bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
-                      <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-amber-500" /> ออก {trip.departureTime} น.</span>
-                      <span className="text-slate-300">|</span>
-                      <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-rose-500" /> {trip.pickupPoint}</span>
-                    </div>
+                     <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-600 font-medium bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
+                       <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-amber-500" /> ออก {trip.departureTime} น.</span>
+                       <span className="text-slate-300">|</span>
+                       <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-rose-500" /> {trip.pickupPoint}</span>
+                     </div>
 
-                    <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2">
+                     <div className="rounded-lg border border-violet-100 bg-violet-50/60 px-3 py-2.5">
+                       <div className="text-[10px] font-bold uppercase tracking-wide text-violet-500 mb-1.5">สตาฟประจำรถ</div>
+                       <div className="space-y-1.5">
+                         {tripVans.length > 0 ? tripVans.map(van => {
+                           const staffName = van.staffName || van.seats.find(seat => seat.type === 'staff')?.staffName;
+                           return (
+                             <div key={van.id} className="flex items-center justify-between gap-3 text-[11px]">
+                               <span className="font-semibold text-slate-600">รถตู้ {van.vanNumber}</span>
+                               <span className={cn("font-bold text-right", staffName ? "text-slate-700" : "text-slate-400")}>{staffName || 'ยังไม่ได้ระบุ'}</span>
+                             </div>
+                           );
+                         }) : <span className="text-[11px] text-slate-400">ยังไม่มีรถตู้</span>}
+                       </div>
+                     </div>
+
+                     <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2">
                       <span className="text-xs font-semibold text-slate-600">{trip.status === 'completed' ? 'ทริปที่จบไปแล้ว' : 'เปิดรับจอง'}</span>
                       <button
                         type="button"

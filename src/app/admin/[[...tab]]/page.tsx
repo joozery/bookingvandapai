@@ -244,19 +244,21 @@ export default function AdminPage() {
     );
   }
 
-  const api = async (fn: () => Promise<Response>, ok: string, err = 'เกิดข้อผิดพลาด') => {
+  const api = async (fn: () => Promise<Response>, ok: string, err = 'เกิดข้อผิดพลาด'): Promise<boolean> => {
     try {
       const res = await fn();
-      const d   = await res.json();
-      if (d.success) { showToast('success', ok); await fetchAll(true); }
-      else showToast('error', d.error || err);
-    } catch { showToast('error', err); }
+      const d = await res.json().catch(() => ({}));
+      if (res.ok && d.success) { showToast('success', ok); await fetchAll(true); return true; }
+      showToast('error', d.error || (res.status === 404 ? 'ไม่พบข้อมูลทริปนี้ อาจถูกลบไปแล้ว กรุณารีเฟรชรายการ' : err));
+      if (res.status === 404) await fetchAll(true);
+      return false;
+    } catch { showToast('error', err); return false; }
   };
 
-  const handleApprove  = (id: string) => api(() => fetch(`/api/bookings/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status:'approved' }) }), 'อนุมัติสำเร็จ!');
+  const handleApprove  = async (id: string) => { await api(() => fetch(`/api/bookings/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status:'approved' }) }), 'อนุมัติสำเร็จ!'); };
   const handleReject   = async (id: string) => { if (!confirm('ยืนยันปฏิเสธ?')) return; api(() => fetch(`/api/bookings/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status:'rejected' }) }), 'ปฏิเสธเรียบร้อย'); };
   const handleDelBook  = async (id: string) => { if (!confirm('ลบรายการนี้?')) return; api(() => fetch(`/api/bookings/${id}`, { method:'DELETE' }), 'ลบเรียบร้อย'); };
-  const handleCheckIn  = (id: string, cur: boolean) => api(() => fetch(`/api/bookings/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ checkedIn: !cur }) }), !cur ? 'เช็คอินสำเร็จ!' : 'ยกเลิกเช็คอินเรียบร้อย');
+  const handleCheckIn  = async (id: string, cur: boolean) => { await api(() => fetch(`/api/bookings/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ checkedIn: !cur }) }), !cur ? 'เช็คอินสำเร็จ!' : 'ยกเลิกเช็คอินเรียบร้อย'); };
   const handleManual   = async (data: any) => {
     try {
       const res = await fetch('/api/bookings', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ...data, lineUserId:`line-manual-${Date.now()}`, lineUserName:`แอดมินสร้างแทน (${data.nickname})`, lineUserProfilePic:'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80' }) });
@@ -296,8 +298,8 @@ export default function AdminPage() {
   };
   const handleUpdateTrip = async (id: string, form: any) => {
     try {
+      let image = form.image;
       if (form.imageFile) {
-        setLoading(true);
         const file = form.imageFile;
         const fileExt = file.name.split('.').pop();
         const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
@@ -310,24 +312,23 @@ export default function AdminPage() {
         if (uploadError) throw uploadError;
 
         const { data } = supabase.storage.from('images').getPublicUrl(filePath);
-        form.image = data.publicUrl;
+        image = data.publicUrl;
       }
       
-      const payload = { ...form };
+      const payload = { ...form, image };
       delete payload.imageFile;
 
-      await api(() => fetch(`/api/trips/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) }), 'แก้ไขข้อมูลทริปสำเร็จ!');
+      return await api(() => fetch(`/api/trips/${encodeURIComponent(id)}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) }), 'แก้ไขข้อมูลทริปสำเร็จ!');
     } catch (e: any) {
       showToast('error', e.message || 'เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ');
-    } finally {
-      setLoading(false);
+      return false;
     }
   };
   const handleDelTrip    = async (id: string) => { if (!confirm('ยืนยันลบทริป?')) return; api(() => fetch(`/api/trips/${id}`, { method:'DELETE' }), 'ลบทริปเรียบร้อย'); };
-  const handleAddVan     = (tripId: string) => api(() => fetch('/api/vans', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ tripId }) }), 'เพิ่มรถตู้สำเร็จ!');
-  const handleDelVan     = async (id: string) => { if (!confirm('ยืนยันลบรถ?')) return; api(() => fetch(`/api/vans/${id}`, { method:'DELETE' }), 'ลบรถเรียบร้อย'); };
-  const handleUpdateVan  = (id: string, data: any) => api(() => fetch(`/api/vans/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) }), 'บันทึกสำเร็จ!');
-  const handleUpdateStaff = (vanId: string, seatId: string, staffName: string) => api(() => fetch(`/api/vans/${vanId}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ updateSeatId: seatId, staffName }) }), 'บันทึกชื่อผู้จัดสำเร็จ!');
+  const handleAddVan     = async (tripId: string) => { await api(() => fetch('/api/vans', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ tripId }) }), 'เพิ่มรถตู้สำเร็จ!'); };
+  const handleDelVan     = async (id: string) => { if (!confirm('ยืนยันลบรถ?')) return; await api(() => fetch(`/api/vans/${id}`, { method:'DELETE' }), 'ลบรถเรียบร้อย'); };
+  const handleUpdateVan  = async (id: string, data: any) => { await api(() => fetch(`/api/vans/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) }), 'บันทึกสำเร็จ!'); };
+  const handleUpdateStaff = async (vanId: string, seatId: string, staffName: string) => { await api(() => fetch(`/api/vans/${vanId}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ updateSeatId: seatId, staffName }) }), 'บันทึกชื่อผู้จัดสำเร็จ!'); };
 
   const stats = {
     trips:     trips.length,
@@ -746,7 +747,7 @@ export default function AdminPage() {
                   canToggleCompleted={(session?.user as any)?.username === 'admin' || (session?.user as any)?.permissions?.includes('completed-trips')}
                   trips={trips.filter(trip => activeTab === 'completed-trips' ? trip.status === 'completed' : trip.status !== 'completed')}
                   vans={vans} onCreate={handleCreateTrip} onUpdate={handleUpdateTrip} onDelete={handleDelTrip}
-                  onStatusChange={(id, status) => api(() => fetch(`/api/trips/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) }), status === 'active' ? 'เปิดรับจองทริปแล้ว' : 'ย้ายไปทริปที่จบไปแล้ว')}
+                  onStatusChange={async (id, status) => { await api(() => fetch(`/api/trips/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) }), status === 'active' ? 'เปิดรับจองทริปแล้ว' : 'ย้ายไปทริปที่จบไปแล้ว'); }}
                 />
               )}
               {activeTab === 'vans' && (
@@ -754,14 +755,14 @@ export default function AdminPage() {
                   trips={trips} vans={vans}
                   onAddVan={handleAddVan} onDeleteVan={handleDelVan}
                   onUpdateVan={handleUpdateVan} onUpdateStaff={handleUpdateStaff}
-                  onToggleSeat={(id, seatId, enabled) => api(() => fetch(`/api/vans/${id}`, {
+                  onToggleSeat={async (id, seatId, enabled) => { await api(() => fetch(`/api/vans/${id}`, {
                     method: 'PUT', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ seatId, seatEnabled: enabled }),
-                  }), enabled ? 'เปิดรับจองที่นั่งแล้ว' : 'ปิดรับจองที่นั่งแล้ว')}
-                  onToggleExtraSeat={(id, enabled) => api(() => fetch(`/api/vans/${id}`, {
+                  }), enabled ? 'เปิดรับจองที่นั่งแล้ว' : 'ปิดรับจองที่นั่งแล้ว'); }}
+                  onToggleExtraSeat={async (id, enabled) => { await api(() => fetch(`/api/vans/${id}`, {
                     method: 'PUT', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ extraSeatEnabled: enabled }),
-                  }), enabled ? 'เปิดเบาะเสริมแล้ว' : 'ปิดเบาะเสริมแล้ว')}
+                  }), enabled ? 'เปิดเบาะเสริมแล้ว' : 'ปิดเบาะเสริมแล้ว'); }}
                 />
               )}
               {activeTab === 'users'     && <UsersTab users={users} onRefresh={() => fetchAll()} />}

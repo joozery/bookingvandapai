@@ -47,19 +47,27 @@ export async function PUT(request: Request, { params }: RouteParams) {
     if (tripPeriod !== undefined) updates.tripPeriod = tripPeriod;
     if (image !== undefined) updates.image = image;
 
-    const { data, error } = await supabase
+    // Check existence separately. Some Supabase/RLS configurations return an
+    // empty representation from update().select() even when the update succeeds.
+    const { data: existingTrip, error: findError } = await supabase
       .from('trips')
-      .update(updates)
+      .select('*')
       .eq('id', id)
-      .select();
+      .maybeSingle();
 
-    if (error) throw error;
-
-    if (!data?.length) {
+    if (findError) throw findError;
+    if (!existingTrip) {
       return NextResponse.json({ success: false, error: 'Trip not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, trip: data?.[0] });
+    const { error: updateError } = await supabase
+      .from('trips')
+      .update(updates)
+      .eq('id', id);
+
+    if (updateError) throw updateError;
+
+    return NextResponse.json({ success: true, trip: { ...existingTrip, ...updates } });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
