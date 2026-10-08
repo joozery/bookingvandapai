@@ -120,7 +120,7 @@ export default function TeamCardsManager({ cards = defaultTeamCards, onChange }:
       </div>
 
       {isEditing && (
-        <form onSubmit={handleSaveForm} className="bg-violet-50/60 border border-violet-200 rounded-2xl p-4 space-y-4 animate-in fade-in duration-200">
+        <div className="bg-violet-50/60 border border-violet-200 rounded-2xl p-4 space-y-4 animate-in fade-in duration-200">
           <div className="flex items-center justify-between border-b border-violet-200/60 pb-2">
             <h4 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
               <Quote className="w-3.5 h-3.5 text-violet-600" />
@@ -208,14 +208,15 @@ export default function TeamCardsManager({ cards = defaultTeamCards, onChange }:
               ยกเลิก
             </button>
             <button
-              type="submit"
+              type="button"
+              onClick={handleSaveForm}
               className="px-4 py-1.5 bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition shadow-sm"
             >
               <Check className="w-3.5 h-3.5" />
               บันทึกการ์ด
             </button>
           </div>
-        </form>
+        </div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

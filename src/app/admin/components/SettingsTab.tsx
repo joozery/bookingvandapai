@@ -54,7 +54,14 @@ export default function SettingsTab() {
     let current = true;
     setSaveStatus('รอบันทึกอัตโนมัติ…');
     const timer = setTimeout(() => {
-      if (!formRef.current?.checkValidity()) {
+      let savedTeamCards: unknown;
+      try {
+        savedTeamCards = JSON.parse(savedSettings.current || '{}').team_cards;
+      } catch {
+        savedTeamCards = undefined;
+      }
+      const teamCardsChanged = JSON.stringify(settings.team_cards) !== JSON.stringify(savedTeamCards);
+      if (!formRef.current?.checkValidity() && !teamCardsChanged) {
         setSaveStatus('กรุณากรอกข้อมูลให้ครบและตรวจรูปแบบอีเมล / ลิงก์');
         return;
       }
