@@ -55,11 +55,7 @@ export async function POST(request: Request) {
       medicalConditions,
     } = body;
 
-    if (!lineUserId || !fullName || !nickname || !phone || !nationalId || !birthDate || !emergencyName || !emergencyPhone) {
-      return NextResponse.json({ success: false, error: 'Please provide all required profile fields' }, { status: 400 });
-    }
-
-    const profileData = {
+    const requiredFields = {
       lineUserId,
       fullName,
       nickname,
@@ -68,6 +64,38 @@ export async function POST(request: Request) {
       birthDate,
       emergencyName,
       emergencyPhone,
+    };
+    const missingFields = Object.entries(requiredFields)
+      .filter(([, value]) => typeof value !== 'string' || !value.trim())
+      .map(([key]) => key);
+
+    if (missingFields.length > 0) {
+      return NextResponse.json({
+        success: false,
+        error: 'กรุณากรอกข้อมูลส่วนตัวให้ครบถ้วน',
+        missingFields,
+      }, { status: 400 });
+    }
+
+    const clean = (value: unknown) => String(value).trim();
+    const cleanLineUserId = clean(lineUserId);
+    const cleanFullName = clean(fullName);
+    const cleanNickname = clean(nickname);
+    const cleanPhone = clean(phone);
+    const cleanNationalId = clean(nationalId);
+    const cleanBirthDate = clean(birthDate);
+    const cleanEmergencyName = clean(emergencyName);
+    const cleanEmergencyPhone = clean(emergencyPhone);
+
+    const profileData = {
+      lineUserId: cleanLineUserId,
+      fullName: cleanFullName,
+      nickname: cleanNickname,
+      phone: cleanPhone,
+      nationalId: cleanNationalId,
+      birthDate: cleanBirthDate,
+      emergencyName: cleanEmergencyName,
+      emergencyPhone: cleanEmergencyPhone,
       allergies: allergies || '',
       medicalConditions: medicalConditions || '',
     };
@@ -82,13 +110,13 @@ export async function POST(request: Request) {
     await supabase
       .from('bookings')
       .update({
-        fullName,
-        nickname,
-        phone,
-        nationalId,
-        birthDate,
-        emergencyName,
-        emergencyPhone,
+        fullName: cleanFullName,
+        nickname: cleanNickname,
+        phone: cleanPhone,
+        nationalId: cleanNationalId,
+        birthDate: cleanBirthDate,
+        emergencyName: cleanEmergencyName,
+        emergencyPhone: cleanEmergencyPhone,
         allergies: allergies || '',
         medicalConditions: medicalConditions || ''
       })

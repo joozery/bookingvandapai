@@ -455,16 +455,16 @@ function CustomerPageContent() {
     try {
       setIsSubmittingProfile(true);
       const payload = {
-        lineUserId: lineUser.userId,
-        fullName: `${titleName} ${fullName}`,
-        nickname,
-        phone,
-        nationalId,
-        birthDate,
-        emergencyName,
-        emergencyPhone,
-        allergies,
-        medicalConditions,
+        lineUserId: lineUser.userId.trim(),
+        fullName: `${titleName.trim()} ${fullName.trim()}`.trim(),
+        nickname: nickname.trim(),
+        phone: phone.trim(),
+        nationalId: nationalId.trim(),
+        birthDate: birthDate.trim(),
+        emergencyName: emergencyName.trim(),
+        emergencyPhone: emergencyPhone.trim(),
+        allergies: allergies.trim(),
+        medicalConditions: medicalConditions.trim(),
       };
 
       if (hasProfile) {
@@ -1182,7 +1182,7 @@ function CustomerPageContent() {
                 <h2 className="text-xl font-bold text-white">ข้อมูลส่วนตัวเพื่อการทำประกัน</h2>
                 <p className="text-white/80 text-xs mt-1">กรุณากรอกข้อมูลให้ครบถ้วนเพื่อผลประโยชน์ของท่าน</p>
              </div>
-             <form onSubmit={handleProfileSubmit} className="p-6 space-y-4">
+             <form noValidate onSubmit={handleProfileSubmit} className="p-6 space-y-4">
                 <div className="flex gap-3">
                   <div className="w-1/3">
                     <label htmlFor="titleName" className="block text-[11px] font-bold text-slate-500 mb-1">
@@ -1232,6 +1232,10 @@ function CustomerPageContent() {
                   <ThaiDatePicker 
                     id="birthDate" 
                     required 
+                    min="1900-01-01"
+                    max={new Date().toISOString().slice(0, 10)}
+                    yearStart={1900}
+                    yearEnd={new Date().getFullYear()}
                     value={birthDate} 
                     onChange={setBirthDate} 
                     className="w-full bg-slate-50 border border-slate-200 focus:border-brand-700 rounded-xl py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-200 transition duration-200"

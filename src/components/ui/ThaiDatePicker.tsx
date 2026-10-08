@@ -16,6 +16,8 @@ interface Props {
   showPresets?: boolean;
   format?: 'buddhist' | 'full';
   disabled?: boolean;
+  yearStart?: number;
+  yearEnd?: number;
 }
 
 const THAI_MONTHS_SHORT = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
@@ -58,6 +60,8 @@ export function ThaiDatePicker({
   showPresets = true,
   format = 'buddhist',
   disabled = false,
+  yearStart,
+  yearEnd,
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [useNative, setUseNative] = useState(false);
@@ -198,14 +202,14 @@ export function ThaiDatePicker({
   // Year choices range (e.g., 2020 to 2030 or BE 2563 to 2573)
   const yearOptions = useMemo(() => {
     const currentYr = new Date().getFullYear();
-    const startYr = currentYr - 10;
-    const endYr = currentYr + 10;
+    const startYr = yearStart ?? currentYr - 10;
+    const endYr = yearEnd ?? currentYr + 10;
     const years: { greg: number; thai: number }[] = [];
     for (let y = startYr; y <= endYr; y++) {
       years.push({ greg: y, thai: y + 543 });
     }
     return years;
-  }, []);
+  }, [yearStart, yearEnd]);
 
   return (
     <div className="relative w-full">
