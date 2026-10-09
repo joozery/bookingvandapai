@@ -75,8 +75,22 @@ class MongoQuery<T extends Record<string, unknown> = Record<string, unknown>> {
       if (this.mode === 'update') {
         const result = await collection.updateMany(query, { $set: this.payload });
         if (this.projection) {
-          const rows = await collection.find(query).toArray();
-          return { data: this.singleMode ? this.output(rows[0] || {}) : rows.map((row) => this.output(row)), error: null };
+          // The original filter may contain the old value of a field that
+          // was just updated (for example the van's seats array). Querying
+          // with it again after the update returns no rows and incorrectly
+          // turns a successful update into a 409 at the API layer. When an
+          // id filter exists, read the updated document by its stable id;
+          // otherwise return the correct affected-row count.
+          const idFilter = this.filters.find(filter => filter.field === 'id' && filter.op === 'eq');
+          const rows = idFilter
+            ? await collection.find({ id: idFilter.value }).toArray()
+            : [];
+          if (rows.length > 0) {
+            return { data: this.singleMode ? this.output(rows[0]) : rows.map((row) => this.output(row)), error: null };
+          }
+          const affected = result.matchedCount || 0;
+          const emptyRows = Array.from({ length: affected }, () => ({}));
+          return { data: this.singleMode ? emptyRows[0] || null : emptyRows, error: null };
         }
         return { data: null, error: null };
       }

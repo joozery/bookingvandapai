@@ -18,7 +18,8 @@ export async function GET(request: Request) {
     const currentPage = Math.min(page, pageCount);
     return NextResponse.json({ success: true, rankings: rankings.slice((currentPage - 1) * 10, currentPage * 10),
       total: rankings.length, page: currentPage, pageCount }, { headers: { 'Cache-Control': 'no-store' } });
-  } catch {
+  } catch (error) {
+    console.error('[leaderboard] failed to load rankings', error);
     return NextResponse.json({ success: false, error: 'โหลดอันดับไม่สำเร็จ กรุณาลองอีกครั้ง' }, { status: 500 });
   }
 }

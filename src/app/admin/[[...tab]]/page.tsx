@@ -746,7 +746,7 @@ export default function AdminPage() {
                 <TripsTab key={activeTab} completed={activeTab === 'completed-trips'}
                   canToggleCompleted={(session?.user as any)?.username === 'admin' || (session?.user as any)?.permissions?.includes('completed-trips')}
                   trips={trips.filter(trip => activeTab === 'completed-trips' ? trip.status === 'completed' : trip.status !== 'completed')}
-                  vans={vans} onCreate={handleCreateTrip} onUpdate={handleUpdateTrip} onDelete={handleDelTrip}
+                    vans={vans} onCreate={handleCreateTrip} onUpdate={handleUpdateTrip} onUpdateVan={handleUpdateVan} onDelete={handleDelTrip}
                   onStatusChange={async (id, status) => { await api(() => fetch(`/api/trips/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) }), status === 'active' ? 'เปิดรับจองทริปแล้ว' : 'ย้ายไปทริปที่จบไปแล้ว'); }}
                 />
               )}

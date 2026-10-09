@@ -3,24 +3,46 @@ export const dynamic = 'force-dynamic';
 import { supabase } from '@/lib/supabase';
 import { reviewCopyUpdates } from '@/lib/reviewCopy';
 import { countAvailableSeats } from '@/lib/seatAvailability';
-import { generateSeatsForVan, Trip, Van } from '@/lib/db';
+import { generateSeatsForVan, getDb, Trip, Van } from '@/lib/db';
+
+function enrichTrips(trips: Trip[], vans: Van[]) {
+  const vansByTrip = new Map<string, Van[]>();
+  for (const van of vans) {
+    const tripVans = vansByTrip.get(van.tripId) || [];
+    tripVans.push(van);
+    vansByTrip.set(van.tripId, tripVans);
+  }
+
+  return trips.map(trip => {
+    const tripVans = (vansByTrip.get(trip.id) || []).sort((a, b) => (a.vanNumber || 0) - (b.vanNumber || 0));
+    const totalAvailable = countAvailableSeats(tripVans) ?? 0;
+    return { ...trip, availableSeats: totalAvailable, vans: tripVans };
+  });
+}
 
 export async function GET() {
   try {
-    const { data: trips, error: tripsError } = await supabase.from('trips').select('*').order('created_at', { ascending: false });
-    if (tripsError) throw tripsError;
+    // These reads are independent. Start them together so a cold Mongo
+    // connection and the second collection do not add their latencies.
+    const [tripsResult, vansResult] = await Promise.all([
+      supabase.from('trips').select('*').order('created_at', { ascending: false }),
+      supabase.from('vans').select('*').order('vanNumber', { ascending: true }),
+    ]);
+    if (tripsResult.error) throw tripsResult.error;
+    if (vansResult.error) throw vansResult.error;
 
-    const { data: vans, error: vansError } = await supabase.from('vans').select('*').order('vanNumber', { ascending: true });
-    if (vansError) throw vansError;
-    
-    const enrichedTrips = (trips || []).map(trip => {
-      const tripVans = (vans || []).filter(v => v.tripId === trip.id).sort((a, b) => (a.vanNumber || 0) - (b.vanNumber || 0));
-      const totalAvailable = countAvailableSeats(tripVans) ?? 0;
-      return { ...trip, availableSeats: totalAvailable, vans: tripVans };
-    });
+    const enrichedTrips = enrichTrips(tripsResult.data || [], vansResult.data || []);
 
     return NextResponse.json({ success: true, trips: enrichedTrips });
   } catch (error: any) {
+    // Development fallback only: keep the local preview usable when the
+    // external MongoDB host is unreachable. Production never falls back to
+    // stale local data.
+    const isLocalNetworkBlock = String(error?.message || '').includes('EACCES');
+    if (process.env.NODE_ENV !== 'production' || isLocalNetworkBlock) {
+      const local = getDb();
+      return NextResponse.json({ success: true, trips: enrichTrips(local.trips, local.vans), source: 'local-fallback' });
+    }
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

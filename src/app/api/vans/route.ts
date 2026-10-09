@@ -15,8 +15,11 @@ export async function GET(request: Request) {
     const { data: vans, error: vansError } = await query;
     if (vansError) throw vansError;
 
-    // Fetch bookings to enrich passenger names
-    const { data: bookings, error: bookingsError } = await supabase.from('bookings').select('id, nickname, "fullName"');
+    // Only bookings from the requested trip can reference these vans. This
+    // keeps the response identical while avoiding a full bookings-table scan.
+    const bookingsQuery = supabase.from('bookings').select('id, nickname, "fullName"');
+    if (tripId) bookingsQuery.eq('tripId', tripId);
+    const { data: bookings, error: bookingsError } = await bookingsQuery;
     if (bookingsError) throw bookingsError;
 
     // Inject passenger names into seats that are booked or pending

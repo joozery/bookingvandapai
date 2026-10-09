@@ -12,7 +12,15 @@ declare global {
   var __dapaiMongoClientPromise: Promise<MongoClient> | undefined;
 }
 
-const clientPromise = globalThis.__dapaiMongoClientPromise ?? new MongoClient(uri).connect();
+// Keep a slow/unreachable database from holding the first page request open
+// for the driver's default connection timeout. These limits only affect how
+// quickly a failed connection is reported; they do not change query results.
+const mongoClient = new MongoClient(uri, {
+  connectTimeoutMS: 5000,
+  serverSelectionTimeoutMS: 5000,
+  waitQueueTimeoutMS: 5000,
+});
+const clientPromise = globalThis.__dapaiMongoClientPromise ?? mongoClient.connect();
 
 if (process.env.NODE_ENV !== 'production') {
   globalThis.__dapaiMongoClientPromise = clientPromise;

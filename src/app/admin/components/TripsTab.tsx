@@ -22,6 +22,7 @@ interface Props {
   vans: Van[];
   onCreate: (form: { guideName: string; name: string; departureDate: string; durationDays: number; cost: number; pickupPoint: string; departureTime: string; tripPeriod: string; reviewTitle: string; reviewDescription: string; vansCount: number; vansList: { plateNumber: string; driverName: string; driverPhone: string; }[]; imageFile?: File | null }) => Promise<void>;
   onUpdate: (id: string, form: { guideName: string; name: string; departureDate: string; durationDays: number; cost: number; pickupPoint: string; departureTime: string; tripPeriod: string; reviewTitle: string; reviewDescription: string; imageFile?: File | null }) => Promise<boolean>;
+  onUpdateVan: (vanId: string, data: { staffName: string }) => Promise<void>;
   onDelete: (tripId: string) => Promise<void>;
   onStatusChange: (tripId: string, status: Trip['status']) => Promise<void>;
 }
@@ -73,7 +74,7 @@ const generatePeriod = (dateStr: string, days: number) => {
 
 import { ThaiDatePicker } from '@/components/ui/ThaiDatePicker';
 
-export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, onStatusChange, completed = false, canToggleCompleted = true }: Props) {
+export default function TripsTab({ trips, vans, onCreate, onUpdate, onUpdateVan, onDelete, onStatusChange, completed = false, canToggleCompleted = true }: Props) {
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
   const [form, setForm] = useState(DEFAULT_FORM);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -93,6 +94,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, on
   const [editForm, setEditForm] = useState({ guideName: '', reviewTitle: '', reviewDescription: '', name: '', departureDate: '', returnDate: '', durationDays: 3, cost: 1500, pickupPoint: '', departureTime: '06:00', tripPeriod: '', durationText: '' });
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
   const [editImagePreview, setEditImagePreview] = useState<string | null>(null);
+  const [editingStaffNames, setEditingStaffNames] = useState<Record<string, string>>({});
 
   // Cropper States
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -126,6 +128,12 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, on
 
   const startEditing = (trip: Trip) => {
     setEditingTrip(trip);
+    setEditingStaffNames(Object.fromEntries(
+      vans.filter(van => van.tripId === trip.id).map(van => {
+        const staffSeat = van.seats.find(seat => seat.type === 'staff');
+        return [van.id, van.staffName || staffSeat?.staffName || staffSeat?.passengerName || ''];
+      })
+    ));
     const parts = (trip.tripPeriod || '').split('||');
     const hasCustomDuration = parts.length > 1;
     const period = hasCustomDuration ? parts[1] : parts[0];
@@ -154,9 +162,13 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, on
     const finalTripPeriod = editForm.durationText ? `${editForm.durationText}||${editForm.tripPeriod}` : editForm.tripPeriod;
     const updated = await onUpdate(editingTrip.id, { ...editForm, tripPeriod: finalTripPeriod, imageFile: editImageFile });
     if (updated) {
+      await Promise.all(vans.filter(van => van.tripId === editingTrip.id).map(van => onUpdateVan(van.id, {
+        staffName: (editingStaffNames[van.id] || '').trim(),
+      })));
       setEditingTrip(null);
       setEditImageFile(null);
       setEditImagePreview(null);
+      setEditingStaffNames({});
     }
   };
 
@@ -352,6 +364,28 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onDelete, on
                   </label>
                 </div>
               </div>
+
+              <Card className="border-slate-200 shadow-sm">
+                <CardHeader className="bg-slate-50 border-b border-slate-100 py-3">
+                  <CardTitle className="text-sm text-violet-700">สตาฟประจำรถ</CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 space-y-3">
+                  {vans.filter(van => van.tripId === editingTrip.id).length === 0 ? (
+                    <p className="text-xs text-slate-400">ทริปนี้ยังไม่มีรถตู้</p>
+                  ) : vans.filter(van => van.tripId === editingTrip.id).map(van => (
+                    <div key={van.id} className="grid grid-cols-1 sm:grid-cols-[140px_1fr] items-center gap-2">
+                      <label htmlFor={`trip-staff-${van.id}`} className="text-xs font-bold text-slate-600">รถตู้คันที่ {van.vanNumber}</label>
+                      <Input
+                        id={`trip-staff-${van.id}`}
+                        value={editingStaffNames[van.id] || ''}
+                        onChange={e => setEditingStaffNames(prev => ({ ...prev, [van.id]: e.target.value }))}
+                        placeholder="ชื่อสตาฟประจำรถ"
+                        className="h-9 text-sm"
+                      />
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
 
               <ReviewCopyFields perTrip value={editForm} onChange={copy => setEditForm({ ...editForm, ...copy })} />
               <div className="flex justify-end gap-3 pt-6 border-t border-slate-100">

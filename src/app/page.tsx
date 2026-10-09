@@ -982,6 +982,7 @@ function CustomerPageContent() {
           }} 
           trips={trips}
           isLoggedIn={!!lineUser}
+          settings={settings}
         />
       </div>
     );

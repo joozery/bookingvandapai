@@ -1,11 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import TripRatingSummary from '@/components/TripRatingSummary';
-import TripCalendar from '@/components/TripCalendar';
-import BookingLeaderboard from '@/components/BookingLeaderboard';
-import TeamCardsSection from '@/components/TeamCardsSection';
 import { defaultHomepageSettings } from '@/lib/homepageSettings';
 import { validShareImage } from '@/lib/shareSettings';
 import { formatThaiDate } from '@/lib/dateFormat';
@@ -32,22 +29,31 @@ import {
   Leaf
 } from 'lucide-react';
 
+// Keep below-the-fold and secondary sections out of the first landing-page chunk.
+// They still render exactly as before once the landing page is mounted.
+const TripRatingSummary = dynamic(() => import('@/components/TripRatingSummary'), { loading: () => null });
+const TripCalendar = dynamic(() => import('@/components/TripCalendar'), { loading: () => null });
+const BookingLeaderboard = dynamic(() => import('@/components/BookingLeaderboard'), { loading: () => null });
+const TeamCardsSection = dynamic(() => import('@/components/TeamCardsSection'), { loading: () => null });
+
 interface LandingPageProps {
   onLoginClick: () => void;
   trips?: any[];
   isLoggedIn?: boolean;
+  settings?: Record<string, any>;
 }
 
-export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = false }: LandingPageProps) {
-  const [settings, setSettings] = useState({
+export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = false, settings: sharedSettings }: LandingPageProps) {
+  const settings = useMemo(() => ({
     ...defaultHomepageSettings,
     footer_description: 'กลุ่มเดินป่าและเดินทางสายผจญภัย มุ่งสร้างสรรค์ทริปท่องเที่ยวธรรมชาติที่คุ้มค่า สนุกสนาน มิตรภาพที่ยั่งยืน และปลอดภัยทุกก้าวเดิน',
     contact_phone: '+66 89 123 4567',
     contact_email: 'support@dapaidernpai.com',
     contact_location: 'เชียงใหม่ / กรุงเทพฯ, ประเทศไทย',
     copyright_year: new Date().getFullYear().toString(),
-    line_url: 'https://line.me'
-  });
+    line_url: 'https://line.me',
+    ...sharedSettings
+  }), [sharedSettings]);
   const tripsScrollRef = useRef<HTMLDivElement>(null);
   const completedTripsScrollRef = useRef<HTMLDivElement>(null);
   const [imageExtraHeights, setImageExtraHeights] = useState<Record<string, number>>({});
@@ -66,14 +72,6 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
     measure();
     return () => observer.disconnect();
   }, [trips]);
-
-  useEffect(() => {
-    fetch('/api/settings').then(res => res.json()).then(data => {
-      if (data.success && data.settings) {
-        setSettings(prev => ({...prev, ...data.settings}));
-      }
-    }).catch(console.error);
-  }, []);
 
   const destinations = trips && trips.length > 0
     ? trips.map(t => {

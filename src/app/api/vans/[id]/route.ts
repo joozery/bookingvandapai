@@ -45,7 +45,10 @@ export async function PUT(request: Request, { params }: RouteParams) {
         return NextResponse.json({ success: false, error: (error as Error).message }, { status: 409 });
       }
       const { data: updated, error } = await supabase.from('vans').update({ seats })
-        .eq('id', id).eq('seats', JSON.stringify(van.seats)).select('id');
+        // MongoDB stores seats as an array. Compare the value itself rather
+        // than a JSON string, otherwise every valid toggle is reported as a
+        // stale update (409) even when nobody changed the van.
+        .eq('id', id).eq('seats', van.seats).select('id');
       if (error) throw error;
       if (!updated?.length) {
         return NextResponse.json({ success: false, error: 'ข้อมูลที่นั่งเปลี่ยนแล้ว กรุณาโหลดใหม่และลองอีกครั้ง' }, { status: 409 });
@@ -68,7 +71,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
       if (bookings?.length) return NextResponse.json({ success: false, error: 'ที่นั่งมีการจองหรือรออนุมัติอยู่' }, { status: 409 });
       const seats = van.seats.map((s: any) => s.id === body.seatId ? { ...s, status: body.seatEnabled ? 'available' : 'blocked' } : s);
       const { data: updated, error } = await supabase.from('vans').update({ seats })
-        .eq('id', id).eq('seats', JSON.stringify(van.seats)).select('id');
+        .eq('id', id).eq('seats', van.seats).select('id');
       if (error) throw error;
       if (!updated?.length) return NextResponse.json({ success: false, error: 'ข้อมูลที่นั่งเปลี่ยนแล้ว กรุณาลองอีกครั้ง' }, { status: 409 });
       return NextResponse.json({ success: true });
