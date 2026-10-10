@@ -42,10 +42,11 @@ const defaultSettings = {
 };
 
 export async function GET() {
+  const cacheHeaders = { 'Cache-Control': 'public, max-age=0, s-maxage=30, stale-while-revalidate=120' };
   try {
     const { data, error } = await supabase.storage.from('images').download(SETTINGS_FILE);
     if (error) {
-      return NextResponse.json({ success: true, settings: defaultSettings });
+      return NextResponse.json({ success: true, settings: defaultSettings }, { headers: cacheHeaders });
     }
     const text = await data.text();
     const settings = JSON.parse(text);
@@ -54,9 +55,9 @@ export async function GET() {
     if (!Array.isArray(merged.team_cards) || merged.team_cards.length === 0) {
       merged.team_cards = defaultHomepageSettings.team_cards;
     }
-    return NextResponse.json({ success: true, settings: merged });
+    return NextResponse.json({ success: true, settings: merged }, { headers: cacheHeaders });
   } catch (err: any) {
-    return NextResponse.json({ success: true, settings: resolveImageFields({ ...defaultSettings }) });
+    return NextResponse.json({ success: true, settings: resolveImageFields({ ...defaultSettings }) }, { headers: cacheHeaders });
   }
 }
 

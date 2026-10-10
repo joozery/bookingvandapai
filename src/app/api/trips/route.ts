@@ -25,15 +25,29 @@ export async function GET() {
     // These reads are independent. Start them together so a cold Mongo
     // connection and the second collection do not add their latencies.
     const [tripsResult, vansResult] = await Promise.all([
-      supabase.from('trips').select('*').order('created_at', { ascending: false }),
-      supabase.from('vans').select('*').order('vanNumber', { ascending: true }),
+      supabase.from('trips').select('id,name,departureDate,durationDays,cost,pickupPoint,departureTime,status,image,tripPeriod,guideName,reviewTitle,reviewDescription').order('created_at', { ascending: false }),
+      supabase.from('vans').select('id,tripId,vanNumber,plateNumber,driverName,driverPhone,staffName,seats').order('vanNumber', { ascending: true }),
     ]);
     if (tripsResult.error) throw tripsResult.error;
     if (vansResult.error) throw vansResult.error;
 
-    const enrichedTrips = enrichTrips(tripsResult.data || [], vansResult.data || []);
+    const enrichedTrips = enrichTrips(tripsResult.data || [], vansResult.data || []).map((trip: any) => ({
+      ...trip,
+      // The landing page only needs staff information. Full seat maps are
+      // fetched later when the visitor selects a trip.
+      vans: (trip.vans || []).map((van: any) => {
+        const staffSeat = (van.seats || []).find((seat: any) => seat.type === 'staff');
+        const { seats: _seats, ...summary } = van;
+        return {
+          ...summary,
+          staffName: van.staffName || staffSeat?.staffName || staffSeat?.passengerName || null,
+        };
+      }),
+    }));
 
-    return NextResponse.json({ success: true, trips: enrichedTrips });
+    return NextResponse.json({ success: true, trips: enrichedTrips }, {
+      headers: { 'Cache-Control': 'public, max-age=0, s-maxage=30, stale-while-revalidate=120' },
+    });
   } catch (error: any) {
     // Development fallback only: keep the local preview usable when the
     // external MongoDB host is unreachable. Production never falls back to
