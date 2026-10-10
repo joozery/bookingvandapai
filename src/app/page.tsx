@@ -1,11 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { useSession, signIn, signOut } from "next-auth/react";
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { QRCodeSVG } from 'qrcode.react';
-import DigitalTicket from '@/components/DigitalTicket';
 import { supabase } from '@/lib/browserSupabase';
 import { cn } from '@/lib/utils';
 import { formatThaiDate } from '@/lib/dateFormat';
@@ -32,11 +31,25 @@ import {
   X,
   ChevronDown
 } from 'lucide-react';
-import LandingPage from '../components/LandingPage';
-import TripReviewPage from '@/components/TripReviewPage';
-import TeamCardsSection from '@/components/TeamCardsSection';
 import { isTripReviewOpen } from '@/lib/tripReview';
 import { MESSENGER_URL } from '@/lib/contact';
+import BookingProgress from '@/components/BookingProgress';
+import MobileNavigation from '@/components/MobileNavigation';
+import HelpCenterModal from '@/components/HelpCenterModal';
+import BookingHistoryModal from '@/components/BookingHistoryModal';
+import LoginPrompt from '@/components/LoginPrompt';
+import BookingSeat from '@/components/BookingSeat';
+import CustomerFooter from '@/components/CustomerFooter';
+import BookingBackNavigation from '@/components/BookingBackNavigation';
+import BookingWorkspace from '@/components/BookingWorkspace';
+import LoginModal from '@/components/LoginModal';
+import BrandLoadingScreenComponent from '@/components/BrandLoadingScreen';
+
+const LandingPage = dynamic(() => import('../components/LandingPage'), { loading: () => null });
+const DigitalTicket = dynamic(() => import('@/components/DigitalTicket'), { loading: () => null });
+const TripReviewPage = dynamic(() => import('@/components/TripReviewPage'), { loading: () => null });
+const ThaiDatePicker = dynamic(() => import('@/components/ui/ThaiDatePicker').then(module => module.ThaiDatePicker), { loading: () => null });
+const ProfileForm = dynamic(() => import('@/components/ProfileForm'), { loading: () => null });
 
 interface Seat {
   id: string;
@@ -98,8 +111,6 @@ interface Booking {
   note?: string;
 }
 
-import { ThaiDatePicker } from '@/components/ui/ThaiDatePicker';
-
 const MOCK_LINE_USERS = [
   {
     userId: 'line-user-1',
@@ -119,6 +130,28 @@ const MOCK_LINE_USERS = [
 ];
 
 const DEFAULT_PROFILE_IMAGE = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80';
+
+function BrandLoadingScreen() {
+  return (
+    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-[#1e0a38] via-[#120524] to-[#0c0218] text-white select-none">
+      <div className="absolute h-[500px] w-[500px] rounded-full bg-gradient-to-r from-purple-600 via-fuchsia-500 to-pink-600 opacity-70 blur-[130px] animate-pulse pointer-events-none" />
+      <div className="absolute h-[550px] w-[550px] rounded-full bg-gradient-to-r from-indigo-700 via-purple-700 to-violet-900 opacity-60 blur-[150px] animate-pulse [animation-delay:0.7s] pointer-events-none" />
+      <div className="relative z-10 flex flex-col items-center space-y-7 px-4 text-center">
+        <div className="relative flex items-center justify-center p-6">
+          <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-pink-500/50 via-purple-500/50 to-cyan-400/50 blur-3xl animate-ping [animation-duration:1.8s]" />
+          <div className="absolute -inset-6 rounded-full bg-gradient-to-r from-pink-500 via-purple-500 via-cyan-400 via-emerald-400 via-yellow-400 to-pink-500 p-[3px] opacity-100 blur-[3px] shadow-[0_0_30px_#ec4899] animate-[spin_2.5s_linear_infinite]"><div className="h-full w-full rounded-full bg-[#130629]/95" /></div>
+          <div className="absolute -inset-4 rounded-full border-2 border-dashed border-cyan-400 drop-shadow-[0_0_15px_#06b6d4] animate-[spin_1.8s_linear_infinite]" />
+          <div className="absolute -inset-1.5 rounded-full border-2 border-pink-500 border-t-yellow-300 border-l-transparent drop-shadow-[0_0_20px_#ec4899] animate-[spin_0.9s_linear_infinite_reverse]" />
+          <img src="/logo/logov2.webp" alt="DAPAIDERNPAI Logo" className="relative z-10 h-24 w-24 object-contain brightness-125 drop-shadow-[0_0_35px_rgba(236,72,153,0.9)] sm:h-28 sm:w-28" />
+        </div>
+        <div className="flex flex-col items-center space-y-2">
+          <h1 className="text-3xl font-black tracking-tight text-white drop-shadow-[0_0_20px_rgba(217,70,239,0.9)] sm:text-4xl">ด่าไป เดินไป</h1>
+          <p className="text-[10px] font-black uppercase tracking-[0.25em] text-cyan-300 drop-shadow-[0_0_10px_rgba(6,182,212,0.8)] sm:text-xs">DAPAI DERNPAI VAN BOOKING</p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function CustomerPageContent() {
   const { data: session, status: sessionStatus } = useSession();
@@ -140,14 +173,14 @@ function CustomerPageContent() {
   // Main Data States
   const [trips, setTrips] = useState<Trip[]>([]);
   const [urlTripId, setUrlTripId] = useState<string | null>(null);
-  const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
+  const [selectedTrip, setSelectedTrip] = useState<any>(null);
   const [tripSearch, setTripSearch] = useState('');
   const [vans, setVans] = useState<Van[]>([]);
-  const [selectedVan, setSelectedVan] = useState<Van | null>(null);
-  const [userBooking, setUserBooking] = useState<(Booking & { tripName?: string; pickupPoint?: string; departureDate?: string; departureTime?: string; durationDays?: number; cost?: number; plateNumber?: string; driverName?: string; driverPhone?: string; vanNumber?: number }) | null>(null);
+  const [selectedVan, setSelectedVan] = useState<any>(null);
+  const [userBooking, setUserBooking] = useState<any>(null);
 
   // Interaction States
-  const [selectedSeat, setSelectedSeat] = useState<Seat | null>(null);
+  const [selectedSeat, setSelectedSeat] = useState<any>(null);
   const [isRequestingTransfer, setIsRequestingTransfer] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -1101,6 +1134,15 @@ function CustomerPageContent() {
 
       {/* Steps horizontal timeline matching screenshot */}
       {lineUser && hasProfile && (
+        <BookingProgress
+          currentStep={currentStep}
+          hasBooking={!!userBooking}
+          onStartOver={() => { setSelectedTrip(null); setSelectedVan(null); setSelectedSeat(null); setUserBooking(null); }}
+          onChooseVan={() => { if (!userBooking && currentStep > 2) { setSelectedVan(null); setSelectedSeat(null); } }}
+          onChooseSeat={() => { if (!userBooking && currentStep > 3) { setSelectedSeat(null); } }}
+        />
+      )}
+      {false && lineUser && hasProfile && (
       <section className="bg-white border-b border-slate-200 pt-4 pb-8 md:py-4 px-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between text-xs sm:text-sm font-bold text-slate-500">
 
@@ -1174,6 +1216,23 @@ function CustomerPageContent() {
       )}
 
       {lineUser && (!hasProfile || showProfileModal) ? (
+        <ProfileForm
+          hasProfile={hasProfile}
+          values={{ titleName, fullName, nickname, phone, nationalId, birthDate, emergencyName, emergencyPhone, allergies, medicalConditions, consentInsurance }}
+          setValue={(key, value) => {
+            const setters: Record<string, (next: any) => void> = {
+              titleName: setTitleName, fullName: setFullName, nickname: setNickname, phone: setPhone,
+              nationalId: setNationalId, birthDate: setBirthDate, emergencyName: setEmergencyName,
+              emergencyPhone: setEmergencyPhone, allergies: setAllergies, medicalConditions: setMedicalConditions,
+              consentInsurance: setConsentInsurance,
+            };
+            setters[key]?.(value);
+          }}
+          onSubmit={handleProfileSubmit}
+          onCancel={() => setShowProfileModal(false)}
+          isSubmitting={isSubmittingProfile}
+        />
+      ) : false ? (
         <div className="flex-1 flex flex-col items-center justify-center p-4 py-8 animate-in fade-in zoom-in-95 duration-500 mt-4">
           <div className="bg-white max-w-md w-full rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
              <div className="bg-brand-700 p-6 text-center">
@@ -1311,6 +1370,8 @@ function CustomerPageContent() {
           </div>
         </div>
       ) : !lineUser ? (
+        <LoginPrompt onLogin={handleLoginClick} />
+      ) : false ? (
         <div className="flex-1 flex flex-col items-center justify-center p-4 py-12 animate-in fade-in zoom-in-95 duration-500">
            <div className="bg-white max-w-sm w-full rounded-3xl shadow-xl border border-slate-200 p-8 text-center flex flex-col items-center">
              <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
@@ -1331,11 +1392,38 @@ function CustomerPageContent() {
              </button>
            </div>
         </div>
-      ) : (
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 2xl:px-8 py-6 w-full flex-grow flex flex-col gap-6 pb-24 2xl:pb-10">
+      ) : ( <>
+      <BookingWorkspace {...{
+        lineUser, hasProfile, showProfileModal, currentStep, userBooking, isRequestingTransfer, mobileTab, allUserBookings,
+        trips, selectedTrip, selectedVan, selectedSeat, vans, loading, tripSearch, urlTripId,
+        completedTripSearch, downloadingTicketId, ticketRef, nickname, setNickname, titleName, setTitleName,
+        fullName, setFullName, phone, setPhone, note, setNote, nationalId, setNationalId,
+        birthDate, setBirthDate, emergencyName, setEmergencyName, emergencyPhone, setEmergencyPhone,
+        allergies, setAllergies, medicalConditions, setMedicalConditions, consentInsurance, setConsentInsurance,
+        isSubmitting, isDownloading, message, handleLogout, handleSeatClick, handleBookingSubmit,
+        handleCancelBooking, handleDownloadSpecificTicket, setLineUser, setMobileTab, setTripSearch,
+        setCompletedTripSearch, setSelectedTrip, setSelectedVan, setSelectedSeat, setUserBooking,
+        setMessage, fetchAllUserBookings, setIsRequestingTransfer, setShowProfileModal,
+        setShowBookingHistoryModal, setShowHelpCenterModal, setShowLoginModal, showLoginModal,
+        handleDownloadTicket, DEFAULT_PROFILE_IMAGE
+      }} />
+      {lineUser && userBooking && false && <main className="max-w-3xl mx-auto px-4 sm:px-6 2xl:px-8 py-6 w-full flex-grow flex flex-col gap-6 pb-24 2xl:pb-10">
         
         {/* Back Navigation — show on step 2+ */}
         {currentStep > 1 && !userBooking && (
+          <BookingBackNavigation
+            currentStep={currentStep}
+            tripName={selectedTrip?.name}
+            vanNumber={selectedVan?.vanNumber}
+            seatLabel={selectedSeat?.label}
+            onBack={() => {
+              if (currentStep === 2) { setSelectedTrip(null); setSelectedVan(null); setSelectedSeat(null); }
+              if (currentStep === 3) { setSelectedVan(null); setSelectedSeat(null); }
+              if (currentStep === 4) { setSelectedSeat(null); }
+            }}
+          />
+        )}
+        {selectedTrip !== null && selectedVan !== null && selectedSeat !== null && false && currentStep > 1 && !userBooking && (
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
@@ -1368,8 +1456,8 @@ function CustomerPageContent() {
             <div className="flex flex-col items-center py-6 bg-slate-50 rounded-2xl border border-slate-100/50">
               <div className="w-20 h-20 bg-slate-200 rounded-full overflow-hidden border-4 border-white shadow-md relative">
                 <img
-                  src={lineUser.pictureUrl}
-                  alt={lineUser.displayName}
+                  src={lineUser?.pictureUrl}
+                  alt={lineUser?.displayName}
                   className="w-full h-full object-cover"
                   loading="lazy"
                   decoding="async"
@@ -1381,7 +1469,7 @@ function CustomerPageContent() {
                 />
               </div>
               <h3 className="text-sm font-extrabold text-slate-800 mt-3">
-                {fullName || lineUser.displayName}
+                {fullName || lineUser?.displayName}
               </h3>
               <p className="text-[11px] text-slate-400 font-semibold mt-1 font-mono">
                 {phone || 'ยังไม่ได้ระบุเบอร์โทรศัพท์'}
@@ -1880,7 +1968,7 @@ function CustomerPageContent() {
                         {(() => {
                           const seat = selectedVan.seats.find((s) => s.row === 1 && s.col === 1);
                           if (!seat) return <div className="w-[58px] h-[64px]" />;
-                          return renderVanSeat(seat);
+                          return <BookingSeat key={seat.id} seat={seat} fitCell={seat.row === 4 && !!selectedVan?.seats.some(s => s.row === 4 && s.col === 1.5)} selected={selectedSeat?.id === seat.id} onClick={() => handleSeatClick(seat)} />;
                         })()}
 
                         {/* Walkway label (middle / col 2) -> empty now */}
@@ -1914,7 +2002,7 @@ function CustomerPageContent() {
                         {[1, 2, 3].map((colVal) => {
                           const seat = selectedVan.seats.find((s) => s.row === 2 && s.col === colVal);
                           if (!seat) return <div key={colVal} className="w-[58px] h-[64px]" />;
-                          return renderVanSeat(seat);
+                          return <BookingSeat key={seat.id} seat={seat} fitCell={seat.row === 4 && !!selectedVan?.seats.some(s => s.row === 4 && s.col === 1.5)} selected={selectedSeat?.id === seat.id} onClick={() => handleSeatClick(seat)} />;
                         })}
                       </div>
 
@@ -1923,7 +2011,7 @@ function CustomerPageContent() {
                         {[1, 2, 3].map((colVal) => {
                           const seat = selectedVan.seats.find((s) => s.row === 3 && s.col === colVal);
                           if (!seat) return <div key={colVal} className="w-[58px] h-[64px]" />;
-                          return renderVanSeat(seat);
+                          return <BookingSeat key={seat.id} seat={seat} fitCell={seat.row === 4 && !!selectedVan?.seats.some(s => s.row === 4 && s.col === 1.5)} selected={selectedSeat?.id === seat.id} onClick={() => handleSeatClick(seat)} />;
                         })}
                       </div>
 
@@ -1932,7 +2020,7 @@ function CustomerPageContent() {
                         {(selectedVan.seats.some(s => s.row === 4 && s.col === 1.5) ? [1, 1.5, 2, 3] : [1, 2, 3]).map((colVal) => {
                           const seat = selectedVan.seats.find((s) => s.row === 4 && s.col === colVal);
                           if (!seat) return <div key={colVal} className="w-[58px] h-[64px]" />;
-                          return renderVanSeat(seat);
+                          return <BookingSeat key={seat.id} seat={seat} fitCell={seat.row === 4 && !!selectedVan?.seats.some(s => s.row === 4 && s.col === 1.5)} selected={selectedSeat?.id === seat.id} onClick={() => handleSeatClick(seat)} />;
                         })}
                       </div>
 
@@ -1994,7 +2082,7 @@ function CustomerPageContent() {
                 <span>บัตรโดยสารการจอง</span>
               </h2>
 
-                            <DigitalTicket ref={ticketRef} booking={userBooking as any} htmlId="main-ticket" />
+                            <DigitalTicket ticketRef={ticketRef as React.RefObject<HTMLDivElement>} booking={userBooking as any} htmlId="main-ticket" />
               {/* Pending Transfer Banner */}
               {(userBooking as any).pendingTransfer && (
                 <div className="bg-amber-50 border border-amber-300 rounded-xl p-3 flex items-start gap-2.5 animate-in fade-in duration-300">
@@ -2036,7 +2124,7 @@ function CustomerPageContent() {
                   )}
                 </button>
                 <div className="flex gap-2">
-                  {userBooking.status === 'cancel_pending' ? (
+                  {userBooking?.status === 'cancel_pending' ? (
                     <div className="flex-1 py-2 rounded-xl bg-rose-50 text-rose-600 text-[11px] font-bold border border-rose-200 flex items-center justify-center gap-1.5 cursor-not-allowed opacity-80">
                       <Clock className="w-3.5 h-3.5" />
                       <span>รอแอดมินอนุมัติการยกเลิก</span>
@@ -2044,18 +2132,18 @@ function CustomerPageContent() {
                   ) : (
                     <>
                       <button
-                        onClick={() => handleCancelBooking(userBooking.id)}
+                        onClick={() => handleCancelBooking(userBooking?.id)}
                         className="flex-1 py-2 rounded-xl border border-rose-200 hover:bg-rose-50 text-rose-600 text-[11px] font-bold transition duration-200"
                       >
                         ยกเลิกการจอง
                       </button>
-                      {userBooking.status === 'approved' && !(userBooking as any).pendingTransfer && (
+                      {userBooking?.status === 'approved' && !(userBooking as any).pendingTransfer && (
                         <button
                           onClick={() => {
                             setIsRequestingTransfer(true);
                             setSelectedSeat(null);
                             if (vans.length > 0) {
-                              const currentVan = vans.find(v => v.vanNumber === userBooking.vanNumber);
+                              const currentVan = vans.find(v => v.vanNumber === userBooking?.vanNumber);
                               if (currentVan) setSelectedVan(currentVan);
                             }
                             setMessage({
@@ -2113,7 +2201,7 @@ function CustomerPageContent() {
               <div className="flex items-center gap-2 mb-4 bg-amber-50 border border-amber-100 rounded-xl p-3">
                 <div className="text-center">
                   <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">ที่นั่งปัจจุบัน</p>
-                  <span className="text-lg font-black text-brand-700 font-mono">{userBooking.seatLabel}</span>
+                  <span className="text-lg font-black text-brand-700 font-mono">{userBooking?.seatLabel}</span>
                 </div>
                 <div className="flex-1 flex items-center justify-center">
                   <ChevronRight className="w-5 h-5 text-amber-400" />
@@ -2313,11 +2401,23 @@ function CustomerPageContent() {
 
 
         </section>
-      </main>
-      )}
+      </main>}
+      </> )}
 
-      {/* Simulated LINE Login Modal */}
-      {showLoginModal && (
+      <LoginModal
+        open={showLoginModal}
+        users={MOCK_LINE_USERS}
+        customName={customLineName}
+        customPicture={customLinePic}
+        onSelectUser={handleLogin}
+        onCustomNameChange={setCustomLineName}
+        onCustomPictureChange={setCustomLinePic}
+        onCustomSubmit={handleCustomLogin}
+        onClose={() => setShowLoginModal(false)}
+      />
+
+      {/* Legacy login modal fallback */}
+      {false && showLoginModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white border border-slate-200 rounded-3xl max-w-md w-full p-6 relative overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 text-slate-800">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-line" />
@@ -2430,7 +2530,8 @@ function CustomerPageContent() {
       )}
 
       {/* Booking History Modal */}
-      {showBookingHistoryModal && (
+      <BookingHistoryModal open={showBookingHistoryModal} bookings={allUserBookings} onClose={() => setShowBookingHistoryModal(false)} />
+      {false && showBookingHistoryModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white border border-slate-200 rounded-3xl max-w-md w-full p-6 relative overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 text-slate-800">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-brand-700" />
@@ -2499,7 +2600,8 @@ function CustomerPageContent() {
       )}
 
       {/* Help Center & Contact Modal */}
-      {showHelpCenterModal && (
+      <HelpCenterModal open={showHelpCenterModal} messengerUrl={MESSENGER_URL} onClose={() => setShowHelpCenterModal(false)} />
+      {false && showHelpCenterModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white border border-slate-200 rounded-3xl max-w-md w-full p-6 relative overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 text-slate-800">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-brand-700" />
@@ -2560,6 +2662,13 @@ function CustomerPageContent() {
 
       {/* Phone and tablet bottom navigation (below 1536px) */}
       {lineUser && hasProfile && !showProfileModal && (
+        <MobileNavigation
+          activeTab={mobileTab}
+          hasBooking={!!userBooking}
+          onTabChange={setMobileTab}
+        />
+      )}
+      {false && lineUser && hasProfile && !showProfileModal && (
         <div className="2xl:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 py-2 px-2 grid grid-cols-4 items-center shadow-lg">
           {/* Tab 1: ทริปที่เปิดอยู่ */}
           <button
@@ -2613,6 +2722,8 @@ function CustomerPageContent() {
       )}
 
       {/* Modern Footer matching clean light style */}
+      <CustomerFooter />
+      {false && (
       <footer className="theme-deep border-t border-slate-200 bg-white py-6 mt-auto">
         <div className="max-w-7xl mx-auto px-4 text-center text-[10px] sm:text-xs text-purple-200 font-bold space-y-1">
           <p>© {new Date().getFullYear()} ด่าไป เดินไป. All rights reserved.</p>
@@ -2622,6 +2733,7 @@ function CustomerPageContent() {
           </div>
         </div>
       </footer>
+      )}
     </div>
   );
 
@@ -2684,7 +2796,7 @@ function CustomerPageContent() {
 
 export default function CustomerPage() {
   return (
-    <React.Suspense fallback={<div className="min-h-screen bg-canvas flex items-center justify-center">Loading...</div>}>
+    <React.Suspense fallback={<BrandLoadingScreenComponent />}>
       <CustomerPageContent />
     </React.Suspense>
   );
