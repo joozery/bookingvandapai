@@ -102,14 +102,14 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
           price: Number(t.cost || 0).toLocaleString('th-TH'),
           availableSeats: Number(t.availableSeats ?? 0),
           seatsText: Number(t.availableSeats ?? 0) > 0 ? `ว่าง ${t.availableSeats} ที่` : 'เต็ม',
-          img: t.image || "/logo/scenic_van_trip.png",
+          img: t.image || "/logo/scenic_van_trip.webp",
 
         };
       })
     : [];
 
   return (
-    <div className="flex-1 w-full bg-canvas text-slate-800 flex flex-col font-sans" style={{
+    <div className="mobile-performance-root flex-1 w-full bg-canvas text-slate-800 flex flex-col font-sans" style={{
       '--homepage-banner': settings.banner_image && validShareImage(settings.banner_image) ? `url(${JSON.stringify(settings.banner_image)})` : undefined,
       '--homepage-background': settings.background_image && validShareImage(settings.background_image) ? `url(${JSON.stringify(settings.background_image)})` : undefined,
     } as React.CSSProperties}>
@@ -120,7 +120,7 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
           {/* Logo & Brand */}
           <div className="flex items-center gap-3">
             <div className="shrink-0 flex items-center justify-center">
-              <img src={settings.logo_image || "/logo/logov2.png"} alt="DAPAIDERNPAI Logo" className="w-12 h-12 sm:w-16 sm:h-16 object-contain hover:scale-105 transition-transform duration-300 drop-shadow-sm" />
+              <img src={settings.logo_image || "/logo/logov2.webp"} alt="DAPAIDERNPAI Logo" className="w-12 h-12 sm:w-16 sm:h-16 object-contain hover:scale-105 transition-transform duration-300 drop-shadow-sm" width="64" height="64" />
             </div>
             <div>
               <span className="text-brand-700 font-black text-xs sm:text-xl tracking-tight leading-none block truncate">ด่าไป เดินไป</span>
@@ -288,10 +288,12 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
                   <div className="relative overflow-hidden bg-slate-50 shrink-0">
                     <div aria-hidden="true" className="h-28 sm:h-[clamp(112px,14vh,160px)]" />
                     <div aria-hidden="true" style={{ height: imageExtraHeights[dest.id] || 0 }} />
-                    <img 
+                     <img
                       src={dest.img} 
                       alt={dest.title} 
                       className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                       loading="lazy"
+                       decoding="async"
                     />
                     
                     {/* Floating Status Pill on top-left of the image */}
@@ -432,7 +434,7 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
 
         </div>
       </section>
-      {completed && <TripCalendar trips={trips} />}
+      {completed && <div className="mobile-performance-section"><TripCalendar trips={trips} /></div>}
       </React.Fragment>
         );
       })}
@@ -453,7 +455,7 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
           <div className="space-y-4 col-span-1 md:col-span-2">
             <div className="flex items-center gap-3">
               <div className="shrink-0 flex items-center justify-center">
-                <img src={settings.logo_image || "/logo/logov2.png"} alt="DAPAIDERNPAI Logo" className="w-12 h-12 object-contain" />
+                <img src={settings.logo_image || "/logo/logov2.webp"} alt="DAPAIDERNPAI Logo" className="w-12 h-12 object-contain" width="48" height="48" loading="lazy" decoding="async" />
               </div>
               <div>
                 <span className="text-white font-extrabold text-base sm:text-lg block">ด่าไป เดินไป</span>

@@ -37,8 +37,8 @@ const baseMetadata: Metadata = {
     },
   },
   icons: {
-    icon: "/logo/logo.jpg",
-    apple: "/logo/logo.jpg",
+    icon: "/logo/logo-jpg.webp",
+    apple: "/logo/logo-jpg.webp",
   },
 };
 
@@ -67,7 +67,7 @@ export default function RootLayout({
               name: "ด่าไป เดินไป",
               description: "บริการจองรถตู้ท่องเที่ยว สายแคมป์ปิ้ง เดินป่า ขึ้นดอย ธรรมชาติ",
               url: "https://dapaidernpai.com",
-              logo: "https://dapaidernpai.com/logo/logo.jpg",
+              logo: "https://dapaidernpai.com/logo/logo-jpg.webp",
               contactPoint: {
                 "@type": "ContactPoint",
                 contactType: "customer service",

@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/browserSupabase';
+import { convertImageToWebp } from '@/lib/imageToWebp';
 
 export interface AdminUser {
   id: string;
@@ -118,13 +119,13 @@ export default function AdminsTab() {
       let finalAvatarUrl = formUsername ? null : avatarPreview; // For edit, default to old url. Wait, avatarPreview might be a blob if not handled correctly. But if avatarFile is null, avatarPreview is the old string URL.
 
       if (avatarFile) {
-        const fileExt = avatarFile.name.split('.').pop();
-        const fileName = `admin-${Date.now()}.${fileExt}`;
+        const webpFile = await convertImageToWebp(avatarFile);
+        const fileName = `admin-${Date.now()}.webp`;
         const filePath = `avatars/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
           .from('images')
-          .upload(filePath, avatarFile);
+          .upload(filePath, webpFile, { contentType: 'image/webp' });
 
         if (uploadError) {
           return alert('อัปโหลดรูปภาพไม่สำเร็จ: ' + uploadError.message);

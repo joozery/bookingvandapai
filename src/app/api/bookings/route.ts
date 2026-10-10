@@ -19,8 +19,11 @@ export async function GET(request: Request) {
     const { data: bookings, error } = await query;
     if (error) throw error;
 
-    // Fetch profiles to merge
-    const { data: profiles } = await supabase.from('profiles').select('*');
+    // Only load the relevant profile for customer requests. Admin requests
+    // without a lineUserId still receive the complete profile merge as before.
+    let profilesQuery = supabase.from('profiles').select('*');
+    if (lineUserId) profilesQuery = profilesQuery.eq('lineUserId', lineUserId);
+    const { data: profiles } = await profilesQuery;
     const profileMap = new Map();
     if (profiles) {
       profiles.forEach((p: any) => {
@@ -30,10 +33,25 @@ export async function GET(request: Request) {
       });
     }
 
+    // Enrich all returned bookings in one query so the client does not need
+    // one additional /api/bookings/:id request per booking.
+    const tripIds = [...new Set((bookings || []).map((booking: any) => booking.tripId).filter(Boolean))];
+    const { data: trips } = tripIds.length > 0
+      ? await supabase.from('trips').select('id, name, departureDate, departureTime, durationDays, cost, pickupPoint').in('id', tripIds)
+      : { data: [] };
+    const tripMap = new Map<string, any>((trips || []).map((trip: any) => [trip.id, trip] as [string, any]));
+
     const merged = (bookings || []).map((booking: any) => {
       const profile = profileMap.get(booking.lineUserId);
+      const trip = tripMap.get(booking.tripId);
       return {
         ...booking,
+        tripName: trip?.name || 'ทริปเดินทาง',
+        departureDate: trip?.departureDate || null,
+        departureTime: trip?.departureTime || null,
+        durationDays: trip?.durationDays || 0,
+        cost: trip?.cost || 0,
+        pickupPoint: trip?.pickupPoint || '',
         fullName: profile?.fullName || booking.fullName,
         nationalId: booking.nationalId || profile?.nationalId || null,
         birthDate: booking.birthDate || profile?.birthDate || null,

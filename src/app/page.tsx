@@ -7,7 +7,6 @@ import Link from 'next/link';
 import { QRCodeSVG } from 'qrcode.react';
 import DigitalTicket from '@/components/DigitalTicket';
 import { supabase } from '@/lib/browserSupabase';
-import { toPng } from 'html-to-image';
 import { cn } from '@/lib/utils';
 import { formatThaiDate } from '@/lib/dateFormat';
 import {
@@ -118,6 +117,8 @@ const MOCK_LINE_USERS = [
     pictureUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
   }
 ];
+
+const DEFAULT_PROFILE_IMAGE = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80';
 
 function CustomerPageContent() {
   const { data: session, status: sessionStatus } = useSession();
@@ -587,20 +588,8 @@ function CustomerPageContent() {
       const res = await fetch(`/api/bookings?lineUserId=${lineUser.userId}`);
       const data = await res.json();
       if (data.success) {
-        // Fetch full details for each booking to get tripName, cost, etc.
-        const fullBookings = await Promise.all(
-          data.bookings.map(async (b: any) => {
-            try {
-              const ticketRes = await fetch(`/api/bookings/${b.id}`);
-              const ticketData = await ticketRes.json();
-              return ticketData.success ? ticketData.booking : b;
-            } catch (e) {
-              return b;
-            }
-          })
-        );
-        fullBookings.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        setAllUserBookings(fullBookings);
+        const bookings = [...(data.bookings || [])].sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setAllUserBookings(bookings);
       }
     } catch (err) {
       console.error(err);
@@ -769,6 +758,7 @@ function CustomerPageContent() {
     
     setIsDownloading(true);
     try {
+      const { toPng } = await import('html-to-image');
       const dataUrl = await toPng(ticketRef.current, {
         cacheBust: true,
         backgroundColor: '#ffffff',
@@ -819,6 +809,7 @@ function CustomerPageContent() {
     
     setDownloadingTicketId(ticketId);
     try {
+      const { toPng } = await import('html-to-image');
       const dataUrl = await toPng(ele, {
         cacheBust: true,
         backgroundColor: '#ffffff',
@@ -923,7 +914,7 @@ function CustomerPageContent() {
 
               {/* Logo Image with Intense Brightness & Glow */}
               <img
-                src={(settings as any).logo_image || "/logo/logov2.png"}
+                src={(settings as any).logo_image || "/logo/logov2.webp"}
                 alt="DAPAIDERNPAI Logo"
                 className="w-24 h-24 sm:w-28 sm:h-28 object-contain relative z-10 filter brightness-125 drop-shadow-[0_0_35px_rgba(236,72,153,0.9)]"
               />
@@ -1020,7 +1011,7 @@ function CustomerPageContent() {
           <div className="flex items-center space-x-3 sm:space-x-4 min-w-0">
             {/* Real Brand Logo */}
             <div className="shrink-0 flex items-center justify-center">
-              <img src={(settings as any).logo_image || "/logo/logov2.png"} alt="DAPAIDERNPAI Logo" className="w-14 h-14 sm:w-16 sm:h-16 object-contain drop-shadow-sm" />
+              <img src={(settings as any).logo_image || "/logo/logov2.webp"} alt="DAPAIDERNPAI Logo" className="w-14 h-14 sm:w-16 sm:h-16 object-contain drop-shadow-sm" />
             </div>
             <div className="flex-1 min-w-0 flex items-center">
               <h1 className="text-base sm:text-2xl font-extrabold text-slate-800 tracking-tight leading-tight truncate">
@@ -1043,7 +1034,16 @@ function CustomerPageContent() {
             {lineUser && (
               <div className="relative group flex items-center">
                 <button className="flex items-center bg-white border border-slate-200 rounded-full py-1 px-1 pr-4 shadow-sm hover:border-brand-700 hover:ring-2 hover:ring-purple-100 transition-all focus:outline-none">
-                  <img src={lineUser.pictureUrl} alt={lineUser.displayName} className="w-7 h-7 rounded-full border border-slate-100 object-cover mr-2" />
+                  <img
+                    src={lineUser.pictureUrl}
+                    alt={lineUser.displayName}
+                    className="w-7 h-7 rounded-full border border-slate-100 object-cover mr-2"
+                    onError={(event) => {
+                      event.currentTarget.onerror = null;
+                      event.currentTarget.src = DEFAULT_PROFILE_IMAGE;
+                      setLineUser(previous => previous ? { ...previous, pictureUrl: DEFAULT_PROFILE_IMAGE } : previous);
+                    }}
+                  />
                   <span className="font-bold text-slate-700 text-[11px] mr-2 truncate max-w-[100px]">{lineUser.displayName}</span>
                   <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-brand-700 transition-colors" />
                 </button>
@@ -1371,6 +1371,13 @@ function CustomerPageContent() {
                   src={lineUser.pictureUrl}
                   alt={lineUser.displayName}
                   className="w-full h-full object-cover"
+                  loading="lazy"
+                  decoding="async"
+                  onError={(event) => {
+                    event.currentTarget.onerror = null;
+                    event.currentTarget.src = DEFAULT_PROFILE_IMAGE;
+                    setLineUser(previous => previous ? { ...previous, pictureUrl: DEFAULT_PROFILE_IMAGE } : previous);
+                  }}
                 />
               </div>
               <h3 className="text-sm font-extrabold text-slate-800 mt-3">

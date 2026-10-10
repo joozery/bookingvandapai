@@ -77,9 +77,11 @@ export default function TeamCardsSection({ cards }: TeamCardsSectionProps) {
               <div className="relative shrink-0 z-10">
                 <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-2xl sm:rounded-3xl overflow-hidden border-2 border-cyan-400/90 shadow-[0_0_22px_rgba(6,182,212,0.8)] group-hover/card:scale-105 transition duration-500 bg-slate-950 flex items-center justify-center">
                   <img
-                    src={card.image || '/logo/logov2.png'}
+                    src={card.image || '/logo/logov2.webp'}
                     alt={card.name}
                     className="w-full h-full object-cover"
+                    loading="lazy"
+                    decoding="async"
                   />
                 </div>
               </div>

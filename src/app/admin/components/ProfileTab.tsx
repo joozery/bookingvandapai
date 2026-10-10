@@ -4,6 +4,7 @@ import React, { useState, useRef } from 'react';
 import { User, Save, Upload, Key, RefreshCw, LogOut } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
 import { supabase } from '@/lib/browserSupabase';
+import { convertImageToWebp } from '@/lib/imageToWebp';
 
 export default function ProfileTab() {
   const { data: session, update } = useSession();
@@ -26,12 +27,12 @@ export default function ProfileTab() {
 
     setUploading(true);
     try {
-      const ext = file.name.split('.').pop();
-      const fileName = `avatar-${Date.now()}.${ext}`;
+      const webpFile = await convertImageToWebp(file);
+      const fileName = `avatar-${Date.now()}.webp`;
       
       const { data, error } = await supabase.storage
         .from('images')
-        .upload(`avatars/${fileName}`, file);
+        .upload(`avatars/${fileName}`, webpFile, { contentType: 'image/webp' });
 
       if (error) throw error;
 

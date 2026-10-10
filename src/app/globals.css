@@ -52,6 +52,15 @@ body {
   font-family: var(--font-sans);
 }
 
+/* Defer expensive below-the-fold layout on small screens without changing
+   buttons, borders, emoji, or other visual animations. */
+@media (max-width: 767px) {
+  .mobile-performance-section {
+    content-visibility: auto;
+    contain-intrinsic-size: 500px;
+  }
+}
+
 /* Custom modern scrollbar */
 ::-webkit-scrollbar {
   width: 8px;

@@ -211,7 +211,7 @@ export default function BookingLeaderboard({ title }: { title: string }) {
   const effectiveMaxTrips = globalMaxTrips > 0 ? globalMaxTrips : (data?.rankings?.[0]?.tripCount || 1);
 
   return (
-    <section id="booking-leaderboard" aria-labelledby="leaderboard-title" className="border-b border-purple-100 bg-gradient-to-b from-purple-50/50 via-sky-50/30 to-purple-50/40 py-10 sm:py-14 scroll-mt-20 overflow-hidden relative">
+    <section id="booking-leaderboard" aria-labelledby="leaderboard-title" className="mobile-performance-section border-b border-purple-100 bg-gradient-to-b from-purple-50/50 via-sky-50/30 to-purple-50/40 py-10 sm:py-14 scroll-mt-20 overflow-hidden relative">
       
       {/* Background Decor Spotlights */}
       <div className="absolute -top-24 -left-24 w-96 h-96 bg-purple-300/20 rounded-full blur-3xl pointer-events-none" />

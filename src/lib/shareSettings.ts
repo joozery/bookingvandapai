@@ -1,7 +1,7 @@
 export const defaultShareSettings = {
   share_title: 'ระบบจองที่นั่งรถตู้ท่องเที่ยว - ด่าไป เดินไป',
   share_description: 'จองที่นั่งรถตู้ท่องเที่ยวสายแคมป์ปิ้ง เดินป่า ธรรมชาติ แบบเรียลไทม์ผ่าน LINE',
-  share_image: '/logo/logo.jpg',
+  share_image: '/logo/logo-jpg.webp',
 };
 
 export function validShareImage(value: string) {

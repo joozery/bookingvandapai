@@ -144,7 +144,7 @@
    Reuse the site's original scenic artwork; trip photographs stay unchanged. */
 .theme-hero {
   background-color: #e8dcff;
-  background-image: linear-gradient(90deg, #f5eaff 0%, rgb(243 233 255 / 94%) 30%, rgb(230 213 255 / 30%) 65%, rgb(135 91 203 / 12%)), var(--homepage-banner, url('/logo/scenic_van_trip.png'));
+  background-image: linear-gradient(90deg, #f5eaff 0%, rgb(243 233 255 / 94%) 30%, rgb(230 213 255 / 30%) 65%, rgb(135 91 203 / 12%)), var(--homepage-banner, url('/logo/scenic_van_trip.webp'));
   background-size: cover;
   background-position: center, right 45%;
 }
@@ -156,7 +156,7 @@
 }
 @media (max-width: 639px) {
   .theme-hero {
-    background-image: linear-gradient(180deg, rgb(246 235 255 / 97%) 0%, rgb(243 232 255 / 94%) 55%, rgb(232 211 255 / 70%) 100%), var(--homepage-banner, url('/logo/scenic_van_trip.png'));
+    background-image: linear-gradient(180deg, rgb(246 235 255 / 97%) 0%, rgb(243 232 255 / 94%) 55%, rgb(232 211 255 / 70%) 100%), var(--homepage-banner, url('/logo/scenic_van_trip.webp'));
     background-position: center, 65% center;
   }
 }

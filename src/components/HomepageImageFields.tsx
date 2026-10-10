@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { supabase } from '@/lib/browserSupabase';
+import { convertImageToWebp } from '@/lib/imageToWebp';
 import { Upload, Image as ImageIcon, RotateCcw, Link2 } from 'lucide-react';
 
 type Images = { logo_image?: string; banner_image?: string; background_image?: string };
@@ -21,17 +22,15 @@ function ImageField({ field, title, description, value, defaultValue, onChange }
   async function upload(file?: File) {
     if (!file) return;
     setError('');
-    const extensions: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
-    if (!extensions[file.type] || file.size > 5 * 1024 * 1024) {
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) {
       setError('เลือกรูป JPG, PNG หรือ WebP ขนาดไม่เกิน 5 MB');
       return;
     }
     setUploading(true);
     try {
-      const bitmap = await createImageBitmap(file);
-      bitmap.close();
-      const path = `homepage/${field}/${crypto.randomUUID()}.${extensions[file.type]}`;
-      const { error: uploadError } = await supabase.storage.from('images').upload(path, file, { contentType: file.type });
+      const webpFile = await convertImageToWebp(file);
+      const path = `homepage/${field}/${crypto.randomUUID()}.webp`;
+      const { error: uploadError } = await supabase.storage.from('images').upload(path, webpFile, { contentType: 'image/webp' });
       if (uploadError) throw uploadError;
       const { data } = supabase.storage.from('images').getPublicUrl(path);
       onChange({ [field]: data.publicUrl });
@@ -137,7 +136,7 @@ export default function HomepageImageFields({ value, onChange }: {
           title="รูปโลโก้เว็บไซต์ (Logo)"
           description="แสดงใน Header, Footer และจุดสำคัญบนเว็บ"
           value={value.logo_image}
-          defaultValue="/logo/logov2.png"
+          defaultValue="/logo/logov2.webp"
           onChange={onChange}
         />
         <ImageField
@@ -145,7 +144,7 @@ export default function HomepageImageFields({ value, onChange }: {
           title="รูปแบนเนอร์ด้านบน (Banner)"
           description="แนะนำรูปแนวนอน 1920 × 640px"
           value={value.banner_image}
-          defaultValue="/logo/scenic_van_trip.png"
+          defaultValue="/logo/scenic_van_trip.webp"
           onChange={onChange}
         />
         <ImageField

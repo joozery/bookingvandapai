@@ -4,6 +4,7 @@ import React, { useState, useCallback } from 'react';
 import ReviewCopyFields from '@/components/ReviewCopyFields';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from '@/lib/cropImage';
+import { convertImageToWebp } from '@/lib/imageToWebp';
 import { Compass, Plus, FileText, Trash2, Calendar, Clock, MapPin, Info, Link2, Check, ArrowLeft, Image as ImageIcon, Pencil, Search, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -112,7 +113,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onUpdateVan,
     try {
       if (!originalImage || !croppedAreaPixels) return;
       const croppedImageBlob = await getCroppedImg(originalImage, croppedAreaPixels);
-      const croppedFile = new File([croppedImageBlob], originalFileName || 'cover.jpg', { type: 'image/jpeg' });
+      const croppedFile = await convertImageToWebp(new File([croppedImageBlob], originalFileName || 'cover.jpg', { type: 'image/jpeg' }));
       if (editingTrip) {
         setEditImageFile(croppedFile);
         setEditImagePreview(URL.createObjectURL(croppedFile));

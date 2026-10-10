@@ -13,6 +13,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useSession, signIn, signOut } from 'next-auth/react';
 
 import { supabase } from '@/lib/browserSupabase';
+import { convertImageToWebp } from '@/lib/imageToWebp';
 
 import BookingsTab from '../components/BookingsTab';
 import TripsTab from '../components/TripsTab';
@@ -271,14 +272,13 @@ export default function AdminPage() {
     try {
       if (form.imageFile) {
         setLoading(true);
-        const file = form.imageFile;
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+        const file = await convertImageToWebp(form.imageFile);
+        const fileName = `${Math.random().toString(36).substring(2, 15)}.webp`;
         const filePath = `trips/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
           .from('images')
-          .upload(filePath, file);
+          .upload(filePath, file, { contentType: 'image/webp' });
 
         if (uploadError) throw uploadError;
 
@@ -300,14 +300,13 @@ export default function AdminPage() {
     try {
       let image = form.image;
       if (form.imageFile) {
-        const file = form.imageFile;
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+        const file = await convertImageToWebp(form.imageFile);
+        const fileName = `${Math.random().toString(36).substring(2, 15)}.webp`;
         const filePath = `trips/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
           .from('images')
-          .upload(filePath, file);
+          .upload(filePath, file, { contentType: 'image/webp' });
 
         if (uploadError) throw uploadError;
 
@@ -354,7 +353,7 @@ export default function AdminPage() {
       {/* Logo Section */}
       <div className="h-16 flex items-center gap-3 px-4 border-b border-slate-100 shrink-0 bg-white">
         <div className="w-9 h-9 flex items-center justify-center shrink-0 relative transition-transform duration-300 hover:scale-105">
-          <img src={(settings as any)?.logo_image || "/logo/logov2.png"} alt="DAPAIDERNPAI Logo" className="w-full h-full object-contain" />
+          <img src={(settings as any)?.logo_image || "/logo/logov2.webp"} alt="DAPAIDERNPAI Logo" className="w-full h-full object-contain" />
         </div>
         {sidebarOpen && (
           <div className="min-w-0 flex flex-col">

@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { TeamCard, defaultTeamCards } from '@/lib/homepageSettings';
 import { supabase } from '@/lib/browserSupabase';
+import { convertImageToWebp } from '@/lib/imageToWebp';
 import { Users, Plus, Edit2, Trash2, Upload, Quote, Check, X } from 'lucide-react';
 
 interface TeamCardsManagerProps {
@@ -29,7 +30,7 @@ export default function TeamCardsManager({ cards = defaultTeamCards, onChange }:
     setEditingCardId(null);
     setFormName('');
     setFormRole('');
-    setFormImage('/logo/logov2.png');
+    setFormImage('/logo/logov2.webp');
     setFormMotto('');
     setIsEditing(true);
   };
@@ -38,7 +39,7 @@ export default function TeamCardsManager({ cards = defaultTeamCards, onChange }:
     setEditingCardId(card.id);
     setFormName(card.name);
     setFormRole(card.role || '');
-    setFormImage(card.image || '/logo/logov2.png');
+    setFormImage(card.image || '/logo/logov2.webp');
     setFormMotto(card.motto || '');
     setIsEditing(true);
   };
@@ -50,7 +51,7 @@ export default function TeamCardsManager({ cards = defaultTeamCards, onChange }:
     if (editingCardId) {
       const updated = currentCards.map(c => 
         c.id === editingCardId
-          ? { ...c, name: formName.trim(), role: formRole.trim(), image: formImage.trim() || '/logo/logov2.png', motto: formMotto.trim() }
+          ? { ...c, name: formName.trim(), role: formRole.trim(), image: formImage.trim() || '/logo/logov2.webp', motto: formMotto.trim() }
           : c
       );
       onChange(updated);
@@ -59,7 +60,7 @@ export default function TeamCardsManager({ cards = defaultTeamCards, onChange }:
         id: `card-${Date.now()}`,
         name: formName.trim(),
         role: formRole.trim(),
-        image: formImage.trim() || '/logo/logov2.png',
+        image: formImage.trim() || '/logo/logov2.webp',
         motto: formMotto.trim(),
       };
       onChange([...currentCards, newCard]);
@@ -78,15 +79,15 @@ export default function TeamCardsManager({ cards = defaultTeamCards, onChange }:
   async function handleFileUpload(file?: File) {
     if (!file) return;
     setUploadError('');
-    const extensions: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
-    if (!extensions[file.type] || file.size > 5 * 1024 * 1024) {
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) {
       setUploadError('เลือกรูป JPG, PNG หรือ WebP ขนาดไม่เกิน 5 MB');
       return;
     }
     setUploading(true);
     try {
-      const path = `team/${crypto.randomUUID()}.${extensions[file.type]}`;
-      const { error: uploadError } = await supabase.storage.from('images').upload(path, file, { contentType: file.type });
+      const webpFile = await convertImageToWebp(file);
+      const path = `team/${crypto.randomUUID()}.webp`;
+      const { error: uploadError } = await supabase.storage.from('images').upload(path, webpFile, { contentType: 'image/webp' });
       if (uploadError) throw uploadError;
       const { data } = supabase.storage.from('images').getPublicUrl(path);
       setFormImage(data.publicUrl);
@@ -226,7 +227,7 @@ export default function TeamCardsManager({ cards = defaultTeamCards, onChange }:
             className="p-3.5 bg-white border border-slate-200 rounded-xl shadow-sm flex items-start gap-3 relative group hover:border-violet-300 transition"
           >
             <img
-              src={card.image || '/logo/logov2.png'}
+              src={card.image || '/logo/logov2.webp'}
               alt={card.name}
               className="w-12 h-12 rounded-full object-cover border border-violet-200 shrink-0 bg-slate-50"
             />
