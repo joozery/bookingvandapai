@@ -434,6 +434,8 @@ export default function BookingWorkspace(props: Record<string, any>) {
                 <div className="flex flex-col gap-3">
                   {vans.map((van) => {
                     const isVanSelected = selectedVan?.id === van.id;
+                    const customerSeats = van.seats.filter((seat) => seat.type === 'customer');
+                    const availableSeats = customerSeats.filter((seat) => seat.status === 'available').length;
                     return (
                       <button
                         key={van.id}
@@ -463,8 +465,8 @@ export default function BookingWorkspace(props: Record<string, any>) {
                           <p className="text-[10px] text-slate-500 font-semibold mt-1">
                             คนขับ: {van.driverName}
                           </p>
-                          <span className="text-[9px] text-brand-700 font-bold bg-purple-50 px-1.5 py-0.5 rounded mt-1 inline-block">
-                            11 ที่นั่ง
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded mt-1 inline-block ${availableSeats > 0 ? 'text-emerald-700 bg-emerald-50' : 'text-red-700 bg-red-50'}`}>
+                            {availableSeats > 0 ? `ว่าง ${availableSeats} ที่นั่ง` : 'เต็มแล้ว'}
                           </span>
                         </div>
 

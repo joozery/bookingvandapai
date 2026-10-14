@@ -232,6 +232,8 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
         const groupTrips = destinations.filter(dest => dest.completed === completed);
         if (!completed) {
           groupTrips.sort((a, b) => a.departureDay - b.departureDay || a.departureTime.localeCompare(b.departureTime));
+        } else {
+          groupTrips.sort((a, b) => b.departureDay - a.departureDay || b.departureTime.localeCompare(a.departureTime));
         }
         const scrollRef = completed ? completedTripsScrollRef : tripsScrollRef;
         return (
