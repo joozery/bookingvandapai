@@ -6,6 +6,8 @@ import { validShareImage } from '@/lib/shareSettings';
 
 const SETTINGS_FILE = 'settings/footer.json';
 const r2PublicUrl = process.env.R2_PUBLIC_URL?.replace(/\/$/, '');
+const SETTINGS_CACHE_TTL_MS = 15_000;
+let settingsCache: { settings: Record<string, unknown>; expiresAt: number } | null = null;
 
 function resolveStoredImage(value: unknown) {
   if (typeof value !== 'string' || !value || !r2PublicUrl || value.startsWith('data:') || /^https?:\/\//i.test(value)) return value;
@@ -43,9 +45,13 @@ const defaultSettings = {
 
 export async function GET() {
   const cacheHeaders = { 'Cache-Control': 'public, max-age=0, s-maxage=30, stale-while-revalidate=120' };
+  if (settingsCache && settingsCache.expiresAt > Date.now()) {
+    return NextResponse.json({ success: true, settings: settingsCache.settings }, { headers: cacheHeaders });
+  }
   try {
     const { data, error } = await supabase.storage.from('images').download(SETTINGS_FILE);
     if (error) {
+      settingsCache = { settings: defaultSettings, expiresAt: Date.now() + SETTINGS_CACHE_TTL_MS };
       return NextResponse.json({ success: true, settings: defaultSettings }, { headers: cacheHeaders });
     }
     const text = await data.text();
@@ -55,9 +61,12 @@ export async function GET() {
     if (!Array.isArray(merged.team_cards) || merged.team_cards.length === 0) {
       merged.team_cards = defaultHomepageSettings.team_cards;
     }
+    settingsCache = { settings: merged, expiresAt: Date.now() + SETTINGS_CACHE_TTL_MS };
     return NextResponse.json({ success: true, settings: merged }, { headers: cacheHeaders });
   } catch (err: any) {
-    return NextResponse.json({ success: true, settings: resolveImageFields({ ...defaultSettings }) }, { headers: cacheHeaders });
+    const fallback = resolveImageFields({ ...defaultSettings });
+    settingsCache = { settings: fallback, expiresAt: Date.now() + SETTINGS_CACHE_TTL_MS };
+    return NextResponse.json({ success: true, settings: fallback }, { headers: cacheHeaders });
   }
 }
 
@@ -89,6 +98,7 @@ export async function PUT(request: Request) {
       upsert: true
     });
     if (error) throw error;
+    settingsCache = null;
     return NextResponse.json({ success: true });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });

@@ -7,6 +7,18 @@ export interface LeaderboardBooking {
   lineUserProfilePic?: string;
 }
 
+function compareTripTimes(a: unknown, b: unknown) {
+  const toMillis = (value: unknown) => {
+    if (typeof value === 'number') return value;
+    const millis = Date.parse(String(value ?? ''));
+    return Number.isNaN(millis) ? null : millis;
+  };
+  const aMillis = toMillis(a);
+  const bMillis = toMillis(b);
+  if (aMillis !== null && bMillis !== null && aMillis !== bMillis) return aMillis - bMillis;
+  return String(a ?? '').localeCompare(String(b ?? ''));
+}
+
 export function leaderboardPeople(bookings: LeaderboardBooking[]) {
   const people = new Map<string, { nickname: string; pictureUrl: string; latest: string; trips: Set<string> }>();
   for (const booking of bookings) {
@@ -26,15 +38,21 @@ export function leaderboardPeople(bookings: LeaderboardBooking[]) {
     lineUserId,
     nickname: person.nickname || 'นักเดินทาง',
     pictureUrl: person.pictureUrl || '',
-    tripCount: person.trips.size
-  })).sort((a, b) => b.tripCount - a.tripCount || a.nickname.localeCompare(b.nickname, 'th'));
+    tripCount: person.trips.size,
+    latestTripAt: person.latest
+  })).sort((a, b) =>
+    b.tripCount - a.tripCount ||
+    compareTripTimes(a.latestTripAt, b.latestTripAt) ||
+    a.nickname.localeCompare(b.nickname, 'th')
+  );
 }
 
 export function bookingLeaderboard(bookings: LeaderboardBooking[], hiddenUsers = new Set<string>()) {
   const sorted = leaderboardPeople(bookings).filter(person => !hiddenUsers.has(person.lineUserId));
-  let rank = 0;
-  return sorted.map((person, index) => {
-    if (index === 0 || person.tripCount !== sorted[index - 1].tripCount) rank = index + 1;
-    return { rank, nickname: person.nickname, pictureUrl: person.pictureUrl, tripCount: person.tripCount };
-  });
+  return sorted.map((person, index) => ({
+    rank: index + 1,
+    nickname: person.nickname,
+    pictureUrl: person.pictureUrl,
+    tripCount: person.tripCount,
+  }));
 }

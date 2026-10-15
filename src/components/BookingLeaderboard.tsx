@@ -366,7 +366,7 @@ export default function BookingLeaderboard({ title }: { title: string }) {
                             ? 'bg-gradient-to-r from-rose-200 to-amber-200 text-rose-950 border border-rose-400 shadow-sm'
                             : 'bg-purple-50 text-purple-900 border border-purple-100'
                         }`}>
-                          {person.tripCount.toLocaleString('th-TH')}
+                          {person.tripCount.toLocaleString('th-TH')} ทริป
                         </div>
                       </div>
                     </div>

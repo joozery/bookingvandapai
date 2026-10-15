@@ -20,16 +20,29 @@ test('counts unique approved rounds per account, excluding pending and rejected 
   assert.equal(rows[1].tripCount, 1);
 });
 
-test('ties share ranks, distinct accounts with same nickname stay separate, newest nickname wins', () => {
+test('equal trip counts use the earliest latest trip and still get unique ranks', () => {
   const rows = bookingLeaderboard([
-    booking('A', '1', { nickname: 'Old' }), booking('A', '2', { nickname: 'New', createdAt: '2026-10-02' }),
-    booking('B', '1', { nickname: 'Same' }), booking('C', '1', { nickname: 'Same' }),
+    booking('A', '1', { nickname: 'Old', createdAt: '2026-10-15T17:00:00Z' }),
+    booking('A', '2', { nickname: 'New', createdAt: '2026-10-15T17:02:00Z' }),
+    booking('B', '1', { nickname: 'Same', createdAt: '2026-10-15T17:00:00Z' }),
+    booking('C', '1', { nickname: 'Same', createdAt: '2026-10-15T17:01:00Z' }),
   ]);
   assert.equal(rows[0].nickname, 'New');
   assert.equal(rows.length, 3);
   assert.equal(rows[1].rank, 2);
-  assert.equal(rows[2].rank, 2);
-  for (const row of rows) assert.equal(Object.keys(row).sort().join(','), 'nickname,rank,tripCount');
+  assert.equal(rows[2].rank, 3);
+  assert.equal(rows[1].nickname, 'Same');
+  assert.equal(rows[2].nickname, 'Same');
+  for (const row of rows) assert.equal(Object.keys(row).sort().join(','), 'nickname,pictureUrl,rank,tripCount');
+});
+
+test('supports numeric booking timestamps from stored data', () => {
+  const rows = bookingLeaderboard([
+    booking('A', '1', { createdAt: 1760547600000 }),
+    booking('B', '1', { createdAt: 1760547660000 }),
+  ]);
+  assert.equal(rows[0].nickname, 'A');
+  assert.equal(rows[1].nickname, 'B');
 });
 
 test('empty and invalid records produce no fabricated ranking', () => {
@@ -42,7 +55,7 @@ test('hidden users disappear and ranks/counts are recomputed; restoring preserve
   const hidden = bookingLeaderboard(bookings, new Set(['A']));
   assert.equal(hidden.length, 2);
   assert.equal(hidden[0].rank, 1);
-  assert.equal(hidden[1].rank, 1);
+  assert.equal(hidden[1].rank, 2);
   const restored = bookingLeaderboard(bookings);
   assert.equal(restored[0].nickname, 'A');
   assert.equal(restored[0].tripCount, 2);
