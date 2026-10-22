@@ -68,7 +68,7 @@ export async function POST(request: Request) {
     if (!body || typeof body.tripId !== 'string' || !Number.isInteger(body.rating) || body.rating < 1 || body.rating > 5 || typeof body.comment !== 'string' || body.comment.length > 2000) return fail('กรุณาให้คะแนน 1–5 ดาว และข้อความไม่เกิน 2,000 ตัวอักษร', 400);
     const eligible = await eligibility(body.tripId, user.id);
     if (eligible.error) return fail(eligible.error, eligible.status!);
-    const { data: review, error } = await supabase.from('trip_reviews').insert({ tripId: body.tripId, lineUserId: user.id, reviewerName: eligible.name, rating: body.rating, comment: body.comment.trim() }).select(fields).single();
+    const { data: review, error } = await supabase.from('trip_reviews').insert({ tripId: body.tripId, lineUserId: user.id, reviewerName: eligible.name, rating: body.rating, comment: body.comment.trim(), createdAt: new Date() }).select(fields).single();
     if (error?.code === '23505') return fail('คุณประเมินทริปนี้แล้ว ประเมินได้หนึ่งครั้งต่อทริป', 409);
     if (error) throw error;
     return NextResponse.json({ success: true, review }, { status: 201 });
