@@ -1,9 +1,11 @@
 
 import React, { forwardRef } from 'react';
-import { Calendar, ArrowRight, User, Phone, RefreshCw, Compass, Armchair, MapPin, Clock } from 'lucide-react';
+import Link from 'next/link';
+import { Calendar, ArrowRight, User, Phone, RefreshCw, Compass, Armchair, MapPin, Clock, CreditCard } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 
 import { coverBase64 } from '@/lib/coverBase64';
+import { ticketPaymentHref, type TicketPayment } from '@/lib/ticketPayment';
 
 export interface BookingData {
   id: string;
@@ -25,6 +27,7 @@ export interface BookingData {
   note?: string;
   status?: string;
   pendingTransfer?: any;
+  payment?: TicketPayment | null;
 }
 
 interface Props {
@@ -85,16 +88,23 @@ export const DigitalTicket = forwardRef<HTMLDivElement, Props>(({ booking, htmlI
                     {/* Vertical Dashed Line Divider */}
                     <div className="w-[1.5px] border-l border-dashed border-ticket-ink/20 my-0.5 shrink-0"></div>
                     
-                    {/* Right Column: QR Code Container */}
+                    {/* Right Column: QR with outstanding-payment overlay */}
                     <div className="shrink-0 flex flex-col items-center justify-center">
-                      <div className="border border-ticket-ink/20 rounded-xl bg-white p-2 flex flex-col items-center justify-center w-[110px] shadow-sm">
-                        <span className="text-[8px] font-black text-ticket-muted mb-1 tracking-tight">เช็กอินก่อนขึ้นรถ</span>
-                        <div className="bg-white p-0.5 rounded-lg">
-                          <QRCodeSVG value={booking.id} size={66} level="M" includeMargin={false} />
+                      <div className="relative w-[110px] overflow-hidden rounded-xl border border-ticket-ink/20 bg-white p-2 shadow-sm">
+                        <div className={`flex flex-col items-center justify-center ${booking.payment && booking.payment.remainingSatang > 0 ? 'opacity-20 blur-[1px]' : ''}`}>
+                          <span className="mb-1 text-[8px] font-black tracking-tight text-ticket-muted">เช็กอินก่อนขึ้นรถ</span>
+                          <div className="rounded-lg bg-white p-0.5">
+                            <QRCodeSVG value={booking.id} size={66} level="M" includeMargin={false} />
+                          </div>
+                          <span className="mt-1 max-w-[95px] text-center text-[7px] font-bold leading-tight text-ticket-muted/85">สแกน QR Code นี้ เพื่อเช็กอินก่อนขึ้นรถ</span>
                         </div>
-                        <span className="text-[7px] font-bold text-ticket-muted/85 text-center leading-tight mt-1 max-w-[95px]">
-                          สแกน QR Code นี้ เพื่อเช็กอินก่อนขึ้นรถ
-                        </span>
+                        {booking.payment && booking.payment.remainingSatang > 0 && (
+                          <Link href={ticketPaymentHref(booking.payment.orderId)} className="absolute inset-0 flex flex-col items-center justify-center gap-1 rounded-xl border border-amber-300 bg-amber-50/95 px-2 py-2 text-center shadow-inner transition-colors hover:bg-amber-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-purple-600">
+                            <span className="text-[9px] font-bold text-amber-800">ค้างชำระ</span>
+                            <span className="text-[16px] font-black leading-tight text-amber-950">฿{(booking.payment.remainingSatang / 100).toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
+                            <span className="mt-1 inline-flex items-center justify-center gap-1 rounded-lg bg-purple-700 px-2 py-1.5 text-[8px] font-bold leading-snug text-white"><CreditCard aria-hidden="true" className="h-3 w-3 shrink-0" /><span>ชำระให้ครบทั้งหมด</span></span>
+                          </Link>
+                        )}
                       </div>
                     </div>
                   </div>

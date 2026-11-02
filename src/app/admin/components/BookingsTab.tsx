@@ -6,13 +6,13 @@ import {
   ChevronDown, ChevronRight, RefreshCw, Shield, FileText,
   TrendingUp, Download, Check, X, Search, Filter,
   Phone, Edit2, Trash2, MoreHorizontal, BadgeCheck, Clock,
-  AlertTriangle, ArrowRight
+  AlertTriangle, ArrowRight, ArrowLeftRight
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import type { Trip, Van, Booking } from './types';
+import type { Trip, Van, Booking, Seat } from './types';
 
 interface Props {
   trips: Trip[];
@@ -23,10 +23,13 @@ interface Props {
   onDelete: (id: string) => Promise<void>;
   onCheckIn: (id: string, current: boolean) => Promise<void>;
   onManualSubmit: (data: { tripId: string; vanId: string; seatId: string; nickname: string; fullName: string; phone: string; note: string }) => Promise<void>;
+  onMoveSeat?: (bookingId: string, vanId: string, seatId: string) => Promise<void>;
 }
 
-export default function BookingsTab({ trips, vans, bookings, onApprove, onReject, onDelete, onCheckIn, onManualSubmit }: Props) {
+export default function BookingsTab({ trips, vans, bookings, onApprove, onReject, onDelete, onCheckIn, onManualSubmit, onMoveSeat }: Props) {
   const [showForm, setShowForm] = useState(false);
+  const [moving, setMoving] = useState<Booking | null>(null);
+  const canMove = (b: Booking) => !!onMoveSeat && (b.status === 'approved' || (b.status === 'pending' && !b.replacesBookingId));
   const [tripStatusFilter, setTripStatusFilter] = useState<'all' | 'active' | 'completed'>('active');
   const [tripFilter, setTripFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -368,6 +371,12 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
                               <X className="w-3.5 h-3.5" />
                             </button>
                           )}
+                          {canMove(b) && (
+                            <button onClick={() => setMoving(b)} title="ย้ายที่นั่ง"
+                              className="w-7 h-7 rounded-lg border border-slate-200 bg-white hover:bg-violet-50 hover:border-violet-200 text-slate-400 hover:text-violet-600 flex items-center justify-center transition">
+                              <ArrowLeftRight className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                           <button title="แก้ไข"
                             className="w-7 h-7 rounded-lg border border-slate-200 bg-white hover:bg-violet-50 hover:border-violet-200 text-slate-400 hover:text-violet-600 flex items-center justify-center transition">
                             <Edit2 className="w-3.5 h-3.5" />
@@ -514,6 +523,12 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
                           </button>
                         </>
                       )}
+                      {canMove(b) && (
+                        <button onClick={() => setMoving(b)} title="ย้ายที่นั่ง"
+                          className="px-2.5 h-8 rounded-lg border border-slate-200 bg-white hover:bg-violet-50 text-slate-500 hover:text-violet-600 flex items-center justify-center gap-1 text-xs font-bold">
+                          <ArrowLeftRight className="w-3.5 h-3.5" /> ย้ายที่นั่ง
+                        </button>
+                      )}
                       <button title="แก้ไข"
                         className="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-violet-50 text-slate-400 hover:text-violet-600 flex items-center justify-center">
                         <Edit2 className="w-3.5 h-3.5" />
@@ -535,6 +550,80 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
         <div className="border-t border-slate-100 px-4 py-3 flex items-center justify-between text-xs text-slate-500">
           <span>แสดง {filtered.length} จาก {bookings.length} รายการ</span>
         </div>
+      </div>
+      {moving && onMoveSeat && (
+        <MoveSeatDialog booking={moving} vans={vans.filter(v => v.tripId === moving.tripId)} onClose={() => setMoving(null)}
+          onMove={async (vanId, seatId) => { await onMoveSeat(moving.id, vanId, seatId); setMoving(null); }} />
+      )}
+    </div>
+  );
+}
+
+/** Pick a free seat (any van of the same trip) to move a passenger to. */
+function MoveSeatDialog({ booking, vans, onClose, onMove }: { booking: Booking; vans: Van[]; onClose: () => void; onMove: (vanId: string, seatId: string) => Promise<void> }) {
+  const sorted = [...vans].sort((a, b) => a.vanNumber - b.vanNumber);
+  const [vanId, setVanId] = useState(booking.vanId && sorted.some(v => v.id === booking.vanId) ? booking.vanId : sorted[0]?.id || '');
+  const [seatId, setSeatId] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const van = sorted.find(v => v.id === vanId);
+  const rows = new Map<number, Seat[]>();
+  for (const seat of van?.seats || []) rows.set(seat.row, [...(rows.get(seat.row) || []), seat]);
+  const free = (s: Seat) => ['customer', 'staff'].includes(s.type) && s.status === 'available' && !s.bookingId;
+
+  const submit = async () => {
+    setBusy(true); setError('');
+    try { await onMove(vanId, seatId); }
+    catch (e) { setError(e instanceof Error ? e.message : 'ย้ายที่นั่งไม่สำเร็จ'); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" onClick={onClose}>
+      <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl" onClick={e => e.stopPropagation()}>
+        <div className="mb-4 flex items-start justify-between">
+          <div>
+            <h3 className="font-black text-slate-900">ย้ายที่นั่ง</h3>
+            <p className="text-xs text-slate-500">{booking.fullName} ({booking.nickname}) · ที่นั่งปัจจุบัน {booking.seatLabel}{booking.vanNumber ? ` รถคันที่ ${booking.vanNumber}` : ''}</p>
+          </div>
+          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="h-5 w-5" /></button>
+        </div>
+        {sorted.length > 1 && (
+          <div className="mb-3 flex flex-wrap gap-2">
+            {sorted.map(v => (
+              <button key={v.id} type="button" onClick={() => { setVanId(v.id); setSeatId(''); }}
+                className={cn('rounded-lg border px-3 py-1.5 text-xs font-bold', v.id === vanId ? 'border-violet-500 bg-violet-50 text-violet-700' : 'border-slate-200 text-slate-500')}>
+                รถคันที่ {v.vanNumber}
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="space-y-2 rounded-xl border border-slate-100 bg-slate-50 p-3">
+          {[...rows.entries()].sort((a, b) => a[0] - b[0]).map(([row, seats]) => (
+            <div key={row} className="flex justify-center gap-2">
+              {seats.sort((a, b) => a.col - b.col).map(s => {
+                const current = s.bookingId === booking.id;
+                const selectable = free(s);
+                return (
+                  <button key={s.id} type="button" disabled={!selectable} onClick={() => setSeatId(s.id)} title={s.passengerName || s.label}
+                    className={cn('h-10 w-12 rounded-lg border text-xs font-bold transition',
+                      seatId === s.id ? 'border-violet-600 bg-violet-600 text-white' :
+                      current ? 'border-amber-300 bg-amber-100 text-amber-700' :
+                      selectable ? 'border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50' :
+                      'cursor-not-allowed border-slate-200 bg-slate-200 text-slate-400')}>
+                    {s.type === 'driver' ? 'คนขับ' : s.label}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+          {!van && <p className="py-6 text-center text-xs text-slate-400">ทริปนี้ยังไม่มีรถ</p>}
+        </div>
+        <p className="mt-2 text-[11px] text-slate-500">สีขาว = ว่าง · สีเหลือง = ที่นั่งปัจจุบัน · สีเทา = ไม่ว่าง ตั๋วและ QR เช็คอินเดิมยังใช้ได้ ถ้ามีรายการชำระเงิน ระบบจะอัปเดตที่นั่งให้อัตโนมัติ</p>
+        {error && <p className="mt-2 rounded-xl bg-rose-50 p-3 text-xs font-bold text-rose-700">{error}</p>}
+        <button type="button" disabled={!seatId || busy} onClick={() => void submit()} className="mt-3 h-10 w-full rounded-xl bg-violet-600 text-sm font-bold text-white disabled:opacity-40">
+          {busy ? 'กำลังย้าย...' : 'ยืนยันย้ายที่นั่ง'}
+        </button>
       </div>
     </div>
   );

@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 import { supabase } from '@/lib/supabase';
+import { requireAdmin, requireOwnerOrAdmin } from '@/lib/adminAuth';
 
 type RouteParams = { params: Promise<{ id: string }> };
 
 export async function GET(request: Request, props: RouteParams) {
+  const admin = await requireAdmin(['users', 'insurance', 'bookings']);
+  if (admin instanceof Response) return admin;
   try {
     const { id: lineUserId } = await props.params;
     

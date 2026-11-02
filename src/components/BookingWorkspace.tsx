@@ -30,6 +30,7 @@ export default function BookingWorkspace(props: Record<string, any>) {
   return (
       <main className="max-w-3xl mx-auto px-4 sm:px-6 2xl:px-8 py-6 w-full flex-grow flex flex-col gap-6 pb-24 2xl:pb-10">
         
+        <Link href="/payments" className="flex items-center justify-between rounded-2xl border border-purple-200 bg-purple-50 p-4 text-xs font-bold text-purple-800"><span>รายการชำระเงิน / จ่ายยอดคงเหลือ</span><ChevronRight className="h-4 w-4" /></Link>
         {/* Back Navigation — show on step 2+ */}
         {currentStep > 1 && !userBooking && (
           <BookingBackNavigation
@@ -273,7 +274,7 @@ export default function BookingWorkspace(props: Record<string, any>) {
                     <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl mb-1 flex items-start gap-2 shrink-0">
                       <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
                       <p className="text-amber-800 text-[11px] font-bold leading-relaxed">
-                        โปรดเข้าสู่ระบบผ่านลิ้งก์ที่แอดมินส่งให้เท่านั้น (คุณจะไม่สามารถเลือกทริปจองเองได้)
+                        เลือกทริปจากหน้าแรกเพื่อชำระเงินก่อนจองที่นั่ง หรือเปิดรายการที่ชำระแล้วจากหน้าการชำระเงิน
                       </p>
                     </div>
                   )}

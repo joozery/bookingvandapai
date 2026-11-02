@@ -1,25 +1,38 @@
 import { NextResponse } from 'next/server';
 import { deleteFromR2, downloadFromR2, uploadToR2 } from '@/lib/r2';
+import { requireAdmin, requireOwnerOrAdmin } from '@/lib/adminAuth';
+import { recordAudit } from '@/lib/audit';
 
 export async function POST(request: Request) {
+  const admin = await requireAdmin([]);
+  if (admin instanceof Response) return admin;
   const form = await request.formData();
   const path = String(form.get('path') || '');
   const file = form.get('file');
   if (!path || !(file instanceof Blob)) return NextResponse.json({ error: 'Invalid upload' }, { status: 400 });
   await uploadToR2(path, Buffer.from(await file.arrayBuffer()), file.type || undefined);
+  await recordAudit(admin, { action: 'create', resource: 'file', resourceId: path, request, summary: `อัปโหลดไฟล์ ${path}` });
   return NextResponse.json({ path });
 }
 
 export async function GET(request: Request) {
   const path = new URL(request.url).searchParams.get('path');
   if (!path) return NextResponse.json({ error: 'Missing path' }, { status: 400 });
+  // Pending profile edits contain personal data; only staff may read them.
+  if (path.replace(/^\/+/, '').startsWith('profile-edits/')) {
+    const admin = await requireAdmin(['users']);
+    if (admin instanceof Response) return admin;
+  }
   const result = await downloadFromR2(path);
   const body = result.Body ? await result.Body.transformToByteArray() : new Uint8Array();
   return new Response(Buffer.from(body), { headers: { 'content-type': result.ContentType || 'application/octet-stream' } });
 }
 
 export async function DELETE(request: Request) {
+  const admin = await requireAdmin([]);
+  if (admin instanceof Response) return admin;
   const body = await request.json();
   for (const path of body.paths || []) await deleteFromR2(String(path));
+  await recordAudit(admin, { action: 'delete', resource: 'file', resourceId: String((body.paths || [])[0] || ''), request, summary: `ลบไฟล์ ${(body.paths || []).slice(0, 5).join(', ')}` });
   return NextResponse.json({ ok: true });
 }

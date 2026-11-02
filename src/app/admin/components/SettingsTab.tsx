@@ -7,6 +7,7 @@ import ReviewCopyFields from '@/components/ReviewCopyFields';
 import ShareSettingsFields from '@/components/ShareSettingsFields';
 import HomepageImageFields from '@/components/HomepageImageFields';
 import TeamCardsManager from '@/components/TeamCardsManager';
+import PaymentSettingsPanel from './PaymentSettingsPanel';
 
 export default function SettingsTab() {
   const [settings, setSettings] = useState({
@@ -113,6 +114,7 @@ export default function SettingsTab() {
         </div>
       </div>
 
+      <PaymentSettingsPanel />
       <form ref={formRef} onSubmit={e => e.preventDefault()} className="bg-white border border-slate-200 rounded-xl shadow-sm p-6 space-y-6">
         <ShareSettingsFields value={settings} onChange={patch => setSettings(current => ({ ...current, ...patch }))} />
         <HomepageImageFields value={settings} onChange={patch => setSettings(current => ({ ...current, ...patch }))} />

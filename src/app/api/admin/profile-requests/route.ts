@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 import { supabase } from '@/lib/supabase';
+import { requireAdmin, requireOwnerOrAdmin } from '@/lib/adminAuth';
+import { recordAudit } from '@/lib/audit';
 
 export async function GET() {
+  const admin = await requireAdmin(['users']);
+  if (admin instanceof Response) return admin;
   try {
     const { data: files, error: listError } = await supabase.storage.from('images').list('profile-edits');
     if (listError) throw listError;
@@ -30,6 +34,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const admin = await requireAdmin(['users']);
+  if (admin instanceof Response) return admin;
   try {
     const { action, lineUserId, payload } = await request.json();
     
@@ -71,10 +77,12 @@ export async function POST(request: Request) {
       // 3. Delete the request file
       await supabase.storage.from('images').remove([`profile-edits/${lineUserId}.json`]);
       
+      await recordAudit(admin, { action: 'update', resource: 'customer-profile', resourceId: lineUserId, request, summary: `อนุมัติคำขอแก้ไขโปรไฟล์ลูกทริป ${payload?.fullName || lineUserId}`, after: payload && typeof payload === 'object' ? payload : null });
       return NextResponse.json({ success: true });
     } else if (action === 'reject') {
       // Just delete the request file
       await supabase.storage.from('images').remove([`profile-edits/${lineUserId}.json`]);
+      await recordAudit(admin, { action: 'update', resource: 'customer-profile', resourceId: lineUserId, request, summary: `ปฏิเสธคำขอแก้ไขโปรไฟล์ลูกทริป ${lineUserId}` });
       return NextResponse.json({ success: true });
     }
     

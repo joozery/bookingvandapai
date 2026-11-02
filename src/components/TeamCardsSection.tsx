@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { TeamCard, defaultTeamCards } from '@/lib/homepageSettings';
-import { Quote, Sparkles, Crown } from 'lucide-react';
+import { Quote, Sparkles } from 'lucide-react';
 
 interface TeamCardsSectionProps {
   cards?: TeamCard[];
@@ -14,112 +14,98 @@ export default function TeamCardsSection({ cards }: TeamCardsSectionProps) {
 
   if (!baseCards || baseCards.length === 0) return null;
 
-  // Duplicate cards enough for seamless loop
-  const loopedCards = [...baseCards, ...baseCards, ...baseCards, ...baseCards, ...baseCards, ...baseCards];
+  // One "set" must be at least as wide as the screen; the strip renders the set twice
+  // and slides exactly one set width (-50%) so the loop is seamless.
+  const repeat = Math.max(1, Math.ceil(5 / baseCards.length));
+  const set = Array.from({ length: repeat }, () => baseCards).flat();
+  const strip = [...set, ...set];
+  const duration = `${set.length * 7}s`;
 
-  const animStyle: React.CSSProperties = {
-    animation: 'marqueeRightToLeft 50s linear infinite',
-    animationPlayState: paused ? 'paused' : 'running',
-  };
+  const hold = () => setPaused(true);
+  const release = () => setPaused(false);
 
   return (
-    <div className="w-full space-y-3 relative z-10 select-none overflow-hidden py-1">
+    <div className="relative z-10 w-full select-none space-y-3">
       <style>{`
-        @keyframes marqueeRightToLeft {
-          0%   { transform: translateX(0%); }
-          100% { transform: translateX(-60%); }
+        @keyframes teamMarquee {
+          from { transform: translateX(0); }
+          to   { transform: translateX(-50%); }
         }
-        .marquee-strip:hover {
-          animation-play-state: paused !important;
+        /* Short fixed-width edge fade so cards only soften right at the edge */
+        .team-edge-fade {
+          --fade: 20px;
+          -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--fade), #000 calc(100% - var(--fade)), transparent);
+          mask-image: linear-gradient(to right, transparent, #000 var(--fade), #000 calc(100% - var(--fade)), transparent);
+        }
+        @media (min-width: 640px) { .team-edge-fade { --fade: 40px; } }
+        .team-marquee { animation: teamMarquee var(--team-duration, 40s) linear infinite; }
+        .team-marquee.is-paused { animation-play-state: paused; }
+        @media (prefers-reduced-motion: reduce) {
+          .team-marquee { animation: none !important; }
         }
       `}</style>
 
-      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-700 text-xs font-black tracking-wide uppercase">
-        <Sparkles className="w-3.5 h-3.5 text-purple-600 animate-pulse" />
-        <span>แนะนำทีมแอดมิน</span>
+      <div className="flex items-center justify-between gap-3">
+        <div className="inline-flex items-center gap-1.5 rounded-full border border-purple-500/20 bg-purple-500/10 px-3 py-1 text-xs font-black tracking-wide text-purple-700">
+          <Sparkles className="h-3.5 w-3.5 text-purple-600" />
+          <span>แนะนำทีมแอดมิน</span>
+        </div>
+        <span className="hidden text-[11px] font-medium text-purple-700/60 sm:inline">
+          {paused ? 'หยุดอยู่ • ปล่อยเพื่อเลื่อนต่อ' : 'แตะค้างเพื่อหยุดดู'}
+        </span>
       </div>
 
-      {/* Full-width continuous horizontal strip — hold to pause, release to resume */}
       <div
-        className="relative w-full overflow-hidden rounded-3xl py-2"
-        onMouseDown={() => setPaused(true)}
-        onMouseUp={() => setPaused(false)}
-        onMouseLeave={() => setPaused(false)}
-        onTouchStart={() => setPaused(true)}
-        onTouchEnd={() => setPaused(false)}
-        style={{ cursor: 'grab', userSelect: 'none' }}
+        className="team-edge-fade relative -mx-4 overflow-hidden py-2 sm:-mx-6 lg:mx-0"
+        style={{
+          cursor: paused ? 'grabbing' : 'grab',
+        }}
+        onMouseDown={hold}
+        onMouseUp={release}
+        onMouseLeave={release}
+        onTouchStart={hold}
+        onTouchEnd={release}
+        onTouchCancel={release}
       >
-        {/* Left & Right Gradient Fade Overlays */}
-        <div className="absolute top-0 bottom-0 left-0 w-8 sm:w-16 bg-gradient-to-r from-slate-900/80 via-slate-900/30 to-transparent z-20 pointer-events-none" />
-        <div className="absolute top-0 bottom-0 right-0 w-8 sm:w-16 bg-gradient-to-l from-slate-900/80 via-slate-900/30 to-transparent z-20 pointer-events-none" />
-
-        {/* Hold indicator */}
         <div
-          className={`absolute top-2 right-4 z-30 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/60 border border-cyan-400/40 text-cyan-300 text-xs font-bold transition-all duration-200 pointer-events-none ${paused ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}
+          className={`team-marquee flex w-max${paused ? " is-paused" : ""}`}
+          style={{ "--team-duration": duration } as React.CSSProperties}
         >
-          <span>⏸ หยุดชั่วคราว</span>
-        </div>
-
-        <div
-          className="marquee-strip flex items-center gap-5 w-max"
-          style={animStyle}
-        >
-          {loopedCards.map((card, idx) => (
-            <div
-              key={`${card.id}-${idx}`}
-              className="w-[360px] sm:w-[470px] shrink-0 group/card relative bg-gradient-to-r from-[#1c1033] via-[#170c2c] to-[#0e071e] p-4 sm:p-5 rounded-3xl border border-purple-500/40 shadow-[0_0_25px_rgba(168,85,247,0.25)] hover:border-purple-400/80 hover:shadow-[0_0_35px_rgba(168,85,247,0.45)] transition-all duration-300 flex items-center gap-4.5 overflow-hidden"
-            >
-              {/* Glow Background Decor */}
-              <div className="absolute top-0 right-0 -mt-6 -mr-6 w-32 h-32 bg-purple-600/20 rounded-full blur-2xl group-hover/card:bg-purple-600/35 transition-all" />
-              <Quote className="absolute bottom-2 right-3 w-14 h-14 text-purple-500/20 pointer-events-none group-hover/card:text-purple-400/30 transition-all" />
-
-              {/* Avatar Image */}
-              <div className="relative shrink-0 z-10">
-                <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-2xl sm:rounded-3xl overflow-hidden border-2 border-cyan-400/90 shadow-[0_0_22px_rgba(6,182,212,0.8)] group-hover/card:scale-105 transition duration-500 bg-slate-950 flex items-center justify-center">
+          {strip.map((card, idx) => (
+            <div key={`${card.id}-${idx}`} className="shrink-0 pr-4" aria-hidden={idx >= set.length || undefined}>
+              <article className="relative flex h-full w-[min(300px,78vw)] flex-col overflow-hidden rounded-3xl border-2 border-purple-500 bg-gradient-to-br from-[#2e1065] via-[#3b0764] to-[#0b0620] p-5 shadow-[0_14px_34px_-10px_rgba(59,7,100,0.7)] sm:w-[340px]">
+                <div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full bg-fuchsia-600/25 blur-3xl" />
+                <div aria-hidden="true" className="pointer-events-none absolute -bottom-14 -left-10 h-36 w-36 rounded-full bg-indigo-500/20 blur-3xl" />
+                <div className="relative flex items-center gap-3.5">
                   <img
                     src={card.image || '/logo/logov2.webp'}
                     alt={card.name}
-                    className="w-full h-full object-cover"
+                    className="h-14 w-14 shrink-0 rounded-2xl bg-purple-950 object-cover ring-2 ring-cyan-300/60 ring-offset-2 ring-offset-[#2e1065]"
                     loading="lazy"
                     decoding="async"
+                    width={56}
+                    height={56}
+                    draggable={false}
                   />
+                  <div className="min-w-0">
+                    <h4 className="truncate text-base font-black leading-tight text-white">{card.name}</h4>
+                    {card.role && (
+                      <p className="mt-1 line-clamp-2 text-xs font-medium leading-snug text-purple-300">{card.role}</p>
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              {/* Card Details */}
-              <div className="flex-1 min-w-0 space-y-2 relative z-10">
-                <h4 className="text-base sm:text-lg font-black text-white tracking-tight truncate drop-shadow">
-                  {card.name}
-                </h4>
-
-                {card.role && (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-950/80 border border-purple-400/50 shadow-inner max-w-full">
-                    <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-purple-600 to-pink-500 flex items-center justify-center shrink-0 shadow">
-                      <Crown className="w-3 h-3 text-white fill-white" />
-                    </div>
-                    <span className="text-xs font-extrabold text-purple-100 truncate">
-                      {card.role}
-                    </span>
+                {card.motto && (
+                  <div className="relative mt-4 flex flex-1 gap-2 border-t border-white/10 pt-3.5">
+                    <Quote aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 fill-purple-400 text-purple-400" />
+                    <p className="line-clamp-3 text-sm leading-relaxed text-purple-100">{card.motto}</p>
                   </div>
                 )}
-
-                <div className="border-l-2 border-purple-500/40 pl-2.5 pt-0.5">
-                  <p className="text-xs sm:text-sm text-purple-100 font-medium italic leading-snug line-clamp-2">
-                    <span className="text-purple-400">&ldquo;</span>
-                    {card.motto}
-                    <span className="text-purple-400">&rdquo;</span>
-                  </p>
-                </div>
-              </div>
+              </article>
             </div>
           ))}
         </div>
       </div>
-
-      {/* Hold hint */}
-      <p className="text-center text-[10px] text-purple-400/50 font-medium tracking-wide">
-        กดค้างเพื่อหยุดดู • ปล่อยเพื่อเล่นต่อ
-      </p>
     </div>
   );
 }

@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 import { supabase } from '@/lib/supabase';
+import { requireAdmin, requireOwnerOrAdmin } from '@/lib/adminAuth';
+import { recordAudit } from '@/lib/audit';
 
 export async function GET() {
+  const admin = await requireAdmin(['users']);
+  if (admin instanceof Response) return admin;
   try {
     const { data: adminUsers, error } = await supabase
       .from('admin_users')
@@ -24,6 +28,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const admin = await requireAdmin(['users']);
+  if (admin instanceof Response) return admin;
   try {
     const body = await request.json();
     const { lineUserId, role, note } = body;
@@ -45,6 +51,7 @@ export async function POST(request: Request) {
 
     if (error) throw error;
 
+    await recordAudit(admin, { action: 'create', resource: 'customer-role', resourceId: lineUserId, request, summary: `ตั้งค่าสถานะลูกทริป ${lineUserId}`, after: { role, note } });
     return NextResponse.json({ success: true, adminUser: data });
   } catch (error: any) {
     if (error.code === '23505') {

@@ -49,6 +49,15 @@ const ROW_BACKGROUNDS = [
   'bg-[#fdf2f8]', // Rank 10 Pink Tint
 ];
 
+function AnimatedTripBar({ count, maximum, rank }: { count: number; maximum: number; rank: number }) {
+  const emoji = EMOJI_ANIMATIONS[(rank - 1) % EMOJI_ANIMATIONS.length];
+  return <div aria-hidden="true" className="relative mx-2 h-2 rounded-full bg-purple-100/60">
+    <div className={`relative h-full rounded-full transition-[width] duration-1000 ease-out motion-reduce:transition-none ${ROW_GRADIENTS[(rank - 1) % ROW_GRADIENTS.length]}`} style={{ width: `${Math.min(100, Math.max(count / maximum * 100, 3))}%` }}>
+      <span className="pointer-events-none absolute -right-3 top-1/2 -translate-y-1/2 select-none text-xl drop-shadow-sm"><span className={`inline-block motion-reduce:animate-none ${emoji.anim}`}>{emoji.icon}</span></span>
+    </div>
+  </div>;
+}
+
 function RankMedalBadge({ rank }: { rank: number }) {
   if (rank === 1) {
     return (
@@ -210,210 +219,58 @@ export default function BookingLeaderboard({ title }: { title: string }) {
 
   const effectiveMaxTrips = globalMaxTrips > 0 ? globalMaxTrips : (data?.rankings?.[0]?.tripCount || 1);
 
+  const featured = data?.rankings.filter(person => person.rank <= 3) || [];
+  const remaining = data?.rankings.filter(person => person.rank > 3) || [];
+
   return (
-    <section id="booking-leaderboard" aria-labelledby="leaderboard-title" className="mobile-performance-section border-b border-purple-100 bg-gradient-to-b from-purple-50/50 via-sky-50/30 to-purple-50/40 py-10 sm:py-14 scroll-mt-20 overflow-hidden relative">
-      
-      {/* Background Decor Spotlights */}
-      <div className="absolute -top-24 -left-24 w-96 h-96 bg-purple-300/20 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-sky-300/20 rounded-full blur-3xl pointer-events-none" />
-
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 relative z-10 space-y-6">
-        
-        {/* Header Section with Trophy & Sticker */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              {/* Trophy Icon with Wiggling Crown */}
-              <div className="relative shrink-0">
-                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-amber-300 via-amber-400 to-yellow-500 flex items-center justify-center shadow-lg shadow-amber-500/30 border-2 border-white">
-                  <Trophy className="w-8 h-8 text-amber-950 drop-shadow-sm" />
-                </div>
-                <span className="absolute -top-3 -right-2 text-xl animate-[bounce_1.2s_ease-in-out_infinite]">👑</span>
-              </div>
-
-              <div>
-                <h2 id="leaderboard-title" className="text-2xl sm:text-3xl font-black text-slate-900 flex items-center gap-2 tracking-tight">
-                  {title === 'สถิติเวทคนปากดี' ? 'สถิติคนมีปาก' : (title || 'สถิติคนมีปาก')}
-                  <span className="text-2xl inline-block animate-[bounce_1.5s_ease-in-out_infinite]">👑</span>
-                </h2>
-                <p className="text-xs sm:text-sm font-bold text-slate-500 mt-0.5">
-                  ลำดับของการจองทริปเพจ • จากมากไปน้อย
-                </p>
-              </div>
-            </div>
-
-            {/* Rules Badge Pill */}
-            <div className="inline-flex items-start sm:items-center gap-2 bg-white/90 backdrop-blur-md border border-purple-200/80 px-3 py-2 sm:px-3.5 sm:py-1.5 rounded-2xl sm:rounded-full text-[10.5px] sm:text-xs font-semibold text-purple-950 shadow-sm leading-tight sm:leading-normal">
-              <BarChart2 className="w-3.5 h-3.5 text-purple-600 shrink-0 mt-0.5 sm:mt-0" />
-              <span>นับทริปที่อนุมัติการจองแล้วตลอดระยะเวลาใช้งาน คนละ 1 ครั้งต่อรอบทริป จำนวนเท่ากันได้อันดับร่วมกัน</span>
-            </div>
+    <section id="booking-leaderboard" aria-labelledby="leaderboard-title" className="mobile-performance-section relative overflow-hidden scroll-mt-20 border-b border-purple-100 bg-gradient-to-b from-purple-50/50 via-sky-50/30 to-purple-50/40 py-10 sm:py-14">
+      <div aria-hidden="true" className="pointer-events-none absolute -left-24 -top-24 h-96 w-96 rounded-full bg-purple-300/20 blur-3xl" />
+      <div className="relative mx-auto max-w-5xl space-y-5 px-4 sm:px-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border-2 border-white bg-gradient-to-br from-amber-300 via-amber-400 to-yellow-500 shadow-lg shadow-amber-500/20 sm:h-14 sm:w-14"><Trophy aria-hidden="true" className="h-7 w-7 text-amber-950" /></div>
+            <div><p className="mb-1 text-[9px] font-bold tracking-[0.22em] text-purple-500">OUR TRAVEL COMMUNITY</p><h2 id="leaderboard-title" className="text-xl font-black tracking-tight text-slate-900 sm:text-3xl">{title === 'สถิติเวทคนปากดี' ? 'สถิติคนมีปาก' : (title || 'สถิติคนมีปาก')} <span aria-hidden="true" className="inline-block animate-[bounce_1.5s_ease-in-out_infinite] text-xl motion-reduce:animate-none">👑</span></h2><p className="mt-1 text-xs text-slate-500">ยิ่งเดินทางด้วยกัน ยิ่งมีเรื่องเล่า</p></div>
           </div>
-
-          {/* Yellow Decorative Sticker Tag */}
-          <div className="hidden lg:flex shrink-0">
-            <div className="relative bg-amber-200/90 text-amber-950 border border-amber-300 px-4 py-2 rounded-2xl shadow-md rotate-2 transition-transform hover:rotate-0 select-none">
-              <div className="flex items-center gap-1.5 text-xs font-black">
-                <Sparkles className="w-4 h-4 text-amber-600" />
-                <span>จองทริปกับเรา เดินทางง่าย สนุกทุกทริป</span>
-              </div>
-            </div>
-          </div>
+          {!loading && !error && data && <div className="flex items-center gap-3 rounded-2xl border border-purple-100 bg-white px-4 py-3 shadow-sm"><Users aria-hidden="true" className="h-5 w-5 text-purple-500" /><div><p className="text-lg font-black leading-none text-purple-950">{data.total.toLocaleString('th-TH')} <span className="text-xs font-medium text-slate-500">คน</span></p><p className="mt-1 text-[10px] text-slate-500">นักเดินทางในทำเนียบ</p></div></div>}
         </div>
 
-        {/* Leaderboard Card Container */}
-        <div aria-live="polite" aria-busy={loading} className="relative">
-          {loading ? (
-            <div className="py-16 text-center bg-white/80 backdrop-blur-md rounded-3xl border border-purple-100 shadow-lg">
-              <div className="inline-flex items-center gap-3 bg-purple-50 px-5 py-2.5 rounded-full text-purple-700 font-bold text-sm">
-                <span className="w-4 h-4 rounded-full border-2 border-purple-600 border-t-transparent animate-spin shrink-0" />
-                กำลังโหลดอันดับ…
+        <div aria-live="polite" aria-busy={loading}>
+          {loading ? <div role="status" className="flex min-h-60 items-center justify-center gap-3 rounded-3xl border border-purple-100 bg-white text-sm font-bold text-purple-700"><span className="h-5 w-5 animate-spin rounded-full border-2 border-purple-200 border-t-purple-600" />กำลังโหลดอันดับ…</div>
+          : error ? <div className="space-y-3 rounded-3xl border border-rose-100 bg-white py-14 text-center"><p className="text-sm font-bold text-rose-600">โหลดอันดับไม่สำเร็จ</p><button type="button" onClick={() => setRetry(value => value + 1)} className="rounded-xl bg-purple-600 px-4 py-2 text-xs font-bold text-white hover:bg-purple-700">ลองอีกครั้ง</button></div>
+          : !data?.rankings.length ? <div className="rounded-3xl border border-purple-100 bg-white py-16 text-center text-sm text-slate-500">ยังไม่มีข้อมูลการจองที่อนุมัติแล้ว</div>
+          : <div className="space-y-5">
+            {featured.length > 0 && <div className="grid gap-3 sm:grid-cols-3">
+              {featured.map((person, index) => <article key={`${data.page}-${index}`} className={`relative overflow-hidden rounded-3xl border p-5 shadow-sm ${person.rank === 1 ? 'border-amber-300 bg-[#fff8eb]' : person.rank === 2 ? 'border-blue-200 bg-[#f0f7ff]' : 'border-rose-200 bg-[#fff0f3]'}`}>
+                <div aria-hidden="true" className={`absolute inset-x-0 top-0 h-1.5 ${ROW_GRADIENTS[person.rank - 1]}`} />
+                <div className="mb-5 flex items-center justify-between"><span className="text-[10px] font-bold tracking-wide text-slate-500">{person.rank === 1 ? 'นักเดินทางอันดับหนึ่ง' : `นักเดินทางอันดับ ${person.rank}`}</span><RankMedalBadge rank={person.rank} /></div>
+                <div className="flex items-center gap-4"><LeaderboardAvatar key={person.pictureUrl || person.nickname} pictureUrl={person.pictureUrl} nickname={person.nickname} rank={person.rank} /><h3 className="min-w-0 break-words text-base font-black text-slate-800">{person.nickname}{person.rank === 1 && <span aria-hidden="true" className="ml-1 inline-block animate-[bounce_1.4s_ease-in-out_infinite] motion-reduce:animate-none">👑</span>}</h3></div>
+                <div className="mt-6 mb-2"><AnimatedTripBar count={person.tripCount} maximum={effectiveMaxTrips} rank={person.rank} /></div>
+                <div className="mt-5 flex items-end justify-between border-t border-white pt-4"><span className="text-[11px] text-slate-500">เดินทางด้วยกันแล้ว</span><p className="text-3xl font-black tracking-tight text-slate-900">{person.tripCount.toLocaleString('th-TH')} <span className="text-xs font-medium text-slate-500">ทริป</span></p></div>
+              </article>)}
+            </div>}
+
+            {remaining.length > 0 && <div className="overflow-hidden rounded-3xl border border-purple-100 bg-white shadow-sm">
+              <div className="flex items-center justify-between bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 px-4 py-4 text-xs font-bold text-white sm:px-6"><span className="flex items-center gap-2"><BarChart2 aria-hidden="true" className="h-4 w-4" />ทำเนียบนักเดินทาง</span><span>จำนวนทริป</span></div>
+              <div className="space-y-2 p-2 sm:p-3">
+                {remaining.map((person, index) => <div key={`${data.page}-${index}`} className={`grid grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 rounded-2xl px-3 py-3 sm:grid-cols-[32px_minmax(0,1fr)_minmax(100px,1fr)_auto] sm:gap-x-4 sm:px-4 ${ROW_BACKGROUNDS[(person.rank - 1) % ROW_BACKGROUNDS.length]}`}>
+                  <RankMedalBadge rank={person.rank} />
+                  <div className="flex min-w-0 items-center gap-3"><LeaderboardAvatar key={person.pictureUrl || person.nickname} pictureUrl={person.pictureUrl} nickname={person.nickname} /><span className="min-w-0 break-words text-xs font-bold text-slate-800 sm:text-sm">{person.nickname}</span></div>
+                  <div className="col-start-2 row-start-2 py-2 sm:col-start-3 sm:row-start-1"><AnimatedTripBar count={person.tripCount} maximum={effectiveMaxTrips} rank={person.rank} /></div>
+                  <p className="col-start-3 row-start-1 whitespace-nowrap rounded-xl border border-purple-100 bg-white/80 px-3 py-2 text-sm font-black text-purple-950 sm:col-start-4">{person.tripCount.toLocaleString('th-TH')} <span className="text-[10px] font-medium text-slate-500">ทริป</span></p>
+                </div>)}
               </div>
-            </div>
-          ) : error ? (
-            <div className="py-12 text-center bg-white/80 backdrop-blur-md rounded-3xl border border-rose-100 shadow-lg space-y-3">
-              <p className="text-sm font-bold text-rose-600">โหลดอันดับไม่สำเร็จ</p>
-              <button
-                type="button"
-                onClick={() => setRetry((value) => value + 1)}
-                className="px-4 py-2 bg-purple-600 text-white rounded-xl font-bold text-xs shadow-md hover:bg-purple-700 transition"
-              >
-                ลองอีกครั้ง
-              </button>
-            </div>
-          ) : !data?.rankings.length ? (
-            <div className="py-16 text-center bg-white/80 backdrop-blur-md rounded-3xl border border-purple-100 shadow-lg">
-              <p className="text-sm font-bold text-slate-500">ยังไม่มีข้อมูลการจองที่อนุมัติแล้ว</p>
-            </div>
-          ) : (
-            <div className="overflow-hidden rounded-3xl border-2 border-purple-200/80 bg-white/95 backdrop-blur-xl shadow-xl">
-              
-              {/* Table Header with Vertical Divider Bar "|" */}
-              <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white px-4 sm:px-6 py-3.5 flex items-center justify-between text-xs sm:text-sm font-black tracking-wide select-none shadow-md">
-                <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-                  <span className="w-10 sm:w-12 text-center shrink-0">อันดับ</span>
-                  <span className="text-white/40 font-normal select-none px-1">|</span>
-                  <span className="truncate">ชื่อเล่น</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-amber-300 shrink-0">
-                  <Trophy className="w-4 h-4 text-amber-300" />
-                  <span>จำนวนทริป</span>
-                </div>
-              </div>
-
-              {/* Seamless Full-Width Leaderboard Rows with Soft Pastel Tints & Dividers */}
-              <div className="divide-y divide-purple-100/70">
-                {data.rankings.map((person, index) => {
-                  const emojiObj = EMOJI_ANIMATIONS[index % EMOJI_ANIMATIONS.length];
-                  const barGradient = ROW_GRADIENTS[index % ROW_GRADIENTS.length];
-                  const rowBg = 
-                    person.rank === 1
-                      ? 'bg-gradient-to-r from-amber-100/95 via-amber-50/90 to-amber-100/95 border-y-2 border-amber-300 shadow-[0_0_18px_rgba(251,191,36,0.35)] relative z-10'
-                      : person.rank === 2
-                      ? 'bg-gradient-to-r from-slate-100/95 via-blue-50/90 to-slate-100/95 border-y-2 border-slate-300/90 shadow-[0_0_14px_rgba(148,163,184,0.25)] relative z-10'
-                      : person.rank === 3
-                      ? 'bg-gradient-to-r from-rose-100/95 via-orange-50/90 to-rose-100/95 border-y-2 border-rose-300/90 shadow-[0_0_14px_rgba(244,63,94,0.2)] relative z-10'
-                      : ROW_BACKGROUNDS[index % ROW_BACKGROUNDS.length];
-
-                  const barWidthPercent = Math.max((person.tripCount / effectiveMaxTrips) * 100, 10);
-
-                  return (
-                    <div
-                      key={`${data.page}-${index}`}
-                      className={`flex items-center justify-between gap-2 sm:gap-4 px-4 sm:px-6 py-3 transition-colors duration-200 hover:bg-purple-100/50 ${rowBg}`}
-                    >
-                      {/* Rank Medal & User Info - Fixed width for exact progress bar alignment */}
-                      <div className="flex items-center gap-2.5 sm:gap-3.5 shrink-0 w-[140px] xs:w-[165px] sm:w-[210px] md:w-[230px] pr-2">
-                        {/* Custom Scalloped Medal Badge with Ribbons & Sparkles */}
-                        <RankMedalBadge rank={person.rank} />
-
-                        {/* Avatar with Glowing Ring Frame for Top 3 & Name */}
-                        <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-                          <LeaderboardAvatar pictureUrl={person.pictureUrl} nickname={person.nickname} rank={person.rank} />
-                          <span className="font-extrabold text-xs sm:text-sm text-slate-800 truncate flex items-center gap-1">
-                            {person.nickname}
-                            {person.rank === 1 && (
-                              <span className="text-xs inline-block animate-[bounce_1.4s_ease-in-out_infinite] shrink-0">👑</span>
-                            )}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Progress Bar with Wiggling Animated Travel Emoji at tip */}
-                      <div className="flex flex-1 min-w-[80px] sm:min-w-[150px] mx-2 sm:mx-4 items-center relative">
-                        <div className="w-full bg-slate-200/40 h-4 sm:h-5 rounded-full overflow-visible relative shadow-inner">
-                          <div
-                            className={`h-full rounded-full transition-all duration-1000 ease-out relative shadow-sm ${barGradient}`}
-                            style={{ width: `${barWidthPercent}%` }}
-                          >
-                            {/* Wiggling Emoji attached at right tip of progress bar */}
-                            <span
-                              className={`absolute -right-3.5 sm:-right-4.5 top-1/2 -translate-y-1/2 text-lg sm:text-2xl select-none pointer-events-none drop-shadow-md z-20 ${emojiObj.anim}`}
-                            >
-                              {emojiObj.icon}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Trip Count Pill Badge */}
-                      <div className="shrink-0">
-                        <div className={`px-3 py-1 sm:px-4 sm:py-1.5 rounded-full font-black text-xs sm:text-sm shadow-sm ${
-                          person.rank === 1
-                            ? 'bg-gradient-to-r from-amber-200 to-yellow-300 text-amber-950 border border-amber-400 shadow-md'
-                            : person.rank === 2
-                            ? 'bg-gradient-to-r from-slate-200 to-slate-300 text-slate-900 border border-slate-400 shadow-sm'
-                            : person.rank === 3
-                            ? 'bg-gradient-to-r from-rose-200 to-amber-200 text-rose-950 border border-rose-400 shadow-sm'
-                            : 'bg-purple-50 text-purple-900 border border-purple-100'
-                        }`}>
-                          {person.tripCount.toLocaleString('th-TH')} ทริป
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+            </div>}
+          </div>}
         </div>
 
-        {/* Footer Area: Total Travelers & Pagination */}
-        {!loading && !error && data && data.total > 0 && (
-          <div className="flex items-center justify-between gap-4 text-xs font-extrabold text-slate-600 pt-2 select-none">
-            {/* Total Travelers Badge */}
-            <div className="inline-flex items-center gap-2 bg-white/90 border border-purple-200/80 px-4 py-2 rounded-2xl shadow-sm text-purple-950">
-              <Users className="w-4 h-4 text-purple-600 shrink-0" />
-              <span>นักเดินทาง {data.total.toLocaleString('th-TH')} คน</span>
-            </div>
-
-            {/* Pagination Controls */}
-            {data.pageCount > 1 && (
-              <div className="flex items-center gap-2 bg-white/90 border border-purple-200/80 p-1.5 rounded-2xl shadow-sm">
-                <button
-                  type="button"
-                  aria-label="อันดับหน้าก่อนหน้า"
-                  disabled={data.page <= 1}
-                  onClick={() => setPage(data.page - 1)}
-                  className="p-1.5 rounded-xl border border-slate-200 hover:bg-purple-50 hover:text-purple-700 text-slate-600 transition disabled:opacity-30 disabled:hover:bg-transparent"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <span className="px-2 text-xs font-black text-slate-800">
-                  {data.page} / {data.pageCount}
-                </span>
-                <button
-                  type="button"
-                  aria-label="อันดับหน้าถัดไป"
-                  disabled={data.page >= data.pageCount}
-                  onClick={() => setPage(data.page + 1)}
-                  className="p-1.5 rounded-xl border border-slate-200 hover:bg-purple-50 hover:text-purple-700 text-slate-600 transition disabled:opacity-30 disabled:hover:bg-transparent"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-            )}
-          </div>
-        )}
+        <div className="flex flex-col gap-4 border-t border-purple-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="flex max-w-xl items-start gap-2 text-[10px] leading-relaxed text-slate-500 sm:text-xs"><Sparkles aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-purple-500" />นับทริปที่อนุมัติการจองแล้วตลอดระยะเวลาใช้งาน คนละ 1 ครั้งต่อรอบทริป จำนวนเท่ากันได้อันดับร่วมกัน</p>
+          {!loading && !error && data && data.pageCount > 1 && <nav aria-label="หน้าสถิตินักเดินทาง" className="flex shrink-0 items-center self-end gap-2 rounded-2xl border border-purple-100 bg-white p-1.5">
+            <button type="button" aria-label="อันดับหน้าก่อนหน้า" disabled={data.page <= 1} onClick={() => setPage(data.page - 1)} className="rounded-xl p-2 text-purple-700 transition hover:bg-purple-50 disabled:opacity-30"><ChevronLeft className="h-4 w-4" /></button>
+            <span className="px-2 text-xs font-bold text-slate-700">{data.page} / {data.pageCount}</span>
+            <button type="button" aria-label="อันดับหน้าถัดไป" disabled={data.page >= data.pageCount} onClick={() => setPage(data.page + 1)} className="rounded-xl p-2 text-purple-700 transition hover:bg-purple-50 disabled:opacity-30"><ChevronRight className="h-4 w-4" /></button>
+          </nav>}
+        </div>
       </div>
     </section>
   );

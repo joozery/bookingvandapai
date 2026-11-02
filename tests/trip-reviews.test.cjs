@@ -37,6 +37,9 @@ function api(session, results = {}) {
     'next-auth': { getServerSession: async () => session },
     '../auth/[...nextauth]/route': { authOptions: {} },
     '@/lib/supabase': { supabase }, '@/lib/tripReview': dates,
+    // Audit trail for admin review moderation (behaviour covered elsewhere).
+    '@/lib/adminAuth': { adminWith: async () => (session?.user?.role === 'admin' ? { id: session.user.id, name: 'admin', username: 'admin', isMain: true, permissions: [] } : null) },
+    '@/lib/audit': { recordAudit: async (actor, entry) => { calls.push({ audit: entry.summary }); } },
   }) };
 }
 const request = (body, url = 'http://localhost/api/reviews?tripId=trip-1') => ({ url, json: async () => body });

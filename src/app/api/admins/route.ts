@@ -2,8 +2,13 @@ import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 import { supabase } from '@/lib/supabase';
 import bcrypt from 'bcryptjs';
+import { recordAudit } from '@/lib/audit';
+import { applyPermissionChange, describePermission } from '@/lib/permissions';
+import { requireAdmin, requireOwnerOrAdmin } from '@/lib/adminAuth';
 
 export async function GET() {
+  const admin = await requireAdmin(['staff']);
+  if (admin instanceof Response) return admin;
   try {
     const { data: admins, error } = await supabase
       .from('admins')
@@ -24,6 +29,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const admin = await requireAdmin(['staff']);
+  if (admin instanceof Response) return admin;
   try {
     const body = await request.json();
     const { username, password, name, permissions, avatar_url } = body;
@@ -40,7 +47,8 @@ export async function POST(request: Request) {
         username,
         password: hashedPassword,
         name,
-        permissions: permissions || [],
+        // Only the main admin may grant payment, accounting, QR or staff access.
+        permissions: applyPermissionChange(permissions, [], admin.isMain),
         isBlocked: false,
         avatar_url: avatar_url || null
       }])
@@ -49,6 +57,9 @@ export async function POST(request: Request) {
 
     if (error) throw error;
 
+    await recordAudit(admin, { action: 'create', resource: 'admin', resourceId: data?.id, request,
+      summary: `สร้างบัญชีผู้ดูแล ${username} (${name})`,
+      after: { ชื่อผู้ใช้: username, ชื่อ: name, สิทธิ์: (data?.permissions || []).map(describePermission) } });
     return NextResponse.json({ success: true, admin: data });
   } catch (error: any) {
     if (error.code === '23505') {
