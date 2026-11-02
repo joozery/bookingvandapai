@@ -8,6 +8,8 @@ import {
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/browserSupabase';
 import { convertImageToWebp } from '@/lib/imageToWebp';
+import { useSession } from 'next-auth/react';
+import { describePermission, LEVEL_LABELS, LEVELED_PERMISSIONS, levelOf, PERMISSIONS, withLevel, type Level } from '@/lib/permissions';
 
 export interface AdminUser {
   id: string;
@@ -19,22 +21,9 @@ export interface AdminUser {
   createdAt: string;
 }
 
-const AVAILABLE_PERMISSIONS = [
-  { id: 'dashboard', label: 'แดชบอร์ด (Dashboard)' },
-  { id: 'calendar', label: 'ปฏิทินการเดินทาง (Calendar)' },
-  { id: 'trips', label: 'จัดการทริป (Trips)' },
-  { id: 'completed-trips', label: 'ทริปที่จบไปแล้ว (Completed Trips)' },
-  { id: 'vans', label: 'จัดการรถ (Vans)' },
-  { id: 'bookings', label: 'การจองและลูกทริป (Bookings)' },
-  { id: 'checkin', label: 'QR Check-in (Check-in)' },
-  { id: 'users', label: 'จัดการลูกทริป (Users)' },
-  { id: 'staff', label: 'ทีมงาน / ผู้จัด (Admin Roles)' },
-  { id: 'insurance', label: 'ประกันการเดินทาง (Insurance)' },
-  { id: 'reports', label: 'รายงาน (Reports)' },
-  { id: 'reviews', label: 'รีวิวและความคิดเห็น (Reviews)' },
-  { id: 'leaderboard', label: 'อันดับคนจองทริป' },
-  { id: 'settings', label: 'ตั้งค่า (Settings)' },
-];
+// Simple on/off menus. Payments, accounting and QR settings have their own
+// three-level control below; staff management is main-admin only.
+const AVAILABLE_PERMISSIONS = PERMISSIONS.filter(p => p.id !== 'staff');
 
 export default function AdminsTab() {
   const [admins, setAdmins] = useState<AdminUser[]>([]);
@@ -50,6 +39,9 @@ export default function AdminsTab() {
   const [formName, setFormName] = useState('');
   const [formBlocked, setFormBlocked] = useState(false);
   const [formPermissions, setFormPermissions] = useState<string[]>([]);
+  const { data: session } = useSession();
+  // Only the main admin may grant payment, accounting, QR-settings or staff access.
+  const isMainAdmin = (session?.user as { username?: string } | undefined)?.username === 'admin';
   const [showPassword, setShowPassword] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -352,7 +344,7 @@ export default function AdminsTab() {
             <div className="space-y-4">
               <h4 className="text-sm font-bold text-slate-700 border-b pb-2 flex justify-between">
                 <span>สิทธิการเข้าถึงเมนู (Permissions)</span>
-                <button type="button" onClick={() => setFormPermissions(AVAILABLE_PERMISSIONS.map(p => p.id))} className="text-xs text-violet-600 hover:underline">เลือกทั้งหมด</button>
+                <button type="button" onClick={() => setFormPermissions(prev => [...new Set([...prev, ...AVAILABLE_PERMISSIONS.map(p => p.id)])])} className="text-xs text-violet-600 hover:underline">เลือกทั้งหมด</button>
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[250px] overflow-y-auto pr-2 scrollbar-thin">
                 {AVAILABLE_PERMISSIONS.map(perm => {
@@ -372,6 +364,8 @@ export default function AdminsTab() {
                   );
                 })}
               </div>
+
+              <SensitiveAccess permissions={formPermissions} editable={isMainAdmin} onChange={setFormPermissions} />
             </div>
           </div>
           
@@ -439,7 +433,7 @@ export default function AdminsTab() {
                           <div className="flex flex-wrap gap-1">
                             {admin.permissions?.length > 0 ? (
                               admin.permissions.map(p => {
-                                const pLabel = AVAILABLE_PERMISSIONS.find(ap => ap.id === p)?.label.split(' ')[0] || p;
+                                const pLabel = describePermission(p);
                                 return (
                                   <span key={p} className="inline-block text-[9px] font-bold text-violet-700 bg-violet-100 border border-violet-200 px-1.5 py-0.5 rounded-md">
                                     {pLabel}
@@ -517,7 +511,7 @@ export default function AdminsTab() {
                     <div className="flex flex-wrap gap-1.5">
                       {admin.permissions?.length > 0 ? (
                         admin.permissions.map(p => {
-                          const pLabel = AVAILABLE_PERMISSIONS.find(ap => ap.id === p)?.label.split(' ')[0] || p;
+                          const pLabel = describePermission(p);
                           return (
                             <span key={p} className="inline-block text-[10px] font-bold text-violet-700 bg-violet-100 border border-violet-200 px-2 py-0.5 rounded-md">
                               {pLabel}
@@ -535,6 +529,45 @@ export default function AdminsTab() {
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Three-level access for payments, accounting and QR settings, plus staff management. */
+function SensitiveAccess({ permissions, editable, onChange }: { permissions: string[]; editable: boolean; onChange: (next: string[]) => void }) {
+  const levels: Level[] = ['none', 'view', 'edit'];
+  return (
+    <div className="space-y-2 rounded-xl border border-amber-200 bg-amber-50/40 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <h5 className="text-xs font-black text-amber-900">สิทธิ์ระบบการเงินและข้อมูลสำคัญ</h5>
+        {!editable && <span className="text-[10px] font-bold text-amber-700">กำหนดได้เฉพาะแอดมินหลัก</span>}
+      </div>
+      {LEVELED_PERMISSIONS.map(perm => {
+        const current = levelOf(permissions, perm.id);
+        return (
+          <div key={perm.id} className="flex flex-col gap-1.5 rounded-lg bg-white p-2.5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-bold text-slate-800">{perm.label}</p>
+              <p className="text-[10px] text-slate-500">{perm.hint}</p>
+            </div>
+            <div className="flex shrink-0 rounded-lg border border-slate-200 p-0.5" role="radiogroup" aria-label={perm.label}>
+              {levels.map(level => (
+                <button key={level} type="button" role="radio" aria-checked={current === level} disabled={!editable}
+                  onClick={() => onChange(withLevel(permissions, perm.id, level))}
+                  className={cn('rounded-md px-2 py-1 text-[11px] font-bold transition disabled:cursor-not-allowed',
+                    current === level ? (level === 'edit' ? 'bg-violet-600 text-white' : level === 'view' ? 'bg-sky-600 text-white' : 'bg-slate-600 text-white') : 'text-slate-500 hover:bg-slate-50',
+                    !editable && current !== level && 'opacity-40')}>
+                  {LEVEL_LABELS[level]}
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+      <label className={cn('flex items-center gap-2 rounded-lg bg-white p-2.5 text-xs font-bold text-slate-800', editable ? 'cursor-pointer' : 'cursor-not-allowed opacity-70')}>
+        <input type="checkbox" disabled={!editable} checked={permissions.includes('staff')} onChange={e => onChange(e.target.checked ? [...permissions, 'staff'] : permissions.filter(p => p !== 'staff'))} className="h-4 w-4 accent-violet-600" />
+        ทีมงาน / ผู้จัด (จัดการบัญชีผู้ดูแลทั่วไป)
+      </label>
     </div>
   );
 }

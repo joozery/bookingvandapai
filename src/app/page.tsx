@@ -275,6 +275,32 @@ function CustomerPageContent() {
     return () => clearTimeout(timer);
   }, []);
 
+  // Keep the landing list current when trips are created in another tab.
+  useEffect(() => {
+    if (!isLandingMode) return;
+    const controller = new AbortController();
+    let busy = false;
+    const refresh = async () => {
+      if (document.visibilityState !== 'visible' || busy || controller.signal.aborted) return;
+      busy = true;
+      try {
+        const response = await fetch('/api/trips', { cache: 'no-store', signal: controller.signal });
+        const data = await response.json();
+        if (!controller.signal.aborted && response.ok && data.success && Array.isArray(data.trips)) setTrips(data.trips);
+      } catch (error) { if (!controller.signal.aborted) console.error('Trip list refresh failed', error); }
+      finally { busy = false; }
+    };
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    const timer = setInterval(refresh, 30_000);
+    return () => {
+      controller.abort();
+      clearInterval(timer);
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [isLandingMode]);
+
   // Handle URL parameter changes for soft navigation (e.g. returning from tickets page)
   useEffect(() => {
     if (!searchParams) return;
@@ -287,7 +313,7 @@ function CustomerPageContent() {
       setIsLandingMode(false);
       
       // Auto-select trip if step=5 is requested and trips are loaded
-      if (stepParam === '5' && tripIdParam && trips.length > 0) {
+      if ((stepParam === '5' || searchParams.get('fromPayment') === '1') && tripIdParam && trips.length > 0) {
         const trip = trips.find((t: Trip) => t.id === tripIdParam);
         if (trip) setSelectedTrip(trip);
       }
@@ -376,7 +402,7 @@ function CustomerPageContent() {
         const tripIdParam = params.get('tripId');
         const stepParam = params.get('step');
         
-        if (tripIdParam && stepParam === '5') {
+        if (tripIdParam && (stepParam === '5' || params.get('fromPayment') === '1')) {
           const trip = data.trips.find((t: Trip) => t.id === tripIdParam);
           if (trip) {
             setSelectedTrip(trip);
@@ -900,7 +926,7 @@ function CustomerPageContent() {
     const currentInUrl = params.get('step');
     
     // Prevent overwriting a step=5 deep link before data is loaded
-    if (currentStep === 1 && currentInUrl === '5' && trips.length === 0) return;
+    if (currentStep === 1 && trips.length === 0 && (currentInUrl === '5' || params.get('fromPayment') === '1')) return;
 
     if (currentInUrl !== String(currentStep)) {
       params.set('step', String(currentStep));

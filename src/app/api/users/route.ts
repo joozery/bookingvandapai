@@ -1,23 +1,29 @@
 import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 import { supabase } from '@/lib/supabase';
+import { requireAdmin, requireOwnerOrAdmin } from '@/lib/adminAuth';
 
 /** GET /api/users
  *  Aggregates unique LINE users from bookings table, enriched with stats.
  */
 export async function GET() {
+  const admin = await requireAdmin([]);
+  if (admin instanceof Response) return admin;
   try {
-    const { data: bookings, error } = await supabase
-      .from('bookings')
-      .select('*')
-      .order('createdAt', { ascending: false });
+    // Only the fields used below are read (not e.g. ID numbers or medical
+    // notes), and the block-list is read at the same time.
+    const [{ data: bookings, error }, { data: adminUsers }] = await Promise.all([
+      supabase
+        .from('bookings')
+        .select('lineUserId, lineUserName, lineUserProfilePic, nickname, fullName, phone, birthDate, createdAt, status, checkedIn')
+        .order('createdAt', { ascending: false }),
+      // Fetch block-list from admin_users table (if exists), gracefully ignore if not
+      supabase
+        .from('admin_users')
+        .select('lineUserId, role, isBlocked, note, createdAt'),
+    ]);
 
     if (error) throw error;
-
-    // Fetch block-list from admin_users table (if exists), gracefully ignore if not
-    const { data: adminUsers } = await supabase
-      .from('admin_users')
-      .select('lineUserId, role, isBlocked, note, createdAt');
 
     const adminMap: Record<string, any> = {};
     (adminUsers || []).forEach((u: any) => {

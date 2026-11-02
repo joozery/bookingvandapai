@@ -5,8 +5,9 @@ import {
   Shield, LayoutDashboard, Calendar, Compass, Bus, Users, QrCode, Settings,
   ChevronDown, ChevronRight, RefreshCw, Check, AlertCircle,
   Activity, UserCheck, Bell, Menu, X, Headphones,
-  FileText, Lock, TrendingUp, Key, User, LogOut
+  FileText, Lock, TrendingUp, Key, User, LogOut, Wallet, Calculator, History
 } from 'lucide-react';
+import { hasPermission } from '@/lib/permissions';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useParams, useRouter } from 'next/navigation';
@@ -15,19 +16,32 @@ import { useSession, signIn, signOut } from 'next-auth/react';
 import { supabase } from '@/lib/browserSupabase';
 import { convertImageToWebp } from '@/lib/imageToWebp';
 
-import BookingsTab from '../components/BookingsTab';
-import TripsTab from '../components/TripsTab';
-import VansTab from '../components/VansTab';
-import CheckinTab from '../components/CheckinTab';
-import DashboardOverview from '../components/DashboardOverview';
-import UsersTab, { type UserRecord } from '../components/UsersTab';
-import AdminsTab from '../components/AdminsTab';
-import InsuranceTab from '../components/InsuranceTab';
-import ReviewsTab from '../components/ReviewsTab';
-import ProfileTab from '../components/ProfileTab';
-import SettingsTab from '../components/SettingsTab';
-import LeaderboardTab from '../components/LeaderboardTab';
-import TripCalendar from '../components/TripCalendar';
+import dynamic from 'next/dynamic';
+import type { UserRecord } from '../components/UsersTab';
+
+// Each tab is only downloaded when it is opened, so the first admin load
+// does not carry every tab's code.
+const TabLoading = () => (
+  <div className="flex items-center justify-center py-16">
+    <RefreshCw className="w-6 h-6 text-violet-600 animate-spin" />
+  </div>
+);
+const BookingsTab = dynamic(() => import('../components/BookingsTab'), { loading: TabLoading });
+const TripsTab = dynamic(() => import('../components/TripsTab'), { loading: TabLoading });
+const VansTab = dynamic(() => import('../components/VansTab'), { loading: TabLoading });
+const CheckinTab = dynamic(() => import('../components/CheckinTab'), { loading: TabLoading });
+const DashboardOverview = dynamic(() => import('../components/DashboardOverview'), { loading: TabLoading });
+const UsersTab = dynamic(() => import('../components/UsersTab'), { loading: TabLoading });
+const AdminsTab = dynamic(() => import('../components/AdminsTab'), { loading: TabLoading });
+const InsuranceTab = dynamic(() => import('../components/InsuranceTab'), { loading: TabLoading });
+const ReviewsTab = dynamic(() => import('../components/ReviewsTab'), { loading: TabLoading });
+const ProfileTab = dynamic(() => import('../components/ProfileTab'), { loading: TabLoading });
+const SettingsTab = dynamic(() => import('../components/SettingsTab'), { loading: TabLoading });
+const LeaderboardTab = dynamic(() => import('../components/LeaderboardTab'), { loading: TabLoading });
+const TripCalendar = dynamic(() => import('../components/TripCalendar'), { loading: TabLoading });
+const PaymentsTab = dynamic(() => import('../components/PaymentsTab'), { loading: TabLoading });
+const AccountingTab = dynamic(() => import('../components/accounting/AccountingTab'), { loading: TabLoading });
+const AuditLogTab = dynamic(() => import('../components/AuditLogTab'), { loading: TabLoading });
 import type { Trip, Van, Booking } from '../components/types';
 
 // ── Nav structure ─────────────────────────────────────────────────────────────
@@ -44,6 +58,8 @@ const NAV = [
       { id: 'pending',   label: 'รออนุมัติเปลี่ยนที่นั่ง' },
     ]
   },
+  { id: 'payments', label: 'การชำระเงิน', icon: Wallet },
+  { id: 'accounting', label: 'บัญชีรายรับ–รายจ่าย', icon: Calculator },
   { id: 'users',   label: 'จัดการลูกทริป', icon: UserCheck },
   { id: 'checkin', label: 'Check-in QR', icon: QrCode },
   { id: 'staff',   label: 'ทีมงาน / ผู้จัด', icon: Lock },
@@ -51,10 +67,11 @@ const NAV = [
   { id: 'reviews', label: 'รีวิวและความคิดเห็น', icon: FileText },
   { id: 'leaderboard', label: 'อันดับคนจองทริป', icon: TrendingUp },
   { id: 'settings',  label: 'ตั้งค่าเว็บไซต์', icon: Settings },
+  { id: 'audit',     label: 'ประวัติการใช้งาน', icon: History },
   { id: 'profile',   label: 'โปรไฟล์ของฉัน', icon: User },
 ] as const;
 
-type TabId = 'dashboard' | 'calendar' | 'bookings' | 'trips' | 'completed-trips' | 'vans' | 'checkin' | 'pending' | 'users' | 'staff' | 'insurance' | 'reviews' | 'profile' | 'settings' | 'leaderboard';
+type TabId = 'dashboard' | 'calendar' | 'bookings' | 'payments' | 'accounting' | 'audit' | 'trips' | 'completed-trips' | 'vans' | 'checkin' | 'pending' | 'users' | 'staff' | 'insurance' | 'reviews' | 'profile' | 'settings' | 'leaderboard';
 
 export default function AdminPage() {
   const { data: session, status } = useSession();
@@ -259,6 +276,13 @@ export default function AdminPage() {
   const handleApprove  = async (id: string) => { await api(() => fetch(`/api/bookings/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status:'approved' }) }), 'อนุมัติสำเร็จ!'); };
   const handleReject   = async (id: string) => { if (!confirm('ยืนยันปฏิเสธ?')) return; api(() => fetch(`/api/bookings/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ status:'rejected' }) }), 'ปฏิเสธเรียบร้อย'); };
   const handleDelBook  = async (id: string) => { if (!confirm('ลบรายการนี้?')) return; api(() => fetch(`/api/bookings/${id}`, { method:'DELETE' }), 'ลบเรียบร้อย'); };
+  const handleMoveSeat = async (id: string, vanId: string, seatId: string) => {
+    const res = await fetch(`/api/admin/bookings/${encodeURIComponent(id)}/move`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vanId, seatId }) });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'ย้ายที่นั่งไม่สำเร็จ');
+    showToast('success', data.paymentsUpdated ? `ย้ายไปที่นั่ง ${data.booking.seatLabel} แล้ว และอัปเดตรายการชำระเงินแล้ว` : `ย้ายไปที่นั่ง ${data.booking.seatLabel} แล้ว`);
+    await fetchAll(true);
+  };
   const handleCheckIn  = async (id: string, cur: boolean) => { await api(() => fetch(`/api/bookings/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ checkedIn: !cur }) }), !cur ? 'เช็คอินสำเร็จ!' : 'ยกเลิกเช็คอินเรียบร้อย'); };
   const handleManual   = async (data: any) => {
     try {
@@ -370,7 +394,8 @@ export default function AdminPage() {
           const isAdmin = (session?.user as any)?.role === 'admin';
           const isSuperAdmin = (session?.user as any)?.username === 'admin';
           const perms = (session?.user as any)?.permissions || [];
-          if (isAdmin && !isSuperAdmin && !perms.includes(item.id === 'completed-trips' ? 'completed-trips' : item.id) && !(item.id === 'completed-trips' && perms.includes('trips')) && !(item.id === 'calendar' && (perms.includes('trips') || perms.includes('dashboard')))) return null;
+          if (item.id === 'audit' && !isSuperAdmin) return null; // audit log: main admin only
+          if (isAdmin && !isSuperAdmin && item.id !== 'audit' && !hasPermission(perms, item.id, 'view') && !(item.id === 'completed-trips' && perms.includes('trips')) && !(item.id === 'calendar' && (perms.includes('trips') || perms.includes('dashboard')))) return null;
 
           const Icon    = item.icon;
           const hasChildren = 'children' in item && item.children;
@@ -669,7 +694,8 @@ export default function AdminPage() {
            activeTab !== 'profile' && 
            !(activeTab === 'pending' 
              ? (session?.user as any)?.permissions?.includes('bookings') || (session?.user as any)?.permissions?.includes('pending')
-             : (session?.user as any)?.permissions?.includes(activeTab === 'completed-trips' ? ((session?.user as any)?.permissions?.includes('completed-trips') ? 'completed-trips' : 'trips') : activeTab)) ? (
+             : activeTab === 'audit' ? false
+             : hasPermission((session?.user as any)?.permissions, activeTab === 'completed-trips' ? ((session?.user as any)?.permissions?.includes('completed-trips') ? 'completed-trips' : 'trips') : activeTab, 'view')) ? (
              <div className="flex flex-col items-center justify-center h-full text-slate-400 space-y-3">
                <Lock className="w-12 h-12 opacity-20" />
                <p className="font-bold">คุณไม่มีสิทธิเข้าถึงหน้านี้</p>
@@ -685,6 +711,9 @@ export default function AdminPage() {
                  activeTab === 'calendar'  ? 'ปฏิทินการเดินทาง' :
                  activeTab === 'bookings'  ? 'การจองและลูกทริป' :
                  activeTab === 'pending'   ? 'รออนุมัติเปลี่ยนที่นั่ง' :
+                 activeTab === 'payments'  ? 'การชำระเงิน' :
+                 activeTab === 'accounting' ? 'บัญชีรายรับ–รายจ่าย' :
+                 activeTab === 'audit'     ? 'ประวัติการใช้งาน (Audit Log)' :
                  activeTab === 'trips'     ? 'จัดการทริป' :
                  activeTab === 'completed-trips' ? 'ทริปที่จบไปแล้ว' :
                  activeTab === 'vans'      ? 'จัดการรถตู้' :
@@ -699,6 +728,9 @@ export default function AdminPage() {
                  activeTab === 'calendar'  ? 'แพลนการเดินทางและตารางทริปทั้งหมดของระบบ' :
                  activeTab === 'bookings'  ? 'จัดการคำขอจองและอนุมัติที่นั่ง' :
                  activeTab === 'users'     ? 'ดูและจัดการข้อมูลลูกทริปทั้งหมด' : 
+                 activeTab === 'payments'  ? 'ประวัติและสถานะการชำระเงิน ตรวจสอบสลิป แก้ไขยอด และส่งออกรายงาน' :
+                 activeTab === 'accounting' ? 'รายรับ รายจ่าย กำไรขาดทุนรายทริป หุ้นส่วน และรายงานบัญชี' :
+                 activeTab === 'audit'     ? 'ใครแก้ไขอะไร เมื่อไหร่ ย้อนหลังทั้งหมด (เฉพาะแอดมินหลัก)' :
                  activeTab === 'insurance' ? 'จัดการข้อมูลและประวัติประกันการเดินทางของลูกทริป' : 
                  activeTab === 'staff'     ? 'จัดการสิทธิแอดมิน, ผู้จัด และกำหนดการบล็อก' : 
                  activeTab === 'profile'   ? 'ตั้งค่าบัญชี รูปโปรไฟล์ และรหัสผ่าน' : ''}
@@ -739,6 +771,7 @@ export default function AdminPage() {
                   onApprove={handleApprove} onReject={handleReject}
                   onDelete={handleDelBook} onCheckIn={handleCheckIn}
                   onManualSubmit={handleManual}
+                  onMoveSeat={handleMoveSeat}
                 />
               )}
               {(activeTab === 'trips' || activeTab === 'completed-trips') && (
@@ -764,6 +797,9 @@ export default function AdminPage() {
                   }), enabled ? 'เปิดเบาะเสริมแล้ว' : 'ปิดเบาะเสริมแล้ว'); }}
                 />
               )}
+              {activeTab === 'payments'  && <PaymentsTab trips={trips} />}
+              {activeTab === 'accounting' && <AccountingTab />}
+              {activeTab === 'audit' && <AuditLogTab />}
               {activeTab === 'users'     && <UsersTab users={users} onRefresh={() => fetchAll()} />}
               {activeTab === 'staff'     && <AdminsTab />}
               {activeTab === 'insurance' && <InsuranceTab trips={trips} bookings={bookings} onRefresh={() => fetchAll()} />}

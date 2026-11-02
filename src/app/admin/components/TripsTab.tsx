@@ -21,14 +21,14 @@ interface Props {
   canToggleCompleted?: boolean;
   trips: Trip[];
   vans: Van[];
-  onCreate: (form: { guideName: string; name: string; departureDate: string; durationDays: number; cost: number; pickupPoint: string; departureTime: string; tripPeriod: string; reviewTitle: string; reviewDescription: string; vansCount: number; vansList: { plateNumber: string; driverName: string; driverPhone: string; }[]; imageFile?: File | null }) => Promise<void>;
-  onUpdate: (id: string, form: { guideName: string; name: string; departureDate: string; durationDays: number; cost: number; pickupPoint: string; departureTime: string; tripPeriod: string; reviewTitle: string; reviewDescription: string; imageFile?: File | null }) => Promise<boolean>;
+  onCreate: (form: { guideName: string; name: string; departureDate: string; durationDays: number; cost: number; depositAmount: number | ''; pickupPoint: string; departureTime: string; tripPeriod: string; reviewTitle: string; reviewDescription: string; vansCount: number; vansList: { plateNumber: string; driverName: string; driverPhone: string; }[]; imageFile?: File | null }) => Promise<void>;
+  onUpdate: (id: string, form: { guideName: string; name: string; departureDate: string; durationDays: number; cost: number; depositAmount: number | ''; pickupPoint: string; departureTime: string; tripPeriod: string; reviewTitle: string; reviewDescription: string; imageFile?: File | null }) => Promise<boolean>;
   onUpdateVan: (vanId: string, data: { staffName: string }) => Promise<void>;
   onDelete: (tripId: string) => Promise<void>;
   onStatusChange: (tripId: string, status: Trip['status']) => Promise<void>;
 }
 
-const DEFAULT_FORM = { guideName: '', reviewTitle: '', reviewDescription: '', name: '', departureDate: '', returnDate: '', durationDays: 3, cost: 1500, pickupPoint: '', departureTime: '06:00', tripPeriod: '', durationText: '', vansCount: 1, vansList: [{ plateNumber: '', driverName: '', driverPhone: '' }] };
+const DEFAULT_FORM = { guideName: '', reviewTitle: '', reviewDescription: '', name: '', departureDate: '', returnDate: '', durationDays: 3, cost: 1500, depositAmount: '' as number | '', pickupPoint: '', departureTime: '06:00', tripPeriod: '', durationText: '', vansCount: 1, vansList: [{ plateNumber: '', driverName: '', driverPhone: '' }] };
 
 const calculateEndDate = (startDate: string, days: number) => {
   if (!startDate || !days) return '';
@@ -92,7 +92,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onUpdateVan,
 
   // Edit States
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
-  const [editForm, setEditForm] = useState({ guideName: '', reviewTitle: '', reviewDescription: '', name: '', departureDate: '', returnDate: '', durationDays: 3, cost: 1500, pickupPoint: '', departureTime: '06:00', tripPeriod: '', durationText: '' });
+  const [editForm, setEditForm] = useState({ guideName: '', reviewTitle: '', reviewDescription: '', name: '', departureDate: '', returnDate: '', durationDays: 3, cost: 1500, depositAmount: '' as number | '', pickupPoint: '', departureTime: '06:00', tripPeriod: '', durationText: '' });
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
   const [editImagePreview, setEditImagePreview] = useState<string | null>(null);
   const [editingStaffNames, setEditingStaffNames] = useState<Record<string, string>>({});
@@ -148,6 +148,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onUpdateVan,
       returnDate: calculateEndDate(trip.departureDate, trip.durationDays),
       durationDays: trip.durationDays,
       cost: trip.cost,
+      depositAmount: trip.depositAmount ?? '',
       pickupPoint: trip.pickupPoint,
       departureTime: trip.departureTime || '06:00',
       tripPeriod: period,
@@ -332,6 +333,8 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onUpdateVan,
                     </div>
                   </div>
 
+                  <DepositField cost={Number(editForm.cost) || 0} value={editForm.depositAmount} onChange={value => setEditForm({ ...editForm, depositAmount: value })} />
+
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs font-bold text-slate-700 block mb-1.5">ระยะเวลา (ข้อความแสดงผล)</label>
@@ -470,6 +473,8 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onUpdateVan,
                       <Input required type="number" min={0} value={form.cost === 0 ? '' : form.cost} onChange={e => setForm({ ...form, cost: e.target.value === '' ? ('' as any) : Number(e.target.value) })} className="h-10 text-sm font-bold text-violet-700" />
                     </div>
                   </div>
+
+                  <DepositField cost={Number(form.cost) || 0} value={form.depositAmount} onChange={value => setForm({ ...form, depositAmount: value })} />
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -782,6 +787,24 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onUpdateVan,
       )}
 
       {cropperModal}
+    </div>
+  );
+}
+
+/** Deposit per seat. Blank = default 50%; shows the resulting balance. */
+function DepositField({ cost, value, onChange }: { cost: number; value: number | ''; onChange: (value: number | '') => void }) {
+  const deposit = value === '' || Number(value) <= 0 ? Math.ceil(cost * 100 / 2) / 100 : Number(value);
+  const invalid = value !== '' && Number(value) > 0 && Number(value) >= cost;
+  const baht = (n: number) => n.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  return (
+    <div className="rounded-xl border border-violet-100 bg-violet-50/50 p-3">
+      <label className="text-xs font-bold text-slate-700 block mb-1.5">ยอดมัดจำต่อท่าน (บาท)</label>
+      <Input type="number" min={0} step="0.01" placeholder={`เว้นว่าง = 50% (฿${baht(Math.ceil(cost * 100 / 2) / 100)})`} value={value} onChange={e => onChange(e.target.value === '' ? '' : Number(e.target.value))} className={cn('h-10 text-sm font-bold text-violet-700', invalid && 'border-rose-400')} />
+      {invalid ? (
+        <p className="mt-1.5 text-[11px] font-bold text-rose-600">ยอดมัดจำต้องน้อยกว่าค่าบริการ</p>
+      ) : cost > 0 && (
+        <p className="mt-1.5 text-[11px] text-slate-500">มัดจำ ฿{baht(deposit)} · ยอดคงเหลือชำระก่อนเดินทาง ฿{baht(Math.max(0, cost - deposit))} · ชำระเต็ม ฿{baht(cost)}</p>
+      )}
     </div>
   );
 }

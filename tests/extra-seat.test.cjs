@@ -4,12 +4,24 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const ts = require('typescript');
 
+// Stand-in for the platform Response used by route guards (own `status` so
+// the test's object spread keeps it).
+class Denied { constructor(status) { this.status = status; } }
+/** Mirrors lib/adminAuth: main admin or a staff member holding a permission. */
+const adminAuthFor = user => ({
+  requireAdmin: async (permissions = []) => {
+    if (!user) return new Denied(401);
+    const allowed = user.role === 'admin' && !user.isBlocked && (user.username === 'admin' || permissions.length === 0 || permissions.some(p => user.permissions?.includes(p)));
+    return allowed ? { id: user.id || 'admin', username: user.username, name: user.username, isMain: user.username === 'admin', permissions: user.permissions || [] } : new Denied(403);
+  },
+});
+
 function load(file, dependencies = {}) {
   const exports = {};
   const code = ts.transpileModule(fs.readFileSync(file, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS },
   }).outputText;
-  vm.runInNewContext(code, { exports, require: name => {
+  vm.runInNewContext(code, { exports, Response: Denied, require: name => {
     if (!(name in dependencies)) throw new Error(`Unexpected import: ${name}`);
     return dependencies[name];
   }});
@@ -60,15 +72,17 @@ async function request({ enabled = false, user = { role: 'admin', username: 'adm
     'next/server': { NextResponse: { json: (body, options) => ({ body, status: options?.status || 200 }) } },
     '@/lib/supabase': { supabase }, 'next-auth': { getServerSession: async () => user ? { user } : null },
     '../../auth/[...nextauth]/route': { authOptions: {} }, '@/lib/extraSeat': helpers,
+    '@/lib/adminAuth': adminAuthFor(user),
+    '@/lib/audit': { recordAudit: async () => {} },
   });
   const response = await route.PUT({ json: async () => body || ({ extraSeatEnabled: enabled }) }, { params: Promise.resolve({ id: 'van' }) });
   return { ...response, written };
 }
 
 test('API rejects unauthenticated and unauthorized callers', async () => {
-  for (const user of [null, { role: 'admin', username: 'limited', permissions: [] }]) {
+  for (const [user, status] of [[null, 401], [{ role: 'admin', username: 'limited', permissions: [] }, 403]]) {
     const result = await request({ user });
-    assert.equal(result.status, 403);
+    assert.equal(result.status, status);
     assert.equal(result.written, undefined);
   }
 });

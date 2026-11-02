@@ -1,12 +1,15 @@
 // src/app/api/admin/bookings/route.ts
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { requireAdmin, requireOwnerOrAdmin } from '@/lib/adminAuth';
 
 // This route is used by the admin UI (InsuranceTab) to fetch all bookings
 // It bypasses RLS because the Supabase client uses the service role key.
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
+  const admin = await requireAdmin(['insurance', 'bookings']);
+  if (admin instanceof Response) return admin;
   try {
     const { data: bookings, error } = await supabase
       .from('bookings')

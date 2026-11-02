@@ -82,6 +82,7 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
         return {
           id: t.id,
           completed: t.status === 'completed',
+          isTestTrip: t.isTestTrip === true,
           title: t.name,
           guideName: (() => {
             const sortedVans = Array.isArray(t.vans)
@@ -132,6 +133,7 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
           <nav className="hidden md:flex items-center gap-8 text-xs font-bold text-slate-500">
             <a href="#" className="text-brand-700 font-black hover:text-purple-800 transition">หน้าแรก</a>
             <a href="#destinations" className="hover:text-purple-800 transition">ทริปที่เปิดอยู่</a>
+            <Link href="/payments" className="hover:text-purple-800 transition">การชำระเงิน</Link>
             <a href="#trip-calendar" className="hover:text-purple-800 transition">ปฏิทินทริป</a>
             <a href="#completed-trips" className="hover:text-purple-800 transition">ทริปที่ปิดไปแล้ว</a>
           </nav>
@@ -187,16 +189,10 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
                 href={MESSENGER_URL}
                 target="_blank"
                 rel="noreferrer"
-                className="relative overflow-hidden py-3.5 px-7 rounded-2xl font-black text-xs sm:text-sm text-white shadow-xl shadow-blue-600/30 flex items-center gap-2.5 active:scale-95 transition-transform group select-none border border-white/25"
+                className="admin-contact-motion relative isolate overflow-hidden py-3.5 px-7 rounded-2xl font-black text-xs sm:text-sm text-white shadow-xl shadow-blue-600/30 flex items-center gap-2.5 group select-none border border-white/25 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-purple-600"
               >
-                {/* Flowing Color Fill Inside Button (สีวิ่งภายในปุ่ม) */}
-                <div 
-                  className="absolute -inset-[150%] animate-[spin_5s_linear_infinite] group-hover:animate-[spin_2.5s_linear_infinite] opacity-100 pointer-events-none"
-                  style={{
-                    background: 'conic-gradient(from 0deg, #2563eb, #7c3aed, #f59e0b, #06b6d4, #2563eb)',
-                  }}
-                />
-                <div className="absolute inset-0 bg-black/10 backdrop-blur-[1px]" />
+                <span aria-hidden="true" className="admin-contact-gradient pointer-events-none absolute inset-0 -z-10" />
+                <span aria-hidden="true" className="admin-contact-shine pointer-events-none absolute inset-0" />
 
                 <MessageSquare className="w-4.5 h-4.5 text-white relative z-10 drop-shadow" />
                 <span className="relative z-10 drop-shadow">ติดต่อแอดมินเพื่อขอลิ้งก์จองเลย</span>
@@ -231,7 +227,7 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
       {[false, true].map(completed => {
         const groupTrips = destinations.filter(dest => dest.completed === completed);
         if (!completed) {
-          groupTrips.sort((a, b) => a.departureDay - b.departureDay || a.departureTime.localeCompare(b.departureTime));
+          groupTrips.sort((a, b) => Number(b.isTestTrip) - Number(a.isTestTrip) || a.departureDay - b.departureDay || a.departureTime.localeCompare(b.departureTime));
         } else {
           groupTrips.sort((a, b) => b.departureDay - a.departureDay || b.departureTime.localeCompare(a.departureTime));
         }
@@ -257,7 +253,7 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
             {/* Scrollable card deck with snap alignment & hidden scrollbar */}
             <div 
               ref={scrollRef}
-              className="flex gap-3 sm:gap-4 overflow-x-auto snap-x snap-mandatory pb-2 pt-1 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 [&::-webkit-scrollbar]:hidden"
+              className="flex gap-3 sm:gap-4 overflow-x-auto snap-x snap-mandatory py-5 -my-3 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 [&::-webkit-scrollbar]:hidden"
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
               {groupTrips.length === 0 ? (
@@ -267,57 +263,101 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
                   {!completed && <p className="text-sm text-slate-400 mt-2">โปรดติดตามอัปเดตทริปใหม่ๆ หรือติดต่อแอดมินเพื่อสอบถามข้อมูลเพิ่มเติม</p>}
                 </div>
               ) : (
-                groupTrips.map((dest) => (
-                  <div 
+                groupTrips.map((dest) => completed ? (
+                <Link
                   key={dest.id}
-                  className="w-[82vw] max-w-[340px] sm:w-[360px] md:w-[380px] shrink-0 snap-center sm:snap-start relative p-[5px] rounded-2xl sm:rounded-3xl overflow-hidden group transition-all duration-300 hover:-translate-y-1.5 shadow-[0_12px_40px_rgba(236,72,153,0.25)] hover:shadow-[0_20px_50px_rgba(236,72,153,0.45)] flex flex-col"
+                  href={`/trips/${encodeURIComponent(dest.id)}/reviews`}
+                  className="group relative block h-[260px] w-[72vw] max-w-[290px] shrink-0 snap-center overflow-hidden rounded-3xl p-[4px] shadow-[0_12px_40px_rgba(236,72,153,0.25)] transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_20px_50px_rgba(236,72,153,0.45)] sm:h-[280px] sm:w-[300px] sm:snap-start"
+                  aria-label={`ดูรีวิวทริป ${dest.title}`}
                 >
-                  {/* Animated Thick Running Light Gradient Border (กรอบไฟวิ่งวนขนาดใหญ่) */}
-                  <div 
-                    className="absolute -inset-[150%] animate-[spin_4s_linear_infinite] group-hover:animate-[spin_2s_linear_infinite] opacity-100 transition-opacity pointer-events-none"
-                    style={{
-                      background: 'conic-gradient(from 0deg, #ff007f, #a855f7, #00f3ff, #ff007f)',
-                    }}
+                  {/* Running neon border (ไฟวิ่งวนรอบการ์ด) */}
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute -inset-[150%] animate-[spin_4s_linear_infinite] group-hover:animate-[spin_2s_linear_infinite]"
+                    style={{ background: 'conic-gradient(from 0deg, #ff007f, #a855f7, #00f3ff, #ff007f)' }}
                   />
+                  <div className="relative h-full w-full overflow-hidden rounded-[20px] bg-purple-950">
+                  <img
+                    src={dest.img}
+                    alt=""
+                    className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                  <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
 
-                  {/* Outer Neon Glow Aura around card frame */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-pink-500/40 via-purple-500/40 to-cyan-400/40 rounded-2xl sm:rounded-3xl blur-lg opacity-80 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                  <div className="absolute inset-x-3 top-3 flex items-center justify-between gap-2">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-black/45 px-2.5 py-1 text-[10px] font-black text-white backdrop-blur-md">
+                      <CheckCircle2 aria-hidden="true" className="h-3.5 w-3.5 text-emerald-400" />
+                      จบทริปแล้ว
+                    </span>
+                    <TripRatingSummary key={dest.id} tripId={dest.id} />
+                  </div>
 
-                  {/* Inner Card Content */}
-                  <div className="relative w-full h-full bg-white rounded-[11px] sm:rounded-[19px] overflow-hidden flex flex-col theme-card">
+                  <div className="absolute inset-x-0 bottom-0 space-y-2.5 p-4">
+                    <div>
+                      <h3 className="line-clamp-2 text-base font-black leading-snug text-white drop-shadow sm:text-lg">{dest.title}</h3>
+                      <p className="mt-1 flex items-center gap-1.5 text-[11px] font-semibold text-purple-100/90">
+                        <Calendar aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">{dest.period || dest.departureDate}</span>
+                      </p>
+                    </div>
+                    <span className="relative flex items-center justify-between overflow-hidden rounded-2xl border border-white/20 gradient-flow px-3.5 py-2.5 text-xs font-black text-white shadow-md">
+                      <span className="relative flex items-center gap-1.5 drop-shadow">
+                        <Star aria-hidden="true" className="h-4 w-4 fill-yellow-300 text-yellow-300" />
+                        ดูรีวิวและคะแนนเฉลี่ย
+                      </span>
+                      <ArrowRight aria-hidden="true" className="relative h-4 w-4 drop-shadow transition-transform group-hover:translate-x-1" />
+                    </span>
+                  </div>
+                  </div>
+                </Link>
+              ) : (
+                <article
+                  key={dest.id}
+                  className="group relative w-[82vw] max-w-[340px] sm:w-[360px] md:w-[380px] shrink-0 snap-center sm:snap-start flex flex-col overflow-hidden rounded-3xl p-[4px] shadow-[0_12px_40px_rgba(236,72,153,0.25)] transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_20px_50px_rgba(236,72,153,0.45)]"
+                >
+                  {/* Running neon border (ไฟวิ่งวนรอบการ์ด) */}
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute -inset-[150%] animate-[spin_4s_linear_infinite] group-hover:animate-[spin_2s_linear_infinite]"
+                    style={{ background: 'conic-gradient(from 0deg, #ff007f, #a855f7, #00f3ff, #ff007f)' }}
+                  />
+                  <div aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-3xl bg-gradient-to-r from-pink-500/40 via-purple-500/40 to-cyan-400/40 opacity-80 blur-lg transition-opacity group-hover:opacity-100" />
 
-                  {/* Image with floating trip status */}
-                  <div className="relative overflow-hidden bg-slate-50 shrink-0">
-                    <div aria-hidden="true" className="h-28 sm:h-[clamp(112px,14vh,160px)]" />
+                  <div className="relative flex h-full w-full flex-col overflow-hidden rounded-[20px] bg-white theme-card">
+                  {/* Image */}
+                  <div className="relative shrink-0 overflow-hidden bg-purple-50">
+                    <div aria-hidden="true" className="h-32 sm:h-[clamp(128px,15vh,170px)]" />
                     <div aria-hidden="true" style={{ height: imageExtraHeights[dest.id] || 0 }} />
-                     <img
-                      src={dest.img} 
-                      alt={dest.title} 
-                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                       loading="lazy"
-                       decoding="async"
+                    <img
+                      src={dest.img}
+                      alt={dest.title}
+                      className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      loading="lazy"
+                      decoding="async"
                     />
-                    
-                    {/* Floating Status Pill on top-left of the image */}
-                    <div className="absolute top-2 left-2 sm:top-4 sm:left-4 z-10">
+                    <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/45 to-transparent" />
+
+                    <div className="absolute left-3 top-3 z-10">
                       {completed ? (
-                        <span className="inline-flex items-center bg-slate-700/90 text-white text-[10px] font-black py-1 px-2.5 rounded-full">จบแล้ว</span>
+                        <span className="inline-flex items-center rounded-full bg-slate-800/85 px-2.5 py-1 text-[10px] font-black text-white backdrop-blur-sm">จบแล้ว</span>
                       ) : (
-                        <span className={`inline-flex items-center gap-1.5 ${dest.availableSeats > 0 ? 'bg-emerald-600' : 'bg-red-600'} text-white text-[10px] font-black py-1 px-2.5 rounded-full shadow-md border border-white/10`}>
-                          <span className="w-1.5 h-1.5 bg-white rounded-full shrink-0" />
+                        <span className={`inline-flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-black shadow-sm ${dest.availableSeats > 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+                          <span className={`h-2 w-2 shrink-0 rounded-full ${dest.availableSeats > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
                           <span>{dest.seatsText}</span>
                         </span>
                       )}
                     </div>
                     {completed ? (
-                      <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-10">
+                      <div className="absolute right-3 top-3 z-10">
                         <TripRatingSummary key={dest.id} tripId={dest.id} />
                       </div>
                     ) : (
                       dest.guideName && dest.guideName !== 'ยังไม่ระบุ' ? (
-                        <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-10 max-w-[65%]">
-                          <span className="inline-flex items-center gap-1.5 bg-slate-900/80 backdrop-blur-md text-white text-[10px] sm:text-xs font-bold py-1 px-2.5 rounded-full shadow-md border border-white/20 truncate">
-                            <User aria-hidden="true" className="w-3 h-3 text-purple-300 shrink-0" />
+                        <div className="absolute bottom-3 left-3 z-10 max-w-[75%]">
+                          <span className="inline-flex max-w-full items-center gap-1.5 truncate rounded-full bg-black/40 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur-md">
+                            <User aria-hidden="true" className="h-3 w-3 shrink-0" />
                             <span className="truncate">สตาฟ: {dest.guideName}</span>
                           </span>
                         </div>
@@ -325,91 +365,68 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
                     )}
                   </div>
 
-                  {/* Body details */}
-                  <div>
-                  <div data-trip-card-content={dest.id} className="p-3 flex flex-col justify-between space-y-2">
-                    <div className="space-y-1.5">
-                      {/* Trip Title */}
-                      <h3 className="text-sm sm:text-base font-black text-slate-800 leading-snug group-hover:text-brand-700 transition duration-200 line-clamp-1">
+                  {/* Body */}
+                  <div data-trip-card-content={dest.id} className="flex flex-col justify-between gap-3 p-4">
+                    <div className="space-y-2.5">
+                      <h3 className="line-clamp-1 text-base font-black leading-snug text-slate-900 sm:text-lg">
                         {dest.title}
                       </h3>
-                      
-                      <div className="space-y-1 text-[11px] sm:text-xs font-semibold text-slate-500">
-                        <div className="flex items-start gap-2">
-                          <Calendar className="w-3.5 h-3.5 text-purple-600/70 shrink-0 mt-0.5" />
-                          <span>{dest.durationText}{!completed && dest.period && <span className="font-normal ml-1">({dest.period})</span>}</span>
-                        </div>
-                        {completed ? (
-                          <p>{dest.period || dest.departureDate}</p>
-                        ) : (
-                          <div className="space-y-1">
 
-                            <p className="flex items-start gap-2"><Bus aria-hidden="true" className="w-3.5 h-3.5 shrink-0 mt-0.5 text-purple-600/70" /><span>วันที่ออกเดินทาง {dest.departureDate}</span></p>
-                            <p className="flex items-start gap-2"><MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5 text-purple-600/70" /><span>สถานที่ขึ้นรถ: {dest.pickupPoint}</span></p>
-                            <p className="flex items-center gap-2"><Clock className="w-3.5 h-3.5 shrink-0 text-purple-600/70" /><span>เวลาออกเดินทาง {dest.departureTime ? `${dest.departureTime} น.` : 'ยังไม่ระบุ'}</span></p>
-                          </div>
+                      <ul className="space-y-1.5 text-xs font-semibold text-slate-600">
+                        <li className="flex items-start gap-2">
+                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-purple-50 text-purple-600"><Calendar className="h-3.5 w-3.5" /></span>
+                          <span className="pt-1">{dest.durationText}{!completed && dest.period && <span className="ml-1 font-normal text-slate-500">({dest.period})</span>}</span>
+                        </li>
+                        {completed ? (
+                          <li className="pl-8 text-slate-500">{dest.period || dest.departureDate}</li>
+                        ) : (
+                          <>
+                            <li className="flex items-start gap-2">
+                              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-purple-50 text-purple-600"><Bus aria-hidden="true" className="h-3.5 w-3.5" /></span>
+                              <span className="pt-1">ออกเดินทาง {dest.departureDate}{dest.departureTime ? ` • ${dest.departureTime} น.` : ''}</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-purple-50 text-purple-600"><MapPin className="h-3.5 w-3.5" /></span>
+                              <span className="pt-1">จุดขึ้นรถ: {dest.pickupPoint}</span>
+                            </li>
+                            {!dest.departureTime && (
+                              <li className="flex items-start gap-2">
+                                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-purple-50 text-purple-600"><Clock className="h-3.5 w-3.5" /></span>
+                                <span className="pt-1">เวลาออกเดินทาง ยังไม่ระบุ</span>
+                              </li>
+                            )}
+                          </>
                         )}
-                      </div>
+                      </ul>
                     </div>
 
-                    {/* Footer: Price on the left, interactive book button on the right */}
-                    {completed && (
-                      <Link 
-                        href={`/trips/${encodeURIComponent(dest.id)}/reviews`} 
-                        className="relative overflow-hidden flex items-center justify-center gap-2 rounded-xl py-3 px-4 text-xs sm:text-sm font-black text-white shadow-md active:scale-95 transition-transform group border border-white/20"
+                    {completed ? (
+                      <Link
+                        href={`/trips/${encodeURIComponent(dest.id)}/reviews`}
+                        className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-500 px-4 py-3 text-xs font-black text-white shadow-md shadow-pink-500/25 transition-transform active:scale-95 sm:text-sm"
                       >
-                        {/* Flowing Color Fill Inside Button (สีวิ่งภายในปุ่ม) */}
-                        <div 
-                          className="absolute -inset-[150%] animate-[spin_5s_linear_infinite] group-hover:animate-[spin_2.5s_linear_infinite] opacity-100 pointer-events-none"
-                          style={{
-                            background: 'conic-gradient(from 0deg, #6366f1, #d946ef, #f59e0b, #14b8a6, #6366f1)',
-                          }}
-                        />
-                        <div className="absolute inset-0 bg-black/15 backdrop-blur-[1px]" />
-
-                        <Star className="h-4 w-4 text-yellow-300 fill-yellow-300 relative z-10 drop-shadow" />
-                        <span className="relative z-10 drop-shadow">ดูรีวิวและคะแนนเฉลี่ย</span>
-                        <ArrowRight className="h-4 w-4 text-white relative z-10 group-hover:translate-x-1 transition-transform drop-shadow" />
+                        <Star className="h-4 w-4 fill-yellow-300 text-yellow-300" />
+                        <span>ดูรีวิวและคะแนนเฉลี่ย</span>
+                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                       </Link>
-                    )}
-                    {!completed && <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 text-xs font-bold">
-                      <div>
-                        <p className="text-base sm:text-lg font-black text-brand-700 mt-1">
-                          ฿{dest.price} <span className="text-[10px] text-slate-400 font-semibold">/ ท่าน</span>
+                    ) : (
+                      <div className="flex items-center justify-between gap-3 rounded-2xl bg-purple-50 p-2 pl-3.5">
+                        <p className="text-lg font-black leading-none text-purple-700">
+                          ฿{dest.price}
+                          <span className="ml-1 text-[10px] font-semibold text-slate-500">/ ท่าน</span>
                         </p>
+                        {dest.availableSeats > 0 ? (
+                          <Link href={`/payments?tripId=${encodeURIComponent(dest.id)}`} className="group/btn inline-flex min-h-10 shrink-0 items-center gap-1 rounded-xl bg-gradient-to-r from-purple-600 to-pink-500 px-3.5 text-xs font-black text-white shadow-md shadow-pink-500/25 transition-all hover:shadow-pink-500/40 active:scale-95">
+                            จองทริปนี้ <ArrowRight className="h-3.5 w-3.5" />
+                          </Link>
+                        ) : (
+                          <a href={tripMessengerUrl(dest.id)} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-xl bg-purple-100 px-3.5 text-xs font-black text-purple-800 transition hover:bg-purple-200"><MessageSquare className="h-3.5 w-3.5" />เต็มแล้ว ทักแชท</a>
+                        )}
                       </div>
-
-                      <div className="text-right">
-                        <a
-                          href={tripMessengerUrl(dest.id)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="relative p-[2px] rounded-xl overflow-hidden group/btn inline-flex items-center justify-center transition-all duration-300 active:scale-95 shadow-md hover:shadow-purple-500/40 shrink-0"
-                        >
-                          {/* Animated Running Light Border for Button (ไฟวิ่งวนรอบปุ่ม) */}
-                          <div 
-                            className="absolute -inset-[150%] animate-[spin_3s_linear_infinite] group-hover/btn:animate-[spin_1.5s_linear_infinite] opacity-100 pointer-events-none"
-                            style={{
-                              background: 'conic-gradient(from 0deg, #ff007f, #a855f7, #00f3ff, #ff007f)',
-                            }}
-                          />
-
-                          {/* Outer Neon Glow Aura */}
-                          <div className="absolute inset-0 bg-gradient-to-r from-pink-500/50 via-purple-500/50 to-cyan-400/50 rounded-xl blur-xs opacity-80 group-hover/btn:opacity-100 transition-opacity pointer-events-none" />
-
-                          {/* Button Content */}
-                          <div className="relative z-10 bg-gradient-to-r from-brand-700 via-purple-700 to-indigo-700 text-white py-2 px-2.5 sm:px-4 rounded-[10px] font-black text-[11px] sm:text-xxs flex items-center gap-1 min-h-10 sm:min-h-0">
-
-                          <span>ติดต่อแอดมินเพื่อจอง</span>
-                          <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-                          </div>
-                        </a>
-                      </div>
-                    </div>}
+                    )}
                   </div>
                   </div>
-                </div>
-                  </div>
+                </article>
               )))}
             </div>
 

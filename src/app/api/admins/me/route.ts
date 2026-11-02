@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
 import { supabase } from '@/lib/supabase';
 import bcrypt from 'bcryptjs';
+import { recordAudit } from '@/lib/audit';
 
 export async function PUT(request: Request) {
   try {
@@ -35,6 +36,12 @@ export async function PUT(request: Request) {
 
     if (error) throw error;
 
+    const user = session.user as { name?: string; username?: string };
+    await recordAudit({ id: adminId, name: String(data?.name || user.name || ''), username: String(user.username || '') }, {
+      action: 'update', resource: 'admin', resourceId: adminId, request,
+      summary: `แก้ไขโปรไฟล์ของตัวเอง${[updates.name && 'ชื่อ', updates.avatar_url !== undefined && 'รูป', updates.password && 'รหัสผ่าน'].filter(Boolean).map(x => ` · ${x}`).join('')}`,
+      changes: [...(updates.name ? [{ field: 'ชื่อ', before: null, after: updates.name }] : []), ...(updates.password ? [{ field: 'รหัสผ่าน', before: '•••', after: 'เปลี่ยนใหม่ (ซ่อน)' }] : [])],
+    });
     return NextResponse.json({ success: true, admin: data });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

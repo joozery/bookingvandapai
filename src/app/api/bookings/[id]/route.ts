@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { bookingPayments } from '@/lib/bookingPayments';
+import { syncPaymentSeat } from '@/lib/seatMove';
+import { requireAdmin, requireOwnerOrAdmin } from '@/lib/adminAuth';
+import { recordAudit } from '@/lib/audit';
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -14,6 +18,18 @@ export async function PUT(request: Request, { params }: RouteParams) {
       return NextResponse.json({ success: false, error: 'Booking not found' }, { status: 404 });
     }
 
+    // The owner may only request cancellation. Everything else is staff work:
+    // check-in, insurance details, and approving/rejecting bookings.
+    const ownerCancel = status === 'cancel_pending' && checkedIn === undefined && nationalId === undefined && birthDate === undefined;
+    const needed = checkedIn !== undefined ? ['checkin', 'bookings']
+      : nationalId !== undefined || birthDate !== undefined ? ['insurance', 'bookings']
+      : ['bookings'];
+    const access = ownerCancel ? await requireOwnerOrAdmin(booking.lineUserId, ['bookings']) : await requireAdmin(needed);
+    if (access instanceof Response) return access;
+    // Staff actions are audited (a customer's own cancellation request is not).
+    const actor = 'username' in access ? access : null;
+    const who = `${booking.fullName || booking.nickname || ''} ที่นั่ง ${booking.seatLabel || '-'}`;
+
     // Case 1: Checking In
     if (checkedIn !== undefined) {
       const updates = {
@@ -24,6 +40,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
       const { error: updateError } = await supabase.from('bookings').update(updates).eq('id', id);
       if (updateError) throw updateError;
       
+      if (actor) await recordAudit(actor, { action: 'update', resource: 'booking', resourceId: id, request, summary: `${updates.checkedIn ? 'เช็คอิน' : 'ยกเลิกเช็คอิน'} ${who}` });
       return NextResponse.json({ success: true, booking: { ...booking, ...updates } });
     }
 
@@ -70,6 +87,18 @@ export async function PUT(request: Request, { params }: RouteParams) {
             
             // Delete the old booking
             await supabase.from('bookings').delete().eq('id', replacesBookingId);
+
+            // The payment moves with the customer to the replacement booking
+            // (the old booking is gone, so the unique paymentOrderId is free).
+            try {
+              if (oldBooking.paymentOrderId) {
+                await supabase.from('bookings').update({ paymentOrderId: oldBooking.paymentOrderId }).eq('id', id);
+                booking.paymentOrderId = oldBooking.paymentOrderId;
+              }
+              await syncPaymentSeat(booking, { vanId: oldBooking.vanId, seatId: oldBooking.seatId, seatLabel: oldBooking.seatLabel || '' }, 'อนุมัติคำขอเปลี่ยนที่นั่งของลูกค้า', replacesBookingId);
+            } catch (error) {
+              console.error('[seat-change:payment-sync]', error instanceof Error ? error.message : error);
+            }
           }
           
           // Clear replacesBookingId from current booking
@@ -97,6 +126,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
         booking.status = 'cancel_pending';
       }
 
+      if (actor) await recordAudit(actor, { action: 'update', resource: 'booking', resourceId: id, request, summary: `${status === 'approved' ? 'อนุมัติ' : status === 'rejected' ? 'ปฏิเสธ' : 'เปลี่ยนสถานะ'}การจอง ${who}${booking.replacesBookingId ? ' (คำขอเปลี่ยนที่นั่ง)' : ''}`, changes: [{ field: 'สถานะ', before: null, after: status }] });
       return NextResponse.json({ success: true, booking });
     }
 
@@ -121,6 +151,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
           .eq('lineUserId', booking.lineUserId);
       }
       
+      if (actor) await recordAudit(actor, { action: 'update', resource: 'booking', resourceId: id, request, summary: `แก้ไขข้อมูลประกัน ${who}`, changes: Object.keys(updates).map(field => ({ field: field === 'nationalId' ? 'เลขบัตรประชาชน' : 'วันเกิด', before: field === 'nationalId' && booking.nationalId ? `•••${String(booking.nationalId).slice(-4)}` : booking[field] ?? null, after: field === 'nationalId' && updates[field] ? `•••${String(updates[field]).slice(-4)}` : updates[field] })) });
       return NextResponse.json({ success: true, booking: { ...booking, ...updates } });
     }
 
@@ -131,6 +162,8 @@ export async function PUT(request: Request, { params }: RouteParams) {
 }
 
 export async function DELETE(request: Request, { params }: RouteParams) {
+  const admin = await requireAdmin(['bookings']);
+  if (admin instanceof Response) return admin;
   try {
     const { id } = await params;
 
@@ -155,6 +188,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     const { error: deleteError } = await supabase.from('bookings').delete().eq('id', id);
     if (deleteError) throw deleteError;
 
+    await recordAudit(admin, { action: 'delete', resource: 'booking', resourceId: id, request, summary: `ลบการจอง ${booking.fullName || booking.nickname || ''} ที่นั่ง ${booking.seatLabel || '-'}` });
     return NextResponse.json({ success: true, message: 'Booking cancelled and deleted successfully' });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -170,7 +204,12 @@ export async function GET(request: Request, { params }: RouteParams) {
       return NextResponse.json({ success: false, error: 'Booking not found' }, { status: 404 });
     }
 
+    // Ticket details include ID number and medical notes: owner or staff only.
+    const access = await requireOwnerOrAdmin(booking.lineUserId, ['bookings', 'checkin', 'insurance']);
+    if (access instanceof Response) return access;
+
     // Include trip and van details for convenience
+    const payments = await bookingPayments([booking]);
     const { data: trip } = await supabase.from('trips').select('*').eq('id', booking.tripId).single();
     const { data: van } = await supabase.from('vans').select('*').eq('id', booking.vanId).single();
 
@@ -185,6 +224,7 @@ export async function GET(request: Request, { params }: RouteParams) {
       success: true,
       booking: {
         ...booking,
+        payment: payments.get(booking.id) || null,
         tripName: trip?.name || 'ทริปเดินทาง',
         pickupPoint: trip?.pickupPoint || '',
         departureDate: trip?.departureDate || '',

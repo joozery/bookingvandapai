@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 import { supabase } from '@/lib/supabase';
+import { requireAdmin, requireOwnerOrAdmin } from '@/lib/adminAuth';
 
 export async function POST(request: Request) {
   try {
@@ -10,6 +11,9 @@ export async function POST(request: Request) {
     if (!lineUserId) {
       return NextResponse.json({ success: false, error: 'lineUserId is required' }, { status: 400 });
     }
+    // Customers may only submit edit requests for their own profile.
+    const access = await requireOwnerOrAdmin(String(lineUserId), []);
+    if (access instanceof Response) return access;
 
     const fileName = `profile-edits/${lineUserId}.json`;
     const payload = {

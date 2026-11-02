@@ -5,9 +5,11 @@ import { reviewCopyUpdates } from '@/lib/reviewCopy';
 import { countAvailableSeats } from '@/lib/seatAvailability';
 import { generateSeatsForVan, getDb, Trip, Van } from '@/lib/db';
 import { getMongoDb } from '@/lib/mongodb';
+import { normalizeDepositAmount } from '@/lib/paymentRules';
+import { requireAdmin, requireOwnerOrAdmin } from '@/lib/adminAuth';
+import { recordAudit } from '@/lib/audit';
 
-const TRIPS_CACHE_TTL_MS = 15_000;
-let tripsCache: { trips: any[]; expiresAt: number } | null = null;
+
 
 function enrichTrips(trips: Trip[], vans: Van[]) {
   const vansByTrip = new Map<string, Van[]>();
@@ -71,16 +73,11 @@ async function loadVanSummaries() {
 }
 
 export async function GET() {
-  if (tripsCache && tripsCache.expiresAt > Date.now()) {
-    return NextResponse.json({ success: true, trips: tripsCache.trips }, {
-      headers: { 'Cache-Control': 'public, max-age=0, s-maxage=30, stale-while-revalidate=120' },
-    });
-  }
   try {
     // These reads are independent. Start them together so a cold Mongo
     // connection and the second collection do not add their latencies.
     const [tripsResult, vans] = await Promise.all([
-      supabase.from('trips').select('id,name,departureDate,durationDays,cost,pickupPoint,departureTime,status,image,tripPeriod,guideName,reviewTitle,reviewDescription').order('created_at', { ascending: false }),
+      supabase.from('trips').select('id,name,departureDate,durationDays,cost,depositAmount,pickupPoint,departureTime,status,image,tripPeriod,guideName,reviewTitle,reviewDescription,isTestTrip').order('created_at', { ascending: false }),
       loadVanSummaries(),
     ]);
     if (tripsResult.error) throw tripsResult.error;
@@ -99,10 +96,20 @@ export async function GET() {
       }),
     }));
 
-    tripsCache = { trips: enrichedTrips, expiresAt: Date.now() + TRIPS_CACHE_TTL_MS };
-    return NextResponse.json({ success: true, trips: enrichedTrips }, {
-      headers: { 'Cache-Control': 'public, max-age=0, s-maxage=30, stale-while-revalidate=120' },
-    });
+    {
+      const db = await getMongoDb();
+      const holds = await db.collection('paymentOrders').aggregate([
+        { $match: { bookingId: { $exists: false }, $or: [{ status: { $in: ['deposit_paid', 'paid'] } }, { status: 'pending', expiresAt: { $gt: Date.now() } }] } },
+        { $group: { _id: '$tripId', count: { $sum: 1 } } },
+      ]).toArray();
+      const byTrip = new Map(holds.map(hold => [hold._id, hold.count]));
+      // Capacity documents include holds whose initial order write is being
+      // recovered. Once initialized they are the reservation authority.
+      const capacities = await db.collection('paymentCapacity').find({}, { projection: { holds: 1 } }).toArray();
+      for (const capacity of capacities) byTrip.set(capacity._id, (capacity.holds || []).filter((hold: { paid: boolean; expiresAt: number }) => hold.paid || hold.expiresAt > Date.now()).length);
+      for (const trip of enrichedTrips) trip.availableSeats = Math.max(0, trip.availableSeats - (byTrip.get(trip.id) || 0));
+      return NextResponse.json({ success: true, trips: enrichedTrips }, { headers: { 'Cache-Control': 'no-store' } });
+    }
   } catch (error: any) {
     // Development fallback only: keep the local preview usable when the
     // external MongoDB host is unreachable. Production never falls back to
@@ -117,6 +124,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const admin = await requireAdmin(['trips']);
+  if (admin instanceof Response) return admin;
   try {
     const body = await request.json();
     if (body.guideName !== undefined && (typeof body.guideName !== 'string' || body.guideName.trim().length > 200)) {
@@ -127,6 +136,10 @@ export async function POST(request: Request) {
     if (!name || !departureDate || !durationDays || !cost || !pickupPoint || !departureTime) {
       return NextResponse.json({ success: false, error: 'Please provide all required trip fields' }, { status: 400 });
     }
+
+    let depositAmount: number | null;
+    try { depositAmount = normalizeDepositAmount(body.depositAmount, cost); }
+    catch (error) { return NextResponse.json({ success: false, error: (error as Error).message }, { status: 400 }); }
 
     const newTripId = `trip-${Date.now()}`;
     let reviewCopy;
@@ -141,6 +154,7 @@ export async function POST(request: Request) {
       departureDate,
       durationDays: Number(durationDays),
       cost: Number(cost),
+      depositAmount,
       pickupPoint,
       departureTime,
       tripPeriod,
@@ -174,6 +188,7 @@ export async function POST(request: Request) {
     const { error: vanError } = await supabase.from('vans').insert(vansToInsert);
     if (vanError) throw vanError;
 
+    await recordAudit(admin, { action: 'create', resource: 'trip', resourceId: newTripId, request, summary: `สร้างทริป ${name}`, after: { name, departureDate, cost: Number(cost), depositAmount } });
     return NextResponse.json({ success: true, trip: newTrip });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

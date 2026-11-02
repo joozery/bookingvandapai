@@ -3,10 +3,14 @@ import { supabase } from '@/lib/supabase';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
 import { extraSeatId, setExtraSeat } from '@/lib/extraSeat';
+import { requireAdmin, requireOwnerOrAdmin } from '@/lib/adminAuth';
+import { recordAudit } from '@/lib/audit';
 
 type RouteParams = { params: Promise<{ id: string }> };
 
 export async function PUT(request: Request, { params }: RouteParams) {
+  const admin = await requireAdmin(['vans', 'trips']);
+  if (admin instanceof Response) return admin;
   try {
     const { id } = await params;
     const body = await request.json();
@@ -53,6 +57,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
       if (!updated?.length) {
         return NextResponse.json({ success: false, error: 'ข้อมูลที่นั่งเปลี่ยนแล้ว กรุณาโหลดใหม่และลองอีกครั้ง' }, { status: 409 });
       }
+      await recordAudit(admin, { action: 'update', resource: 'van', resourceId: id, request, summary: `${body.extraSeatEnabled ? 'เปิด' : 'ปิด'}เบาะเสริม รถตู้คันที่ ${van.vanNumber}` });
       return NextResponse.json({ success: true });
     }
 
@@ -74,6 +79,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
         .eq('id', id).eq('seats', van.seats).select('id');
       if (error) throw error;
       if (!updated?.length) return NextResponse.json({ success: false, error: 'ข้อมูลที่นั่งเปลี่ยนแล้ว กรุณาลองอีกครั้ง' }, { status: 409 });
+      await recordAudit(admin, { action: 'update', resource: 'van', resourceId: id, request, summary: `${body.seatEnabled ? 'เปิด' : 'ปิด'}ที่นั่ง ${body.seatId} รถตู้คันที่ ${van.vanNumber}` });
       return NextResponse.json({ success: true });
     }
 
@@ -86,6 +92,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
         
         const { error: updateError } = await supabase.from('vans').update({ seats }).eq('id', id);
         if (updateError) throw updateError;
+        await recordAudit(admin, { action: 'update', resource: 'van', resourceId: id, request, summary: `ตั้งชื่อผู้จัดที่นั่ง ${body.updateSeatId} รถตู้คันที่ ${van.vanNumber}: ${body.staffName || '(ว่าง)'}` });
         return NextResponse.json({ success: true });
       }
       return NextResponse.json({ success: false, error: 'Staff seat not found' }, { status: 404 });
@@ -108,6 +115,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
       const { error: updateError } = await supabase.from('vans').update(updates).eq('id', id);
       if (updateError) throw updateError;
       
+      await recordAudit(admin, { action: 'update', resource: 'van', resourceId: id, request, summary: `แก้ไขข้อมูลรถตู้คันที่ ${van.vanNumber}`, before: van, after: { ...van, ...updates }, fields: Object.keys(updates).filter(key => key !== 'seats') });
       return NextResponse.json({ success: true });
     }
   } catch (error: any) {
@@ -116,6 +124,8 @@ export async function PUT(request: Request, { params }: RouteParams) {
 }
 
 export async function DELETE(request: Request, { params }: RouteParams) {
+  const admin = await requireAdmin(['vans', 'trips']);
+  if (admin instanceof Response) return admin;
   try {
     const { id } = await params;
     
@@ -142,6 +152,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     const { error: deleteError } = await supabase.from('vans').delete().eq('id', id);
     if (deleteError) throw deleteError;
 
+    await recordAudit(admin, { action: 'delete', resource: 'van', resourceId: id, request, summary: `ลบรถตู้ ${id} (และการจองในรถคันนี้)` });
     return NextResponse.json({ success: true, message: 'Van and associated bookings deleted' });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

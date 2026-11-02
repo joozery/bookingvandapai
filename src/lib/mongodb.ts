@@ -19,6 +19,9 @@ const mongoClient = new MongoClient(uri, {
   connectTimeoutMS: 5000,
   serverSelectionTimeoutMS: 5000,
   waitQueueTimeoutMS: 5000,
+  // The database is remote, so transfer size dominates large reads (e.g. the
+  // admin's full bookings/vans lists). zlib compression roughly halves it.
+  compressors: ['zlib'],
 });
 const clientPromise = globalThis.__dapaiMongoClientPromise ?? mongoClient.connect();
 

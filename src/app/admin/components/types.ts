@@ -32,6 +32,8 @@ export interface Trip {
   departureDate: string;
   durationDays: number;
   cost: number;
+  /** Fixed deposit in baht; null/undefined means the default 50%. */
+  depositAmount?: number | null;
   pickupPoint: string;
   departureTime: string;
   status: 'active' | 'completed';

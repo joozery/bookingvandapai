@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 import { supabase } from '@/lib/supabase';
+import { adminWith, requireAdmin, requireOwnerOrAdmin } from '@/lib/adminAuth';
+import { recordAudit } from '@/lib/audit';
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const lineUserId = searchParams.get('lineUserId');
+    const access = await requireOwnerOrAdmin(lineUserId, ['users', 'insurance', 'bookings']);
+    if (access instanceof Response) return access;
     
     if (!lineUserId) {
       return NextResponse.json({ success: false, error: 'lineUserId is required' }, { status: 400 });
@@ -42,6 +46,8 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    const access = await requireOwnerOrAdmin(typeof body.lineUserId === 'string' ? body.lineUserId : null, ['users']);
+    if (access instanceof Response) return access;
     const {
       lineUserId,
       fullName,
@@ -122,6 +128,10 @@ export async function POST(request: Request) {
       })
       .eq('lineUserId', lineUserId);
 
+    if (access.isAdmin) {
+      const actor = await adminWith(['users']);
+      if (actor) await recordAudit(actor, { action: 'update', resource: 'customer-profile', resourceId: String(lineUserId), request, summary: `แก้ไขโปรไฟล์ลูกทริป ${fullName}` });
+    }
     return NextResponse.json({ success: true, profile: profileData });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

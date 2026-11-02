@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import DigitalTicket from '@/components/DigitalTicket';
-import { domToPng } from 'modern-screenshot';
 import {
   Armchair,
   Download,
@@ -28,6 +27,7 @@ import Link from 'next/link';
 import { extraSeatId } from '@/lib/extraSeat';
 import VanSeatCard from '@/components/VanSeatCard';
 import { formatThaiDate } from '@/lib/dateFormat';
+import type { TicketPayment } from '@/lib/ticketPayment';
 
 interface Trip {
   id: string;
@@ -43,6 +43,7 @@ interface Trip {
 }
 
 interface Booking {
+  payment?: TicketPayment | null;
   id: string;
   tripId: string;
   vanId: string;
@@ -105,6 +106,29 @@ export default function TicketsPage() {
     }
   }, [lineUser]);
 
+  // Keep amounts current when a balance is paid in another tab.
+  useEffect(() => {
+    if (!lineUser?.userId) return;
+    const controller = new AbortController();
+    const syncPayment = async () => {
+      if (document.visibilityState !== 'visible') return;
+      try {
+        const response = await fetch(`/api/bookings?lineUserId=${encodeURIComponent(lineUser.userId)}`, { cache: 'no-store', signal: controller.signal });
+        const data = await response.json();
+        if (!response.ok || !data.success || controller.signal.aborted) return;
+        const payments = new Map<string, TicketPayment | null>(data.bookings.map((booking: Booking) => [booking.id, booking.payment || null]));
+        setBookings(current => current.map(booking => payments.has(booking.id) ? { ...booking, payment: payments.get(booking.id) } : booking));
+      } catch { /* retain the last loaded ticket if the connection is lost */ }
+    };
+    window.addEventListener('focus', syncPayment);
+    document.addEventListener('visibilitychange', syncPayment);
+    return () => {
+      controller.abort();
+      window.removeEventListener('focus', syncPayment);
+      document.removeEventListener('visibilitychange', syncPayment);
+    };
+  }, [lineUser?.userId]);
+
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -122,17 +146,9 @@ export default function TicketsPage() {
       }
 
       if (bookingsData.success) {
-        const fullBookings = await Promise.all(
-          bookingsData.bookings.map(async (b: any) => {
-            try {
-              const ticketRes = await fetch(`/api/bookings/${b.id}`);
-              const ticketData = await ticketRes.json();
-              return ticketData.success ? ticketData.booking : b;
-            } catch (e) {
-              return b;
-            }
-          })
-        );
+        // The list endpoint already includes trip, van and payment details,
+        // so no per-booking /api/bookings/:id round trips are needed.
+        const fullBookings = [...bookingsData.bookings];
         fullBookings.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         setBookings(fullBookings);
       }
@@ -223,6 +239,13 @@ export default function TicketsPage() {
       : null;
   }, [selectedTripId, bookedTrips]);
 
+  // Latest booking data for the selected trip, read by the van loader without
+  // making it refetch whenever bookings are refreshed (e.g. on window focus).
+  const selectedTripDataRef = useRef(selectedTripData);
+  useEffect(() => { selectedTripDataRef.current = selectedTripData; }, [selectedTripData]);
+  // Seat maps already loaded in this visit, keyed by trip id.
+  const vansCacheRef = useRef(new Map<string, any[]>());
+
   // Fetch van data when selectedTripId changes
   useEffect(() => {
     if (!selectedTripId) {
@@ -231,36 +254,46 @@ export default function TicketsPage() {
       return;
     }
 
-    const fetchTripVans = async () => {
+    let cancelled = false;
+    const showVans = (tripVans: any[]) => {
+      setVans(tripVans);
+      // Find van containing user's booking, fallback to first van
+      const userBookings = selectedTripDataRef.current?.userBookings || [];
+      const userVan = tripVans.find((v: any) =>
+        v.seats.some((s: any) =>
+          userBookings.some(
+            (ub) => ub.seatId === s.id || ub.vanId === v.id || (ub.vanNumber === v.vanNumber && ub.seatLabel === s.label)
+          )
+        )
+      );
+      setActiveVanId(userVan ? userVan.id : tripVans[0]?.id ?? null);
+    };
+
+    const cached = vansCacheRef.current.get(selectedTripId);
+    if (cached) {
+      showVans(cached);
+      setLoadingVans(false);
+    } else {
+      setLoadingVans(true);
+    }
+
+    // Always refresh in the background so seat status stays current.
+    (async () => {
       try {
-        setLoadingVans(true);
-        const res = await fetch(`/api/vans?tripId=${selectedTripId}`);
+        const res = await fetch(`/api/vans?tripId=${encodeURIComponent(selectedTripId)}`);
         const data = await res.json();
-        if (data.success && data.vans) {
-          setVans(data.vans);
-          // Find van containing user's booking, fallback to first van
-          const userVan = data.vans.find((v: any) =>
-            v.seats.some((s: any) =>
-              selectedTripData?.userBookings.some(
-                (ub) => ub.seatId === s.id || ub.vanId === v.id || (ub.vanNumber === v.vanNumber && ub.seatLabel === s.label)
-              )
-            )
-          );
-          if (userVan) {
-            setActiveVanId(userVan.id);
-          } else if (data.vans.length > 0) {
-            setActiveVanId(data.vans[0].id);
-          }
-        }
+        if (cancelled || !data.success || !data.vans) return;
+        vansCacheRef.current.set(selectedTripId, data.vans);
+        showVans(data.vans);
       } catch (e) {
         console.error(e);
       } finally {
-        setLoadingVans(false);
+        if (!cancelled) setLoadingVans(false);
       }
-    };
+    })();
 
-    fetchTripVans();
-  }, [selectedTripId, selectedTripData]);
+    return () => { cancelled = true; };
+  }, [selectedTripId]);
 
   const handleDownload = async (ticketId: string, seatLabel: string) => {
     const ele = document.getElementById(`ticket-${ticketId}`);
@@ -268,6 +301,7 @@ export default function TicketsPage() {
     
     setDownloadingTicketId(ticketId);
     try {
+      const { domToPng } = await import("modern-screenshot");
       const dataUrl = await domToPng(ele, {
         backgroundColor: '#ffffff',
         scale: 4
@@ -379,6 +413,7 @@ export default function TicketsPage() {
       </header>
 
       <main className="max-w-4xl mx-auto p-3 sm:p-5 md:p-6 mt-2">
+        <Link href="/payments" className="mb-5 flex items-center justify-between gap-3 rounded-2xl border border-purple-200 bg-purple-50 p-4 text-sm font-bold text-purple-800"><span>ยอดชำระเงิน / ชำระยอดคงเหลือ<span className="mt-1 block text-[11px] font-normal">กรุณาชำระครบก่อนออกเดินทางอย่างน้อย 1 วัน</span></span><ChevronRight className="h-5 w-5 shrink-0" /></Link>
         
         {/* VIEW 1: SELECTED TRIP TICKET VIEWER MODAL / FULL VIEW */}
         {selectedTripData ? (

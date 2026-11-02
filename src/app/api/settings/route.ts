@@ -3,6 +3,8 @@ export const dynamic = 'force-dynamic';
 import { supabase } from '@/lib/supabase';
 import { defaultHomepageSettings } from '@/lib/homepageSettings';
 import { validShareImage } from '@/lib/shareSettings';
+import { requireAdmin, requireOwnerOrAdmin } from '@/lib/adminAuth';
+import { recordAudit } from '@/lib/audit';
 
 const SETTINGS_FILE = 'settings/footer.json';
 const r2PublicUrl = process.env.R2_PUBLIC_URL?.replace(/\/$/, '');
@@ -71,6 +73,8 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
+  const admin = await requireAdmin(['settings']);
+  if (admin instanceof Response) return admin;
   try {
     const body = await request.json();
     for (const [key, limit] of [['leaderboard_title', 150], ['share_title', 150], ['share_description', 500], ['share_image', 2048], ['logo_image', 2048], ['banner_image', 2048], ['background_image', 2048]] as const) {
@@ -99,6 +103,7 @@ export async function PUT(request: Request) {
     });
     if (error) throw error;
     settingsCache = null;
+    await recordAudit(admin, { action: 'update', resource: 'site-settings', resourceId: 'homepage', request, summary: `แก้ไขตั้งค่าเว็บไซต์: ${Object.keys(body).slice(0, 12).join(', ')}` });
     return NextResponse.json({ success: true });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });

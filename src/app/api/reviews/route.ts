@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
 import { supabase } from '@/lib/supabase';
 import { isTripReviewOpen } from '@/lib/tripReview';
+import { recordAudit } from '@/lib/audit';
+import { adminWith } from '@/lib/adminAuth';
 
 export const dynamic = 'force-dynamic';
 type ReviewUser = { id?: string; role?: string };
@@ -89,6 +91,8 @@ export async function PATCH(request: Request) {
     const { data: review, error } = await supabase.from('trip_reviews').update({ isHidden: body.isHidden }).eq('id', body.id).select(`${fields}, isHidden`).maybeSingle();
     if (error) throw error;
     if (!review) return fail('ไม่พบรีวิว', 404);
+    const actor = await adminWith(['reviews']);
+    if (actor) await recordAudit(actor, { action: 'update', resource: 'review', resourceId: body.id, request, summary: `${body.isHidden ? 'ซ่อน' : 'แสดง'}รีวิว` });
     return NextResponse.json({ success: true, review });
   } catch {
     return fail('เปลี่ยนสถานะรีวิวไม่สำเร็จ กรุณาลองใหม่', 500);

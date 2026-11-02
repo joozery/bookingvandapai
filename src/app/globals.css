@@ -177,3 +177,58 @@ body {
   }
 }
 /* All routes share the pastel palette in theme.css. */
+
+/* Gentle light sweep and tactile feedback for the invitation button. */
+.admin-contact-motion {
+  transition: transform 220ms ease, box-shadow 220ms ease;
+}
+.admin-contact-gradient {
+  background: linear-gradient(110deg, #2563eb 0%, #7c3aed 25%, #f59e0b 50%, #06b6d4 75%, #2563eb 100%);
+  background-size: 250% 100%;
+  filter: brightness(0.9);
+  animation: admin-contact-color-flow 6s ease-in-out infinite alternate;
+}
+@keyframes admin-contact-color-flow {
+  from { background-position: 0% 50%; }
+  to { background-position: 100% 50%; }
+}
+.admin-contact-shine {
+  background: linear-gradient(110deg, transparent 30%, rgb(255 255 255 / 30%) 50%, transparent 70%);
+  transform: translateX(-150%);
+  animation: admin-contact-sweep 5s ease-in-out infinite;
+}
+@keyframes admin-contact-sweep {
+  0%, 55% { transform: translateX(-150%); }
+  85%, 100% { transform: translateX(150%); }
+}
+@media (hover: hover) {
+  .admin-contact-motion:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 16px 32px -12px rgb(124 58 237 / 55%);
+  }
+}
+.admin-contact-motion:active {
+  transform: translateY(0) scale(0.97);
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-contact-motion, .admin-contact-motion svg { transition: none; }
+  .admin-contact-motion:hover, .admin-contact-motion:active { transform: none; }
+  .admin-contact-gradient { animation: none; }
+  .admin-contact-shine { animation: none; opacity: 0; }
+  .admin-contact-motion:hover svg { transform: none; }
+}
+
+/* Gradient that flows sideways (no rotation) */
+.gradient-flow {
+  background-image: linear-gradient(90deg, #6366f1, #d946ef, #f59e0b, #d946ef, #6366f1);
+  background-size: 300% 100%;
+  animation: gradient-flow 6s linear infinite;
+}
+.group:hover .gradient-flow { animation-duration: 3s; }
+@keyframes gradient-flow {
+  from { background-position: 0% 50%; }
+  to   { background-position: 150% 50%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gradient-flow { animation: none; }
+}

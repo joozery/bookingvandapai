@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 import { supabase } from '@/lib/supabase';
+import { requireAdmin, requireOwnerOrAdmin } from '@/lib/adminAuth';
+import { recordAudit } from '@/lib/audit';
 
 type RouteParams = { params: Promise<{ id: string }> };
 
 export async function PUT(request: Request, props: RouteParams) {
+  const admin = await requireAdmin(['users']);
+  if (admin instanceof Response) return admin;
   try {
     const { id } = await props.params;
     const body = await request.json();
@@ -24,6 +28,7 @@ export async function PUT(request: Request, props: RouteParams) {
 
     if (error) throw error;
 
+    await recordAudit(admin, { action: 'update', resource: 'customer-role', resourceId: id, request, summary: `แก้ไขสถานะลูกทริป ${id}`, after: body });
     return NextResponse.json({ success: true, adminUser: data });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -31,6 +36,8 @@ export async function PUT(request: Request, props: RouteParams) {
 }
 
 export async function DELETE(request: Request, props: RouteParams) {
+  const admin = await requireAdmin(['users']);
+  if (admin instanceof Response) return admin;
   try {
     const { id } = await props.params;
     const { error } = await supabase
@@ -40,6 +47,7 @@ export async function DELETE(request: Request, props: RouteParams) {
 
     if (error) throw error;
 
+    await recordAudit(admin, { action: 'delete', resource: 'customer-role', resourceId: id, request, summary: `ลบสถานะลูกทริป ${id}` });
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

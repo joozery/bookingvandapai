@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 import { supabase } from '@/lib/supabase';
 import { generateSeatsForVan } from '@/lib/db';
+import { requireAdmin, requireOwnerOrAdmin } from '@/lib/adminAuth';
+import { recordAudit } from '@/lib/audit';
 
 export async function GET(request: Request) {
   try {
@@ -12,21 +14,21 @@ export async function GET(request: Request) {
     if (tripId) {
       query = query.eq('tripId', tripId);
     }
-    const { data: vans, error: vansError } = await query;
-    if (vansError) throw vansError;
-
     // Only bookings from the requested trip can reference these vans. This
     // keeps the response identical while avoiding a full bookings-table scan.
     const bookingsQuery = supabase.from('bookings').select('id, nickname, "fullName"');
     if (tripId) bookingsQuery.eq('tripId', tripId);
-    const { data: bookings, error: bookingsError } = await bookingsQuery;
+    // The two reads are independent; run them together.
+    const [{ data: vans, error: vansError }, { data: bookings, error: bookingsError }] = await Promise.all([query, bookingsQuery]);
+    if (vansError) throw vansError;
     if (bookingsError) throw bookingsError;
+    const bookingById = new Map((bookings || []).map((b: any) => [b.id, b]));
 
     // Inject passenger names into seats that are booked or pending
     const enrichedVans = (vans || []).map(van => {
       const newSeats = (van.seats || []).map((seat: any) => {
         if (seat.bookingId) {
-          const booking = bookings.find(b => b.id === seat.bookingId);
+          const booking: any = bookingById.get(seat.bookingId);
           if (booking) {
             return { ...seat, passengerName: booking.nickname || booking.fullName?.split(' ')[0] };
           }
@@ -43,6 +45,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const admin = await requireAdmin(['vans', 'trips']);
+  if (admin instanceof Response) return admin;
   try {
     const body = await request.json();
     const { tripId, plateNumber, driverName, driverPhone } = body;
@@ -79,6 +83,7 @@ export async function POST(request: Request) {
     const { error: insertError } = await supabase.from('vans').insert([newVan]);
     if (insertError) throw insertError;
 
+    await recordAudit(admin, { action: 'create', resource: 'van', resourceId: newVan.id, request, summary: `เพิ่มรถตู้คันที่ ${newVan.vanNumber} ในทริป ${body.tripId}` });
     return NextResponse.json({ success: true, van: newVan });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
