@@ -40,9 +40,6 @@ export default function TeamCardsSection({ cards }: TeamCardsSectionProps) {
         @media (min-width: 640px) { .team-edge-fade { --fade: 40px; } }
         .team-marquee { animation: teamMarquee var(--team-duration, 40s) linear infinite; }
         .team-marquee.is-paused { animation-play-state: paused; }
-        @media (prefers-reduced-motion: reduce) {
-          .team-marquee { animation: none !important; }
-        }
       `}</style>
 
       <div className="flex items-center justify-between gap-3">

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Star, ArrowLeft, MessageSquare } from 'lucide-react';
 import { isTripReviewOpen } from '@/lib/tripReview';
+import { formatThaiDateTime } from '@/lib/dateFormat';
 
 type PublicReviews = {
   trip: { id: string; name: string; departureDate: string; durationDays: number };
@@ -62,7 +63,7 @@ export default function PublicTripReviews({ tripId }: { tripId: string }) {
           {data.reviews.map(review => <article key={review.id} className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-bold">ผู้ร่วมทริป</h3><span className="text-xl text-amber-500" aria-label={`${review.rating} จาก 5 ดาว`}>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span></div>
             <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-relaxed">{review.comment || 'ให้คะแนนอย่างเดียว'}</p>
-            <time dateTime={review.createdAt} className="mt-4 block text-xs text-slate-400">{new Date(review.createdAt).toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', year: 'numeric', month: 'long', day: 'numeric' })}</time>
+            <time dateTime={review.createdAt} className="mt-4 block text-xs text-slate-400">{formatThaiDateTime(review.createdAt)}</time>
           </article>)}
         </section>
         {data.pageCount > 1 && <nav aria-label="หน้ารีวิว" className="flex items-center justify-center gap-4 text-sm"><button disabled={data.page <= 1} onClick={() => changePage(data.page - 1)} className="rounded-lg border bg-white p-3 disabled:opacity-40">ก่อนหน้า</button><span>หน้า {data.page} / {data.pageCount}</span><button disabled={data.page >= data.pageCount} onClick={() => changePage(data.page + 1)} className="rounded-lg border bg-white p-3 disabled:opacity-40">ถัดไป</button></nav>}

@@ -29,3 +29,21 @@ export function formatThaiDate(value?: string): string {
   }
   return value;
 }
+
+/** Convert stored date values to a sortable timestamp without throwing. */
+export function parseStoredDate(value: unknown): number {
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === 'number') return Number.isFinite(value) ? value : NaN;
+  if (typeof value === 'string' && value.trim()) return Date.parse(value);
+  if (value && typeof value === 'object' && '$date' in value) {
+    return parseStoredDate((value as { $date?: unknown }).$date);
+  }
+  return NaN;
+}
+
+/** Format a stored date for display, with a safe fallback for legacy records. */
+export function formatThaiDateTime(value: unknown): string {
+  const timestamp = parseStoredDate(value);
+  if (!Number.isFinite(timestamp)) return 'ไม่ระบุวันที่';
+  return new Date(timestamp).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' });
+}

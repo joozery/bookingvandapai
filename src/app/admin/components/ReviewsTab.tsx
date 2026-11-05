@@ -4,8 +4,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import type { Trip } from './types';
 import type { TripReview } from '@/lib/tripReview';
+import { formatThaiDateTime, parseStoredDate } from '@/lib/dateFormat';
 
-const defaults = { trip: '', tripStatus: '', rating: '', comment: '', search: '', sort: 'latest', visibility: 'visible' };
+const defaults = { trip: '', tripStatus: '', rating: '', comment: '', search: '', visibility: 'visible' };
 
 export default function ReviewsTab({ trips }: { trips: Trip[] }) {
   const [reviews, setReviews] = useState<TripReview[]>([]);
@@ -49,7 +50,7 @@ export default function ReviewsTab({ trips }: { trips: Trip[] }) {
       && (!filters.rating || review.rating === Number(filters.rating))
       && (!filters.comment || (filters.comment === 'with' ? !!review.comment.trim() : !review.comment.trim()))
       && (!search || `${names.get(review.tripId) || ''} ${review.reviewerName} ${review.comment}`.toLocaleLowerCase('th').includes(search));
-  }).sort((a, b) => (filters.sort === 'lowest' ? a.rating - b.rating : filters.sort === 'highest' ? b.rating - a.rating : 0) || Date.parse(b.createdAt) - Date.parse(a.createdAt)), [reviews, filters, tripStatuses, names]);
+  }).sort((a, b) => (parseStoredDate(b.createdAt) || 0) - (parseStoredDate(a.createdAt) || 0)), [reviews, filters, tripStatuses, names]);
   const average = filtered.length ? (filtered.reduce((sum, r) => sum + r.rating, 0) / filtered.length).toFixed(1) : '—';
   const pages = Math.max(1, Math.ceil(filtered.length / 20));
   const currentPage = Math.min(page, pages);
@@ -68,7 +69,7 @@ export default function ReviewsTab({ trips }: { trips: Trip[] }) {
       <label className="text-sm">ความคิดเห็น<select value={filters.comment} onChange={e => update('comment', e.target.value)} className={control}><option value="">ทั้งหมด</option><option value="with">มีข้อความ</option><option value="without">ให้ดาวอย่างเดียว</option></select></label>
       <label className="text-sm">การแสดงผล<select value={filters.visibility} onChange={e => update('visibility', e.target.value)} className={control}><option value="visible">แสดงอยู่</option><option value="hidden">ซ่อนอยู่</option><option value="">ทั้งหมด</option></select></label>
       <label className="text-sm">ค้นหาทริป / ผู้ประเมิน / ข้อความ<input type="search" value={filters.search} onChange={e => update('search', e.target.value)} placeholder="ชื่อทริป ชื่อผู้ประเมิน หรือข้อความ" className={control} /></label>
-      <label className="text-sm">เรียงตาม<select value={filters.sort} onChange={e => update('sort', e.target.value)} className={control}><option value="latest">ล่าสุด</option><option value="lowest">คะแนนต่ำสุด</option><option value="highest">คะแนนสูงสุด</option></select></label>
+      <p className="self-end rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">เรียงจากรีวิวล่าสุดเสมอ</p>
       <button onClick={() => { setFilters(defaults); setPage(1); }} className="self-end rounded-lg bg-slate-100 px-4 py-2 text-sm">ล้างตัวกรอง</button>
     </div>
     {actionError && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{actionError}</p>}
@@ -87,7 +88,7 @@ export default function ReviewsTab({ trips }: { trips: Trip[] }) {
           </button>
         </div>
         <p className="mt-3 whitespace-pre-wrap break-words text-sm">{review.comment || 'ให้คะแนนอย่างเดียว ไม่มีข้อความ'}</p>
-        <time dateTime={review.createdAt} className="mt-3 block text-xs text-slate-400">{new Date(review.createdAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })}</time>
+        <time dateTime={review.createdAt} className="mt-3 block text-xs text-slate-400">{formatThaiDateTime(review.createdAt)}</time>
       </article>)}</div>
       {pages > 1 && <div className="flex items-center justify-center gap-4 text-sm"><button disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)} className="rounded-lg border p-2 disabled:opacity-40">ก่อนหน้า</button><span>หน้า {currentPage} / {pages}</span><button disabled={currentPage >= pages} onClick={() => setPage(currentPage + 1)} className="rounded-lg border p-2 disabled:opacity-40">ถัดไป</button></div>}
     </>}
