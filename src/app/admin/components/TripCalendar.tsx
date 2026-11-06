@@ -114,7 +114,7 @@ export default function TripCalendar({ trips, vans }: { trips: Trip[]; vans: Van
   }
 
   const copyLink = (id: string) => {
-    const url = `${window.location.origin}/?tripId=${id}`;
+    const url = `${window.location.origin}/?tripId=${id}&v=${Date.now()}`;
     navigator.clipboard.writeText(url);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);

@@ -295,7 +295,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onUpdateVan,
   };
 
   const copyLink = (id: string) => {
-    const url = `${window.location.origin}/payments?tripId=${encodeURIComponent(id)}`;
+    const url = `${window.location.origin}/payments?tripId=${encodeURIComponent(id)}&v=${Date.now()}`;
     navigator.clipboard.writeText(url);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
@@ -306,7 +306,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onUpdateVan,
       const response = await fetch(`/api/trips/${encodeURIComponent(id)}/manual-link`, { method: 'POST' });
       const data = await response.json();
       if (!response.ok || !data.success) throw new Error(data.error || 'สร้างลิงก์ Manual ไม่สำเร็จ');
-      const url = `${window.location.origin}/?tripId=${encodeURIComponent(id)}&mode=manual&token=${encodeURIComponent(data.token)}`;
+      const url = `${window.location.origin}/?tripId=${encodeURIComponent(id)}&mode=manual&token=${encodeURIComponent(data.token)}&v=${Date.now()}`;
       await navigator.clipboard.writeText(url);
       setCopiedId(`manual:${id}`);
       setTimeout(() => setCopiedId(null), 2000);
