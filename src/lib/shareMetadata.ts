@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { defaultShareSettings, normalizeShareSettings } from './shareSettings';
 import { downloadFromR2 } from './r2';
 
-const SHARE_METADATA_CACHE_TTL_MS = 5 * 60 * 1000;
+const SHARE_METADATA_CACHE_TTL_MS = 0;
 
 let metadataCache: { value: Metadata; expiresAt: number } | null = null;
 let metadataInFlight: Promise<Metadata> | null = null;

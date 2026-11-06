@@ -19,6 +19,9 @@ const notoSansThai = Noto_Sans_Thai({
 
 import { Providers } from "@/components/Providers";
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 const baseMetadata: Metadata = {
   metadataBase: new URL('https://dapaidernpai.com'),
   title: "ระบบจองที่นั่งรถตู้ท่องเที่ยว - ด่าไป เดินไป",
