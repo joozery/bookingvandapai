@@ -3,7 +3,7 @@
 import React, { useState, useRef } from 'react';
 import { User, Save, Upload, Key, RefreshCw, LogOut } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
-import { supabase } from '@/lib/browserSupabase';
+import { dataStore } from '@/lib/browserDataStore';
 import { convertImageToWebp } from '@/lib/imageToWebp';
 
 export default function ProfileTab() {
@@ -30,13 +30,13 @@ export default function ProfileTab() {
       const webpFile = await convertImageToWebp(file);
       const fileName = `avatar-${Date.now()}.webp`;
       
-      const { data, error } = await supabase.storage
+      const { data, error } = await dataStore.storage
         .from('images')
         .upload(`avatars/${fileName}`, webpFile, { contentType: 'image/webp' });
 
       if (error) throw error;
 
-      const { data: { publicUrl } } = supabase.storage
+      const { data: { publicUrl } } = dataStore.storage
         .from('images')
         .getPublicUrl(`avatars/${fileName}`);
         

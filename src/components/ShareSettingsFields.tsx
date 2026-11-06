@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { supabase } from '@/lib/browserSupabase';
+import { dataStore } from '@/lib/browserDataStore';
 import { convertImageToWebp } from '@/lib/imageToWebp';
 import { defaultShareSettings, normalizeShareSettings, validShareImage } from '@/lib/shareSettings';
 import { Share2, Upload } from 'lucide-react';
@@ -28,9 +28,9 @@ export default function ShareSettingsFields({ value, onChange }: {
     try {
       const webpFile = await convertImageToWebp(file);
       const path = `share/${crypto.randomUUID()}.webp`;
-      const { error: uploadError } = await supabase.storage.from('images').upload(path, webpFile, { contentType: 'image/webp' });
+      const { error: uploadError } = await dataStore.storage.from('images').upload(path, webpFile, { contentType: 'image/webp' });
       if (uploadError) throw uploadError;
-      const { data } = supabase.storage.from('images').getPublicUrl(path);
+      const { data } = dataStore.storage.from('images').getPublicUrl(path);
       onChange({ share_image: data.publicUrl });
     } catch {
       setError('อัปโหลดรูปไม่สำเร็จ กรุณาลองอีกครั้ง');

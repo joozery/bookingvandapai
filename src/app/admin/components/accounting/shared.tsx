@@ -5,7 +5,7 @@ import { X, Wallet } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { AccountCategory, AccountEntry, AccountingSummary, Partner, PartnerTransaction } from '@/lib/accounting';
 
-export type AccountingData = AccountingSummary & { categories: AccountCategory[]; entries: AccountEntry[]; partnerTransactions: PartnerTransaction[]; canEdit?: boolean };
+export type AccountingData = AccountingSummary & { categories: AccountCategory[]; entries: AccountEntry[]; partnerTransactions: PartnerTransaction[]; profiles?: Array<{ lineUserId: string; lineUserName?: string; fullName?: string; nickname?: string }>; adminAccounts?: Array<{ id: string; username: string; name: string }>; canEdit?: boolean };
 export type { AccountCategory, AccountEntry, Partner };
 
 export const PAYMENT_CATEGORY_ID = 'customer-payments';
@@ -15,6 +15,8 @@ export const money = (satang: number) =>
   `${satang < 0 ? '-' : ''}฿${(Math.abs(satang) / 100).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 export const thaiDate = (iso: string) => (iso ? new Date(`${iso}T00:00:00+07:00`).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit', timeZone: 'Asia/Bangkok' }) : '-');
 export const today = () => new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10);
+export const queryPage = () => typeof window === 'undefined' ? 1 : Math.max(1, Number(new URLSearchParams(window.location.search).get('page')) || 1);
+export const setQueryPage = (page: number) => { if (typeof window !== 'undefined') { const params = new URLSearchParams(window.location.search); params.set('page', String(page)); window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`); } };
 
 /** JSON call to the accounting API; throws the server's Thai error message. */
 export async function accountingApi(path: string, method: 'POST' | 'PATCH' | 'DELETE', body?: unknown) {

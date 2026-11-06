@@ -278,10 +278,10 @@ export default function BookingWorkspace(props: Record<string, any>) {
                       </p>
                     </div>
                   )}
-                  {!trips.some(t => t.status !== 'completed' && t.name.toLowerCase().includes(tripSearch.toLowerCase())) && (
+                  {!trips.some(t => t.status === 'active' && Number(t.cost) > 0 && t.name.toLowerCase().includes(tripSearch.toLowerCase())) && (
                     <p className="py-4 text-center text-xs text-slate-400">ไม่พบทริปที่เปิดรับจอง</p>
                   )}
-                  {trips.filter(t => t.status !== 'completed' && t.name.toLowerCase().includes(tripSearch.toLowerCase())).map((trip) => {
+                  {trips.filter(t => t.status === 'active' && Number(t.cost) > 0 && t.name.toLowerCase().includes(tripSearch.toLowerCase())).map((trip) => {
                   const isSelected = selectedTrip?.id === trip.id;
                   const nights = trip.durationDays - 1;
                   const seatsLeft = trip.availableSeats ?? 0;
@@ -345,7 +345,7 @@ export default function BookingWorkspace(props: Record<string, any>) {
                             </div>
                           </div>
                           <div className="flex items-center gap-1">
-                            <span className="text-yellow-300 text-xs font-black">฿{trip.cost?.toLocaleString('th-TH') || '0'}</span>
+                            <span className="text-yellow-300 text-xs font-black">{trip.flashSaleActive && <span className="mr-1 text-[10px] text-white/50 line-through">฿{trip.cost?.toLocaleString('th-TH')}</span>}฿{(trip.displayCost ?? trip.cost)?.toLocaleString('th-TH') || '0'}</span>
                             <span className="text-white/50 text-[9px]">/ ท่าน</span>
                           </div>
                         </div>

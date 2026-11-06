@@ -6,6 +6,7 @@ export type AdminPaymentRow = {
   id: string; tripId: string; tripName: string; departureAt: number; balanceDueAt: number; createdAt: number;
   plan: 'deposit' | 'full'; state: PaymentState; stateLabel: string;
   totalSatang: number; paidSatang: number; balanceSatang: number; openInvoiceSatang: number;
+  creditUsedSatang: number; cashPaidSatang: number;
   userId: string; userName: string;
   booking: { id: string; fullName: string; nickname: string; phone: string; seatLabel: string; vanNumber: number | null; status: string } | null;
   receipts: { transRef: string; paidAt: number; recordedAt: number; amountSatang: number; payerName: string; payerBank: string; registrantName: string; seatLabel: string; reviewRequired: boolean }[];
@@ -14,12 +15,36 @@ export type AdminPaymentRow = {
   lastVerification: { code: string; message: string; checkedAt: number } | null;
 };
 
-export async function loadAdminPayments(now = Date.now()): Promise<AdminPaymentRow[]> {
+export type AdminPaymentPageOptions = { page?: number; pageSize?: number; q?: string; tripId?: string; state?: string };
+
+function paymentOrderFilter(options: AdminPaymentPageOptions, now: number): Record<string, unknown> {
+  const filter: Record<string, unknown> = {};
+  const and: Record<string, unknown>[] = [];
+  if (options.tripId && options.tripId !== 'all') filter.tripId = options.tripId;
+  const q = (options.q || '').trim();
+  if (q) and.push({ $or: ['id', 'tripName', 'userName', 'bookingId'].map(field => ({ [field]: { $regex: q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' } })) });
+  if (options.state && options.state !== 'all') {
+    if (options.state === 'paid') filter.status = 'paid';
+    else if (options.state === 'partial') filter.status = 'deposit_paid';
+    else if (options.state === 'review') and.push({ $or: [{ status: 'expired' }, { reviewRequired: true }] });
+    else if (options.state === 'lapsed') and.push({ $or: [{ status: 'expired' }, { status: 'pending', expiresAt: { $lte: now } }] });
+    else if (options.state === 'unpaid') filter.status = 'pending';
+    else if (options.state === 'active') filter.status = { $ne: 'expired' };
+  }
+  if (and.length) filter.$and = and;
+  return filter;
+}
+
+export async function loadAdminPayments(now = Date.now(), options: AdminPaymentPageOptions = {}): Promise<AdminPaymentRow[]> {
   const db = await paymentDb();
-  const orders = await db.collection<PaymentOrder>('paymentOrders').find({}, {
+  const page = Math.max(1, Math.floor(options.page || 1));
+  const pageSize = Math.min(20, Math.max(1, Math.floor(options.pageSize || 20)));
+  const cursor = db.collection<PaymentOrder>('paymentOrders').find(paymentOrderFilter(options, now), {
     // Never expose QR payloads, verification tokens/receivers or claim copies.
     projection: { _id: 0, qrCode: 0, verifyToken: 0, verificationReceivers: 0, bookingClaim: 0, appliedReceipts: 0 },
-  }).sort({ createdAt: -1 }).toArray();
+  }).sort({ createdAt: -1 });
+  if (options.page) cursor.skip((page - 1) * pageSize).limit(pageSize);
+  const orders = await cursor.toArray();
   if (!orders.length) return [];
   const orderIds = orders.map(order => order.id);
   const bookingIds = orders.map(order => order.bookingId).filter((id): id is string => !!id);
@@ -45,6 +70,8 @@ export async function loadAdminPayments(now = Date.now()): Promise<AdminPaymentR
       id: order.id, tripId: order.tripId, tripName: order.tripName, departureAt: order.departureAt, balanceDueAt: order.balanceDueAt, createdAt: order.createdAt,
       plan: order.plan, state, stateLabel: PAYMENT_STATE_LABELS[state],
       totalSatang: order.totalSatang, paidSatang: order.paidSatang,
+      creditUsedSatang: order.creditUsedSatang || 0,
+      cashPaidSatang: Math.max(0, order.paidSatang - (order.creditUsedSatang || 0)),
       balanceSatang: Math.max(0, order.totalSatang - order.paidSatang),
       openInvoiceSatang: order.amountSatang || 0,
       userId: order.userId, userName: order.userName || '',
@@ -62,6 +89,10 @@ export async function loadAdminPayments(now = Date.now()): Promise<AdminPaymentR
       lastVerification: order.lastVerification ? { code: order.lastVerification.code, message: order.lastVerification.message, checkedAt: order.lastVerification.checkedAt } : null,
     };
   });
+}
+
+export async function countAdminPayments(now = Date.now(), options: AdminPaymentPageOptions = {}) {
+  return (await paymentDb()).collection<PaymentOrder>('paymentOrders').countDocuments(paymentOrderFilter(options, now));
 }
 
 export type PaymentFilter = { q?: string; tripId?: string; state?: string };

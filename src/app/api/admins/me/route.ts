@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
-import { supabase } from '@/lib/supabase';
+import { dataStore } from '@/lib/dataStore';
 import bcrypt from 'bcryptjs';
 import { recordAudit } from '@/lib/audit';
 
@@ -27,7 +27,7 @@ export async function PUT(request: Request) {
       return NextResponse.json({ success: false, error: 'ไม่มีข้อมูลให้บันทึก' }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await dataStore
       .from('admins')
       .update(updates)
       .eq('id', adminId)

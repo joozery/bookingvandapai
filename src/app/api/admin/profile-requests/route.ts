@@ -1,21 +1,23 @@
 import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
-import { supabase } from '@/lib/supabase';
+import { dataStore } from '@/lib/dataStore';
 import { requireAdmin, requireOwnerOrAdmin } from '@/lib/adminAuth';
 import { recordAudit } from '@/lib/audit';
 
-export async function GET() {
+export async function GET(request: Request) {
   const admin = await requireAdmin(['users']);
   if (admin instanceof Response) return admin;
   try {
-    const { data: files, error: listError } = await supabase.storage.from('images').list('profile-edits');
+    const { data: files, error: listError } = await dataStore.storage.from('images').list('profile-edits');
     if (listError) throw listError;
 
+    const jsonFiles = (files || []).filter(file => file.name.endsWith('.json'));
+    const params = new URL(request.url).searchParams;
+    const page = Math.max(1, Number(params.get('page') || 1));
+    const pageSize = 20;
     const requests: any[] = [];
-    for (const file of files || []) {
-      if (!file.name.endsWith('.json')) continue;
-      
-      const { data: fileData, error: dlError } = await supabase.storage.from('images').download(`profile-edits/${file.name}`);
+    for (const file of jsonFiles.slice((page - 1) * pageSize, page * pageSize)) {
+      const { data: fileData, error: dlError } = await dataStore.storage.from('images').download(`profile-edits/${file.name}`);
       if (dlError) continue;
       
       try {
@@ -27,7 +29,7 @@ export async function GET() {
       }
     }
 
-    return NextResponse.json({ success: true, requests });
+    return NextResponse.json({ success: true, requests, total: jsonFiles.length, page, pageSize });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
@@ -41,7 +43,7 @@ export async function POST(request: Request) {
     
     if (action === 'approve') {
       // 1. Update profiles table
-      const { error: updateError } = await supabase
+      const { error: updateError } = await dataStore
         .from('profiles')
         .update({
           fullName: payload.fullName,
@@ -59,7 +61,7 @@ export async function POST(request: Request) {
       if (updateError) throw updateError;
       
       // 2. Proactively sync the updated profile fields to all bookings of this user
-      await supabase
+      await dataStore
         .from('bookings')
         .update({
           fullName: payload.fullName,
@@ -75,13 +77,13 @@ export async function POST(request: Request) {
         .eq('lineUserId', lineUserId);
         
       // 3. Delete the request file
-      await supabase.storage.from('images').remove([`profile-edits/${lineUserId}.json`]);
+      await dataStore.storage.from('images').remove([`profile-edits/${lineUserId}.json`]);
       
       await recordAudit(admin, { action: 'update', resource: 'customer-profile', resourceId: lineUserId, request, summary: `อนุมัติคำขอแก้ไขโปรไฟล์ลูกทริป ${payload?.fullName || lineUserId}`, after: payload && typeof payload === 'object' ? payload : null });
       return NextResponse.json({ success: true });
     } else if (action === 'reject') {
       // Just delete the request file
-      await supabase.storage.from('images').remove([`profile-edits/${lineUserId}.json`]);
+      await dataStore.storage.from('images').remove([`profile-edits/${lineUserId}.json`]);
       await recordAudit(admin, { action: 'update', resource: 'customer-profile', resourceId: lineUserId, request, summary: `ปฏิเสธคำขอแก้ไขโปรไฟล์ลูกทริป ${lineUserId}` });
       return NextResponse.json({ success: true });
     }

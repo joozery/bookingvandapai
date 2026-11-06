@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { TeamCard, defaultTeamCards } from '@/lib/homepageSettings';
-import { supabase } from '@/lib/browserSupabase';
+import { dataStore } from '@/lib/browserDataStore';
 import { convertImageToWebp } from '@/lib/imageToWebp';
 import { Users, Plus, Edit2, Trash2, Upload, Quote, Check, X } from 'lucide-react';
 
@@ -87,9 +87,9 @@ export default function TeamCardsManager({ cards = defaultTeamCards, onChange }:
     try {
       const webpFile = await convertImageToWebp(file);
       const path = `team/${crypto.randomUUID()}.webp`;
-      const { error: uploadError } = await supabase.storage.from('images').upload(path, webpFile, { contentType: 'image/webp' });
+      const { error: uploadError } = await dataStore.storage.from('images').upload(path, webpFile, { contentType: 'image/webp' });
       if (uploadError) throw uploadError;
-      const { data } = supabase.storage.from('images').getPublicUrl(path);
+      const { data } = dataStore.storage.from('images').getPublicUrl(path);
       setFormImage(data.publicUrl);
     } catch {
       setUploadError('อัปโหลดรูปไม่สำเร็จ กรุณาลองอีกครั้ง');

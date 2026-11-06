@@ -63,6 +63,7 @@ function daysSince(iso: string) {
 function UserDrawer({ user, onClose }: { user: UserRecord | null; onClose: () => void }) {
   const [copied, setCopied] = useState<string | null>(null);
   const [history, setHistory] = useState<any[]>([]);
+  const [creditData, setCreditData] = useState<{ balanceSatang: number; history: any[] }>({ balanceSatang: 0, history: [] });
   const [loadingHistory, setLoadingHistory] = useState(false);
 
   React.useEffect(() => {
@@ -75,6 +76,10 @@ function UserDrawer({ user, onClose }: { user: UserRecord | null; onClose: () =>
         setLoadingHistory(false);
       })
       .catch(() => setLoadingHistory(false));
+    fetch(`/api/admin/credits/${encodeURIComponent(user.lineUserId)}`)
+      .then(res => res.json())
+      .then(data => { if (data.success) setCreditData({ balanceSatang: Number(data.balanceSatang || 0), history: data.history || [] }); })
+      .catch(() => setCreditData({ balanceSatang: 0, history: [] }));
   }, [user]);
 
   if (!user) return null;
@@ -179,6 +184,15 @@ function UserDrawer({ user, onClose }: { user: UserRecord | null; onClose: () =>
             ))}
           </div>
 
+          <div className="space-y-2">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">เครดิตลูกค้า</p>
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3.5">
+              <p className="text-xs text-emerald-700">เครดิตคงเหลือ</p>
+              <p className="mt-1 text-xl font-black text-emerald-800">฿{(creditData.balanceSatang / 100).toLocaleString('th-TH', { minimumFractionDigits: 2 })}</p>
+              {creditData.history.length > 0 && <div className="mt-3 max-h-32 space-y-1 overflow-y-auto border-t border-emerald-200 pt-2 text-[10px] text-emerald-800">{creditData.history.map(entry => <div key={entry.id} className="flex justify-between gap-2"><span>{entry.type === 'grant' ? 'ได้รับ' : 'ใช้'} · {entry.reason}</span><span className="shrink-0 font-bold">฿{(entry.amountSatang / 100).toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span></div>)}</div>}
+            </div>
+          </div>
+
           {/* Timeline */}
           <div className="space-y-2">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ประวัติการเข้าใช้งาน</p>
@@ -251,20 +265,32 @@ export default function UsersTab({ users, onRefresh }: Props) {
   const [filterRole, setFilterRole] = useState<FilterRole>('all');
   const [showFilter, setShowFilter] = useState(false);
   const [selected, setSelected] = useState<UserRecord | null>(null);
+  const [remoteUsers, setRemoteUsers] = useState<UserRecord[]>(users);
+  const [totalUsers, setTotalUsers] = useState(users.length);
+  const [page, setPage] = useState(1);
 
   const [requests, setRequests] = useState<any[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(false);
+  const [requestPage, setRequestPage] = useState(1);
+  const [requestTotal, setRequestTotal] = useState(0);
 
   React.useEffect(() => {
-    fetchRequests();
-  }, []);
+    fetchRequests(requestPage);
+  }, [requestPage]);
 
-  const fetchRequests = async () => {
+  React.useEffect(() => {
+    const params = new URLSearchParams({ page: String(page), q: search, role: filterRole, sort: sortKey });
+    fetch(`/api/users?${params.toString()}`, { cache: 'no-store' }).then(res => res.json()).then(data => {
+      if (data.success) { setRemoteUsers(data.users || []); setTotalUsers(data.total || 0); }
+    }).catch(() => {});
+  }, [page, search, filterRole, sortKey]);
+
+  const fetchRequests = async (requestedPage = requestPage) => {
     setLoadingRequests(true);
     try {
-      const res = await fetch('/api/admin/profile-requests');
+      const res = await fetch(`/api/admin/profile-requests?page=${requestedPage}`);
       const data = await res.json();
-      if (data.success) setRequests(data.requests);
+      if (data.success) { setRequests(data.requests || []); setRequestTotal(data.total || 0); }
     } catch {}
     setLoadingRequests(false);
   };
@@ -279,7 +305,7 @@ export default function UsersTab({ users, onRefresh }: Props) {
       });
       const data = await res.json();
       if (data.success) {
-        fetchRequests();
+        fetchRequests(requestPage);
         onRefresh();
       } else {
         alert(data.error);
@@ -290,7 +316,7 @@ export default function UsersTab({ users, onRefresh }: Props) {
   };
 
   const filtered = useMemo(() => {
-    let arr = [...users];
+    let arr = [...remoteUsers];
     // Search
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -316,7 +342,7 @@ export default function UsersTab({ users, onRefresh }: Props) {
       return sortAsc ? va - vb : vb - va;
     });
     return arr;
-  }, [users, search, sortKey, sortAsc, filterRole]);
+  }, [remoteUsers, search, sortKey, sortAsc, filterRole]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortAsc(p => !p);
@@ -325,11 +351,11 @@ export default function UsersTab({ users, onRefresh }: Props) {
 
   // Summary stats
   const stats = useMemo(() => ({
-    total:    users.length,
-    vip:      users.filter(u => u.role === 'vip').length,
-    blocked:  users.filter(u => u.isBlocked).length,
-    active:   users.filter(u => daysSince(u.lastSeen) === 'วันนี้' || daysSince(u.lastSeen) === 'เมื่อวาน').length,
-  }), [users]);
+    total:    totalUsers,
+    vip:      remoteUsers.filter(u => u.role === 'vip').length,
+    blocked:  remoteUsers.filter(u => u.isBlocked).length,
+    active:   remoteUsers.filter(u => daysSince(u.lastSeen) === 'วันนี้' || daysSince(u.lastSeen) === 'เมื่อวาน').length,
+  }), [remoteUsers, totalUsers]);
 
   const SortIcon = ({ k }: { k: SortKey }) =>
     sortKey === k ? (
@@ -408,6 +434,7 @@ export default function UsersTab({ users, onRefresh }: Props) {
                 </div>
               ))}
             </div>
+            {Math.ceil(requestTotal / 20) > 1 && <div className="mt-3 flex items-center justify-end gap-3 text-xs font-bold text-amber-800"><button type="button" disabled={requestPage === 1} onClick={() => setRequestPage(page => page - 1)} className="rounded-lg border border-amber-200 bg-white px-3 py-1.5 disabled:opacity-40">ก่อนหน้า</button><span>{requestPage} / {Math.ceil(requestTotal / 20)}</span><button type="button" disabled={requestPage >= Math.ceil(requestTotal / 20)} onClick={() => setRequestPage(page => page + 1)} className="rounded-lg border border-amber-200 bg-white px-3 py-1.5 disabled:opacity-40">ถัดไป</button></div>}
           </div>
         )}
 
@@ -420,7 +447,7 @@ export default function UsersTab({ users, onRefresh }: Props) {
               type="text"
               placeholder="ค้นหาชื่อ, เบอร์โทร, LINE ID..."
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={e => { setSearch(e.target.value); setPage(1); }}
               className="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 transition"
             />
           </div>
@@ -456,7 +483,7 @@ export default function UsersTab({ users, onRefresh }: Props) {
               {(['all', 'customer', 'admin', 'vip', 'blocked'] as FilterRole[]).map(r => (
                 <button
                   key={r}
-                  onClick={() => setFilterRole(r)}
+                  onClick={() => { setFilterRole(r); setPage(1); }}
                   className={cn(
                     'text-xs font-bold px-3 py-1.5 rounded-full border transition',
                     filterRole === r
@@ -731,6 +758,7 @@ export default function UsersTab({ users, onRefresh }: Props) {
       </div>
 
       {/* ── Detail Drawer ──────────────────────────────────────────────────── */}
+      {totalUsers > 20 && <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-500"><span>หน้า {page} / {Math.max(1, Math.ceil(totalUsers / 20))}</span><div className="flex gap-2"><button type="button" disabled={page <= 1} onClick={() => setPage(page - 1)} className="rounded-lg border px-3 py-1.5 disabled:opacity-30">ก่อนหน้า</button><button type="button" disabled={page >= Math.ceil(totalUsers / 20)} onClick={() => setPage(page + 1)} className="rounded-lg border px-3 py-1.5 disabled:opacity-30">ถัดไป</button></div></div>}
       {selected && <UserDrawer user={selected} onClose={() => setSelected(null)} />}
     </div>
   );

@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import type { AdminPaymentRow } from '@/lib/adminPayments';
 import EntriesPanel, { EntryForm } from './EntriesPanel';
 import PartnersPanel from './PartnersPanel';
-import { fieldClass, money, PAYMENT_CATEGORY_ID, PAYMENT_CATEGORY_NAME, profitTone, Stat, thaiDate, type AccountingData } from './shared';
+import { fieldClass, money, PAYMENT_CATEGORY_ID, PAYMENT_CATEGORY_NAME, profitTone, queryPage, setQueryPage, Stat, thaiDate, type AccountingData } from './shared';
 
 const VIEWS = [
   { id: 'overview', label: 'ภาพรวม', icon: LayoutDashboard },
@@ -25,29 +25,50 @@ async function fetchAccounting(): Promise<{ data?: AccountingData; error?: strin
     return json.success ? { data: json } : { error: json.error || 'โหลดข้อมูลบัญชีไม่สำเร็จ' };
   } catch { return { error: 'โหลดข้อมูลบัญชีไม่สำเร็จ' }; }
 }
+async function fetchAccountingSummary(): Promise<{ overview?: AccountingData['overview']; canEdit?: boolean; error?: string }> {
+  try {
+    const res = await fetch('/api/admin/accounting?summary=1', { cache: 'no-store' });
+    const json = await res.json();
+    return json.success ? { overview: json.overview, canEdit: json.canEdit } : { error: json.error || 'โหลดภาพรวมบัญชีไม่สำเร็จ' };
+  } catch { return { error: 'โหลดภาพรวมบัญชีไม่สำเร็จ' }; }
+}
 
 export default function AccountingTab() {
-  const [view, setView] = useState<View>('overview');
+  const [view, setView] = useState<View>(() => { if (typeof window === 'undefined') return 'overview'; const value = new URLSearchParams(window.location.search).get('view'); return VIEWS.some(item => item.id === value) ? value as View : 'overview'; });
   const [data, setData] = useState<AccountingData | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [tripId, setTripId] = useState('');
   const [quickEntry, setQuickEntry] = useState<'income' | 'expense' | null>(null);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+  const [detailsLoaded, setDetailsLoaded] = useState(false);
 
   const apply = useCallback((result: { data?: AccountingData; error?: string }) => {
     if (result.data) { setData(result.data); setUpdatedAt(new Date()); }
     setError(result.error || '');
     setLoading(false);
   }, []);
-  const reload = useCallback(async () => { setLoading(true); apply(await fetchAccounting()); }, [apply]);
+  const loadDetails = useCallback(async () => { setLoading(true); const result = await fetchAccounting(); if (result.data) setDetailsLoaded(true); apply(result); }, [apply]);
+  const reload = useCallback(async () => { if (detailsLoaded) await loadDetails(); else { setLoading(true); const result = await fetchAccountingSummary(); const overview = result.overview; if (overview) { setData(current => ({ ...(current || { trips: [], overhead: { incomeSatang: 0, expenseSatang: 0, expenseByCategory: {}, incomeByCategory: {} }, partners: [], categories: [], entries: [], partnerTransactions: [] }), overview, canEdit: result.canEdit })); setUpdatedAt(new Date()); } setError(result.error || ''); setLoading(false); } }, [detailsLoaded, loadDetails]);
+  const changeView = (next: View) => { setView(next); if (next !== 'overview' && !detailsLoaded) void loadDetails(); if (typeof window !== 'undefined') window.history.replaceState(null, '', `/admin/accounting?view=${next}&page=1`); };
+  const openQuickEntry = async (type: 'income' | 'expense') => { if (!detailsLoaded) await loadDetails(); setQuickEntry(type); };
   useEffect(() => {
     let cancelled = false;
-    void fetchAccounting().then(result => { if (!cancelled) apply(result); });
+    void fetchAccountingSummary().then(result => { if (!cancelled) { if (result.overview) { setData({ overview: result.overview, trips: [], overhead: { incomeSatang: 0, expenseSatang: 0, expenseByCategory: {}, incomeByCategory: {} }, partners: [], categories: [], entries: [], partnerTransactions: [], canEdit: result.canEdit }); setUpdatedAt(new Date()); } setError(result.error || ''); setLoading(false); } });
     return () => { cancelled = true; };
   }, [apply]);
 
-  const openTrip = (id: string) => { setTripId(id); setView('trip'); };
+  useEffect(() => {
+    if (!data || typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const requestedTripId = params.get('tripId');
+    if (!requestedTripId || !data.trips.some(trip => trip.tripId === requestedTripId)) return;
+    setTripId(requestedTripId);
+    if (params.get('quick') === 'expense') setQuickEntry('expense');
+    window.history.replaceState(null, '', '/admin/accounting');
+  }, [data]);
+
+  const openTrip = (id: string) => { setTripId(id); changeView('trip'); };
 
   return (
     <div className="min-w-0 space-y-6">
@@ -60,8 +81,8 @@ export default function AccountingTab() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {data && data.canEdit !== false && <>
-              <button type="button" onClick={() => setQuickEntry('income')} className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-violet-200 bg-white px-3.5 text-xs font-bold text-violet-700 transition hover:bg-violet-50"><Plus className="h-4 w-4" />บันทึกรายรับ</button>
-              <button type="button" onClick={() => setQuickEntry('expense')} className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl bg-violet-600 px-3.5 text-xs font-bold text-white shadow-sm transition hover:bg-violet-700"><Plus className="h-4 w-4" />บันทึกรายจ่าย</button>
+              <button type="button" onClick={() => void openQuickEntry('income')} className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-violet-200 bg-white px-3.5 text-xs font-bold text-violet-700 transition hover:bg-violet-50"><Plus className="h-4 w-4" />บันทึกรายรับ</button>
+              <button type="button" onClick={() => void openQuickEntry('expense')} className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl bg-violet-600 px-3.5 text-xs font-bold text-white shadow-sm transition hover:bg-violet-700"><Plus className="h-4 w-4" />บันทึกรายจ่าย</button>
             </>}
             <a download href="/api/admin/accounting/export" className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-bold text-slate-600 transition hover:border-violet-200 hover:text-violet-700"><Download className="h-4 w-4" />ส่งออก Excel</a>
           </div>
@@ -70,7 +91,7 @@ export default function AccountingTab() {
 
       <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <nav aria-label="หมวดงานบัญชี" className="flex max-w-full gap-1 overflow-x-auto rounded-2xl border border-slate-200/70 bg-white p-1.5 shadow-sm [scrollbar-width:none]">
-          {VIEWS.map(({ id, label, icon: Icon }) => <button key={id} type="button" aria-current={view === id ? 'page' : undefined} onClick={() => setView(id)} className={cn('flex shrink-0 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold transition-colors focus-visible:outline-2 focus-visible:outline-violet-500 sm:px-4', view === id ? 'bg-violet-600 text-white shadow-sm shadow-violet-600/20' : 'text-slate-500 hover:bg-violet-50 hover:text-violet-700')}><Icon className="h-4 w-4" />{label}</button>)}
+          {VIEWS.map(({ id, label, icon: Icon }) => <button key={id} type="button" aria-current={view === id ? 'page' : undefined} onClick={() => changeView(id)} className={cn('flex shrink-0 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold transition-colors focus-visible:outline-2 focus-visible:outline-violet-500 sm:px-4', view === id ? 'bg-violet-600 text-white shadow-sm shadow-violet-600/20' : 'text-slate-500 hover:bg-violet-50 hover:text-violet-700')}><Icon className="h-4 w-4" />{label}</button>)}
         </nav>
         <div className="flex shrink-0 items-center justify-end gap-3">
           {updatedAt && <span className="text-[10px] text-slate-400">อัปเดต {updatedAt.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}</span>}
@@ -80,15 +101,15 @@ export default function AccountingTab() {
 
       {error && <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm font-bold text-rose-700">{error}</div>}
       {data && data.canEdit === false && <div className="rounded-xl border border-sky-200 bg-sky-50 p-3 text-xs font-bold text-sky-800">คุณมีสิทธิ์ดูข้อมูลบัญชีอย่างเดียว ไม่สามารถเพิ่ม แก้ไข หรือลบรายการได้</div>}
-      {!data ? (
+      {!data || (view !== 'overview' && !detailsLoaded) ? (
         loading && <div className="flex items-center justify-center gap-2 py-16 text-sm text-slate-400"><RefreshCw className="h-5 w-5 animate-spin text-violet-600" /> กำลังโหลดข้อมูลบัญชี...</div>
-      ) : view === 'overview' ? <Overview data={data} onOpenTrip={openTrip} onView={setView} />
+      ) : view === 'overview' ? <Overview data={data} onOpenTrip={openTrip} onView={changeView} />
         : view === 'trip' ? <TripLedger data={data} tripId={tripId || data.trips[0]?.tripId || ''} onTripChange={setTripId} />
         : view === 'income' ? <IncomeView data={data} onChanged={reload} onOpenTrip={openTrip} />
         : view === 'expense' ? <EntriesPanel type="expense" data={data} onChanged={reload} />
         : view === 'partners' ? <PartnersPanel data={data} onChanged={reload} />
         : <Report data={data} onOpenTrip={openTrip} />}
-      {data && quickEntry && <EntryForm type={quickEntry} data={data} entry={null} onClose={() => setQuickEntry(null)} onSaved={async () => { setQuickEntry(null); await reload(); }} />}
+      {data && quickEntry && <EntryForm type={quickEntry} data={data} entry={null} defaultTripId={tripId} onClose={() => setQuickEntry(null)} onSaved={async () => { setQuickEntry(null); await reload(); }} />}
     </div>
   );
 }
@@ -99,10 +120,11 @@ function Overview({ data, onOpenTrip, onView }: { data: AccountingData; onOpenTr
   const paidShare = o.incomeSatang > 0 ? Math.max(0, Math.min(100, o.paymentIncomeSatang / o.incomeSatang * 100)) : 0;
   const maximum = Math.max(o.incomeSatang, o.expenseSatang, 1);
   return <div className="space-y-6">
-    <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
       <Stat label="รายรับรวม" value={money(o.incomeSatang)} tone="text-emerald-600" icon={ArrowDownLeft} hint={`ลูกทริป ${money(o.paymentIncomeSatang)} · อื่น ๆ ${money(o.otherIncomeSatang)}`} />
       <Stat label="รายจ่ายรวม" value={money(o.expenseSatang)} tone="text-rose-600" icon={ArrowUpRight} hint={`รายทริป ${money(o.tripExpenseSatang)} · ส่วนกลาง ${money(o.overheadExpenseSatang)}`} />
       <Stat label={o.profitSatang >= 0 ? 'กำไรสุทธิ' : 'ขาดทุนสุทธิ'} value={money(o.profitSatang)} tone={profitTone(o.profitSatang)} icon={ChartNoAxesCombined} hint="รายรับทั้งหมด หักรายจ่ายทั้งหมด" />
+      <Stat label="เงินส่วนกลางคงเหลือ" value={money(o.centralFundSatang)} tone={profitTone(o.centralFundSatang)} icon={Wallet} hint={`กันไว้จากทริปจบแล้ว ${money(o.centralReserveSatang)} · หักรายจ่ายไม่ผูกทริป`} />
       <Stat label="ลูกทริปค้างชำระ" value={money(o.outstandingSatang)} tone="text-amber-600" icon={Clock3} hint="ยอดคงเหลือจากรายการที่มัดจำแล้ว" />
     </div>
 
@@ -135,22 +157,38 @@ function Overview({ data, onOpenTrip, onView }: { data: AccountingData; onOpenTr
     <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-1 text-[11px] text-slate-500">
       <span><b className="text-violet-700">{o.openTrips}</b> ทริปที่เปิดอยู่</span><span><b className="text-slate-700">{o.closedTrips}</b> ทริปที่ปิดแล้ว</span><span>กำไร <b className="text-emerald-600">{data.trips.filter(t => t.profitSatang > 0).length}</b> ทริป</span><span>ขาดทุน <b className="text-rose-600">{data.trips.filter(t => t.profitSatang < 0).length}</b> ทริป</span>
     </div>
-    <TripTable title="ผลประกอบการรายทริป" trips={activeTrips} onOpenTrip={onOpenTrip} />
+    <TripTable title="ผลประกอบการรายทริป" trips={activeTrips} onOpenTrip={onOpenTrip} serverStatus="active" />
     <p className="flex items-start gap-2 rounded-2xl border border-slate-100 bg-white/60 p-4 text-[11px] leading-relaxed text-slate-500"><CircleHelp className="mt-0.5 h-4 w-4 shrink-0 text-violet-400" />รายรับจากลูกทริปดึงจากยอดที่ตรวจสลิปผ่านแล้ว เงินที่รับนอกระบบให้บันทึกในหมวด “ค่าทริป (รับนอกระบบ)”</p>
   </div>;
 }
 
-function TripTable({ title, trips, onOpenTrip, totals }: { title: string; trips: AccountingData['trips']; onOpenTrip: (id: string) => void; totals?: boolean }) {
+function TripTable({ title, trips, onOpenTrip, totals, serverStatus }: { title: string; trips: AccountingData['trips']; onOpenTrip: (id: string) => void; totals?: boolean; serverStatus?: 'all' | 'active' | 'completed' }) {
   const [q, setQ] = useState('');
-  const [page, setPage] = useState(1);
-  const filtered = trips.filter(trip => trip.name.toLowerCase().includes(q.trim().toLowerCase()));
-  const pages = Math.max(1, Math.ceil(filtered.length / 8));
+  const [page, setPage] = useState(queryPage);
+  const [remoteTrips, setRemoteTrips] = useState<AccountingData['trips']>([]);
+  const [remoteTotal, setRemoteTotal] = useState(0);
+  const [remoteLoading, setRemoteLoading] = useState(!!serverStatus);
+  useEffect(() => {
+    if (!serverStatus) return;
+    let active = true;
+    setRemoteLoading(true);
+    fetch(`/api/admin/accounting/trip-accounts?${new URLSearchParams({ page: String(page), pageSize: '20', status: serverStatus })}`, { cache: 'no-store' })
+      .then(res => res.json()).then(result => { if (active && result.success) { setRemoteTrips(result.trips || []); setRemoteTotal(result.total || 0); } })
+      .finally(() => { if (active) setRemoteLoading(false); });
+    return () => { active = false; };
+  }, [page, serverStatus]);
+  useEffect(() => { if (serverStatus) setPage(1); }, [serverStatus]);
+  const sourceTrips = serverStatus ? remoteTrips : trips;
+  const filtered = sourceTrips.filter(trip => trip.name.toLowerCase().includes(q.trim().toLowerCase()));
+  const totalRows = serverStatus ? remoteTotal : filtered.length;
+  const pages = Math.max(1, Math.ceil((serverStatus ? remoteTotal : filtered.length) / 20));
   const currentPage = Math.min(page, pages);
-  const visible = filtered.slice((currentPage - 1) * 8, currentPage * 8);
+  const visible = serverStatus ? filtered : filtered.slice((currentPage - 1) * 20, currentPage * 20);
+  useEffect(() => { setQueryPage(currentPage); }, [currentPage]);
   const sum = (key: 'incomeSatang' | 'expenseSatang' | 'profitSatang' | 'outstandingSatang') => filtered.reduce((s, t) => s + t[key], 0);
   return <section className="min-w-0 overflow-hidden rounded-3xl border border-slate-200/70 bg-white shadow-sm">
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 p-4 sm:px-5"><div><h3 className="text-sm font-black text-slate-800">{title}<span className="ml-2 rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-bold text-violet-600">{filtered.length} ทริป</span></h3><p className="mt-1 text-[10px] text-slate-400">เลือกชื่อทริปเพื่อดูรายละเอียดบัญชี</p></div><label className="relative w-full sm:w-56"><Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" /><input aria-label="ค้นหาชื่อทริปในตาราง" value={q} onChange={e => { setQ(e.target.value); setPage(1); }} placeholder="ค้นหาชื่อทริป..." className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/60 pl-9 pr-3 text-xs outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100" /></label></div>
-    {filtered.length === 0 ? <div className="flex flex-col items-center gap-2 py-12 text-center"><MapIcon className="h-8 w-8 text-violet-200" /><p className="text-sm text-slate-400">{q ? 'ไม่พบทริปที่ค้นหา' : 'ยังไม่มีข้อมูลทริป'}</p></div> : <>
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 p-4 sm:px-5"><div><h3 className="text-sm font-black text-slate-800">{title}<span className="ml-2 rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-bold text-violet-600">{totalRows} ทริป</span></h3><p className="mt-1 text-[10px] text-slate-400">เลือกชื่อทริปเพื่อดูรายละเอียดบัญชี</p></div><label className="relative w-full sm:w-56"><Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" /><input aria-label="ค้นหาชื่อทริปในตาราง" value={q} onChange={e => { setQ(e.target.value); setPage(1); }} placeholder="ค้นหาชื่อทริป..." className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/60 pl-9 pr-3 text-xs outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100" /></label></div>
+    {remoteLoading ? <div className="flex flex-col items-center gap-2 py-12 text-center"><RefreshCw className="h-8 w-8 animate-spin text-violet-300" /><p className="text-sm text-slate-400">กำลังโหลดข้อมูลทริป...</p></div> : filtered.length === 0 ? <div className="flex flex-col items-center gap-2 py-12 text-center"><MapIcon className="h-8 w-8 text-violet-200" /><p className="text-sm text-slate-400">{q ? 'ไม่พบทริปที่ค้นหา' : 'ยังไม่มีข้อมูลทริป'}</p></div> : <>
       <div className="overflow-x-auto"><table className="w-full min-w-[920px] text-xs tabular-nums">
         <thead className="bg-slate-50/80 text-left text-[10px] font-bold text-slate-400"><tr><th scope="col" className="px-5 py-3">ทริป / วันเดินทาง</th><th scope="col" className="px-3 py-3">สถานะ</th><th scope="col" className="px-3 py-3 text-right">ลูกทริป</th><th scope="col" className="px-3 py-3 text-right">รายรับ</th><th scope="col" className="px-3 py-3 text-right">รายจ่าย</th><th scope="col" className="px-3 py-3 text-right">กำไร / ขาดทุน</th><th scope="col" className="px-3 py-3 text-right">ต้นทุน / คน</th><th scope="col" className="px-5 py-3 text-right">ค้างชำระ</th></tr></thead>
         <tbody className="divide-y divide-slate-100">{visible.map(t => <tr key={t.tripId} onClick={() => onOpenTrip(t.tripId)} className="group cursor-pointer transition-colors hover:bg-violet-50/40">
@@ -165,7 +203,7 @@ function TripTable({ title, trips, onOpenTrip, totals }: { title: string; trips:
         </tr>)}</tbody>
         {totals && <tfoot className="border-t border-slate-100 bg-violet-50/40 font-black"><tr><td colSpan={3} className="px-5 py-4">รวม {filtered.length} ทริป</td><td className="px-3 py-4 text-right text-emerald-600">{money(sum('incomeSatang'))}</td><td className="px-3 py-4 text-right text-rose-600">{money(sum('expenseSatang'))}</td><td className={cn('px-3 py-4 text-right', profitTone(sum('profitSatang')))}>{money(sum('profitSatang'))}</td><td /><td className="px-5 py-4 text-right text-amber-600">{money(sum('outstandingSatang'))}</td></tr></tfoot>}
       </table></div>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-5 py-3"><span className="text-[10px] text-slate-400">แสดง {(currentPage - 1) * 8 + 1}–{Math.min(currentPage * 8, filtered.length)} จาก {filtered.length} ทริป</span><div className="flex items-center gap-2"><button type="button" aria-label="ตารางทริปหน้าก่อนหน้า" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)} className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:bg-violet-50 disabled:opacity-30"><ChevronLeft className="h-3.5 w-3.5" /></button><span className="px-1 text-[10px] font-bold text-slate-500">{currentPage} / {pages}</span><button type="button" aria-label="ตารางทริปหน้าถัดไป" disabled={currentPage >= pages} onClick={() => setPage(currentPage + 1)} className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:bg-violet-50 disabled:opacity-30"><ChevronRight className="h-3.5 w-3.5" /></button></div></div>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-5 py-3"><span className="text-[10px] text-slate-400">แสดง {(currentPage - 1) * 20 + 1}–{Math.min(currentPage * 20, serverStatus ? remoteTotal : filtered.length)} จาก {serverStatus ? remoteTotal : filtered.length} ทริป</span><div className="flex items-center gap-2"><button type="button" aria-label="ตารางทริปหน้าก่อนหน้า" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)} className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:bg-violet-50 disabled:opacity-30"><ChevronLeft className="h-3.5 w-3.5" /></button><span className="px-1 text-[10px] font-bold text-slate-500">{currentPage} / {pages}</span><button type="button" aria-label="ตารางทริปหน้าถัดไป" disabled={currentPage >= pages} onClick={() => setPage(currentPage + 1)} className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:bg-violet-50 disabled:opacity-30"><ChevronRight className="h-3.5 w-3.5" /></button></div></div>
     </>}
   </section>;
 }
@@ -195,7 +233,7 @@ function TripLedger({ data, tripId, onTripChange }: { data: AccountingData; trip
       </div>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <Stat label="ลูกทริป (อนุมัติแล้ว)" value={`${trip.passengers} คน`} />
-        <Stat label="รายรับ" value={money(trip.incomeSatang)} tone="text-emerald-600" hint={`ลูกทริป ${money(trip.paymentIncomeSatang)} · อื่น ๆ ${money(trip.otherIncomeSatang)}`} />
+        <Stat label="รายรับ" value={money(trip.incomeSatang)} tone="text-emerald-600" hint={`ลูกทริป ${money(trip.paymentIncomeSatang)} (เงิน ${money(trip.cashPaymentSatang)} · เครดิต ${money(trip.creditPaymentSatang)}) · อื่น ๆ ${money(trip.otherIncomeSatang)}`} />
         <Stat label="รายจ่าย (ต้นทุน)" value={money(trip.expenseSatang)} tone="text-rose-600" hint={trip.costPerPassengerSatang !== null ? `เฉลี่ย ${money(trip.costPerPassengerSatang)} / คน` : undefined} />
         <Stat label={trip.profitSatang >= 0 ? 'กำไร' : 'ขาดทุน'} value={money(trip.profitSatang)} tone={profitTone(trip.profitSatang)} hint={trip.incomeSatang ? `อัตรากำไร ${Math.round((trip.profitSatang / trip.incomeSatang) * 100)}%` : undefined} />
         <Stat label="ค้างชำระจากลูกทริป" value={money(trip.outstandingSatang)} tone="text-amber-600" />
@@ -224,17 +262,34 @@ function TripLedger({ data, tripId, onTripChange }: { data: AccountingData; trip
 }
 
 function IncomeView({ data, onChanged, onOpenTrip }: { data: AccountingData; onChanged: () => Promise<void>; onOpenTrip: (id: string) => void }) {
-  const paying = data.trips.filter(t => t.paymentIncomeSatang || t.outstandingSatang);
+  const [page, setPage] = useState(queryPage);
+  const [remoteTrips, setRemoteTrips] = useState<AccountingData['trips']>([]);
+  const [remoteTotal, setRemoteTotal] = useState(0);
+  const [remoteLoading, setRemoteLoading] = useState(true);
+  useEffect(() => {
+    let active = true;
+    setRemoteLoading(true);
+    fetch(`/api/admin/accounting/trip-accounts?${new URLSearchParams({ page: String(page), pageSize: '20', status: 'all', onlyPaying: '1' })}`, { cache: 'no-store' })
+      .then(res => res.json())
+      .then(result => { if (active && result.success) { setRemoteTrips(result.trips || []); setRemoteTotal(result.total || 0); } })
+      .finally(() => { if (active) setRemoteLoading(false); });
+    return () => { active = false; };
+  }, [page]);
+  const paying = remoteTrips.filter(t => t.paymentIncomeSatang || t.outstandingSatang);
+  const pages = Math.max(1, Math.ceil(remoteTotal / 20));
+  const currentPage = Math.min(page, pages);
+  const visiblePaying = paying;
+  useEffect(() => { setQueryPage(currentPage); }, [currentPage]);
   return (
     <div className="space-y-5">
       <section className="space-y-2">
         <h3 className="text-sm font-black text-slate-800">รายรับจากการชำระเงินของลูกทริป <span className="font-normal text-slate-500">(ดึงอัตโนมัติจากระบบชำระเงิน)</span></h3>
         <div className="overflow-hidden rounded-3xl border border-slate-200/70 bg-white shadow-sm">
-          {paying.length === 0 ? <p className="py-8 text-center text-sm text-slate-400">ยังไม่มีการชำระเงินผ่านระบบ</p> : (
+          {remoteLoading ? <p className="py-8 text-center text-sm text-slate-400">กำลังโหลดรายการรายรับ...</p> : remoteTotal === 0 ? <p className="py-8 text-center text-sm text-slate-400">ยังไม่มีการชำระเงินผ่านระบบ</p> : (
             <table className="w-full text-sm">
               <thead className="bg-slate-50 text-left text-xs font-bold text-slate-500"><tr><th className="px-4 py-2.5">ทริป</th><th className="px-4 py-2.5 text-right">รับแล้ว</th><th className="px-4 py-2.5 text-right">ค้างชำระ</th></tr></thead>
               <tbody className="divide-y divide-slate-100">
-                {paying.map(t => (
+                {visiblePaying.map(t => (
                   <tr key={t.tripId} className="cursor-pointer hover:bg-violet-50/40" onClick={() => onOpenTrip(t.tripId)}>
                     <td className="px-4 py-2.5 font-semibold text-slate-700">{t.name}</td>
                     <td className="px-4 py-2.5 text-right font-bold text-emerald-600">{money(t.paymentIncomeSatang)}</td>
@@ -244,6 +299,7 @@ function IncomeView({ data, onChanged, onOpenTrip }: { data: AccountingData; onC
               </tbody>
             </table>
           )}
+          {remoteTotal > 20 && <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3"><span className="text-[11px] text-slate-400">แสดง {(currentPage - 1) * 20 + 1}-{Math.min(currentPage * 20, remoteTotal)} จาก {remoteTotal} ทริป</span><div className="flex items-center gap-2"><button type="button" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)} className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:bg-violet-50 disabled:opacity-30"><ChevronLeft className="h-4 w-4" /></button><span className="text-[11px] font-bold text-slate-500">{currentPage} / {pages}</span><button type="button" disabled={currentPage === pages} onClick={() => setPage(currentPage + 1)} className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:bg-violet-50 disabled:opacity-30"><ChevronRight className="h-4 w-4" /></button></div></div>}
         </div>
       </section>
       <CustomerPaymentSearch />
@@ -335,7 +391,7 @@ function Report({ data, onOpenTrip }: { data: AccountingData; onOpenTrip: (id: s
           <div className="flex justify-between py-1 sm:col-span-2"><dt className="font-black text-slate-800">{o.profitSatang >= 0 ? 'กำไรสุทธิ' : 'ขาดทุนสุทธิ'}</dt><dd className={cn('text-lg font-black', profitTone(o.profitSatang))}>{money(o.profitSatang)}</dd></div>
         </dl>
       </div>
-      <TripTable title="รายงานรายทริป" trips={trips} onOpenTrip={onOpenTrip} totals />
+      <TripTable title="รายงานรายทริป" trips={trips} onOpenTrip={onOpenTrip} serverStatus={status} />
       <div className="grid gap-4 lg:grid-cols-2">
         <Breakdown title="รายรับตามหมวด (ทั้งหมด)" tone="text-emerald-600" rows={categories.income} />
         <Breakdown title="รายจ่ายตามหมวด (ทั้งหมด)" tone="text-rose-600" rows={categories.expense} />

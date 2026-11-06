@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { getMongoDb } from './mongodb';
 import { HOLD_MS, paymentQuote, type PaymentReceiver } from './paymentRules';
 import { countAvailableSeats } from './seatAvailability';
+import { consumeCredit } from './creditStore';
+import { dataStore } from './dataStore';
 
 type BookingRecord = Record<string, unknown> & { id: string; tripId: string; vanId: string; seatId: string; lineUserId: string; paymentOrderId: string };
 type BookingClaim = { id: string; booking: BookingRecord };
@@ -15,12 +17,14 @@ export type PaymentOrder = {
   seatHistory?: (SeatSnapshot & { from?: SeatSnapshot; movedAt: number; by: string })[];
   adjustments?: { fromSatang: number; toSatang: number; note: string; by: string; at: number }[];
   plan: 'deposit' | 'full'; totalSatang: number; paidSatang: number;
+  creditUsedSatang?: number;
   amountSatang: number; balanceDueAt: number; departureAt: number;
   createdAt: number; expiresAt: number; checkoutCreatedAt: number;
   status: 'pending' | 'deposit_paid' | 'paid' | 'expired';
   qrCode?: string; accountName?: string; bookingId?: string;
   verificationReceivers?: PaymentReceiver[];
   verifyToken?: string; verifyUntil?: number; nextAttemptAt?: number; attempts?: number;
+  autoCancelledAt?: number; autoCancelReason?: string;
   appliedReceipts?: string[]; bookingClaim?: BookingClaim; reviewRequired?: boolean; bookingError?: string;
   lastVerification?: { code: string; message: string; checkedAt: number; stage: string; providerReference?: string };
 };
@@ -52,10 +56,12 @@ export function publicOrder(order: PaymentOrder) {
   return {
     id: order.id, tripId: order.tripId, tripName: order.tripName, plan: order.plan,
     totalSatang: order.totalSatang, paidSatang: order.paidSatang, amountSatang: order.amountSatang,
+    creditUsedSatang: order.creditUsedSatang || 0,
     balanceDueAt: order.balanceDueAt, departureAt: order.departureAt, createdAt: order.createdAt,
     expiresAt: order.expiresAt, checkoutCreatedAt: order.checkoutCreatedAt, status: order.status,
     qrCode: order.qrCode, accountName: order.accountName, bookingId: order.bookingId,
     reviewRequired: order.reviewRequired, bookingError: order.bookingError,
+    autoCancelledAt: order.autoCancelledAt,
     lastVerification: order.lastVerification && { code: order.lastVerification.code, message: order.lastVerification.message, checkedAt: order.lastVerification.checkedAt },
   };
 }
@@ -66,7 +72,7 @@ async function capacityFor(tripId: string) {
   const existing = await collection.findOne({ _id: tripId });
   if (existing) return existing;
   // Bootstrap older orders once, without changing their public order IDs.
-  const orders = await db.collection<PaymentOrder>('paymentOrders').find({ tripId, bookingId: { $exists: false }, $or: [{ status: { $in: ['deposit_paid', 'paid'] } }, { status: 'pending', expiresAt: { $gt: Date.now() } }] }).toArray();
+  const orders = await db.collection<PaymentOrder>('paymentOrders').find({ tripId, autoCancelledAt: { $exists: false }, bookingId: { $exists: false }, $or: [{ status: { $in: ['deposit_paid', 'paid'] } }, { status: 'pending', expiresAt: { $gt: Date.now() } }] }).toArray();
   const holds = orders.map(order => ({ orderId: order.id, userId: order.userId, expiresAt: order.expiresAt, paid: order.paidSatang > 0, order }));
   try { await collection.updateOne({ _id: tripId }, { $setOnInsert: { revision: 0, holds } }, { upsert: true }); }
   catch (error) { if (!duplicate(error)) throw error; }
@@ -104,26 +110,27 @@ async function persistOrder(order: PaymentOrder) {
   if (!saved) throw new Error('บันทึกรายการไม่สำเร็จ กรุณาเปิดรายการเดิมอีกครั้ง');
   return saved;
 }
-export async function createPaymentOrder(userId: string, tripId: string, plan: 'deposit' | 'full', userName?: string | null) {
+export async function createPaymentOrder(userId: string, tripId: string, plan: 'deposit' | 'full', userName?: string | null, requestedCreditSatang = 0) {
   const db = await paymentDb();
   const orders = db.collection<PaymentOrder>('paymentOrders');
   for (let attempt = 0; attempt < 30; attempt++) {
-    const trip = await db.collection('trips').findOne({ id: tripId, status: 'active' });
+    const trip = await db.collection('trips').findOne({ id: tripId, status: 'active', cost: { $gt: 0 } });
     if (!trip) throw new Error('ไม่พบทริปที่เปิดจอง');
     const now = Date.now();
-    const existing = await orders.findOne({ userId, tripId, $or: [{ status: { $in: ['deposit_paid', 'paid'] } }, { status: 'pending', expiresAt: { $gt: now } }] });
+    const existing = await orders.findOne({ userId, tripId, autoCancelledAt: { $exists: false }, $or: [{ status: { $in: ['deposit_paid', 'paid'] } }, { status: 'pending', expiresAt: { $gt: now } }] });
     if (existing) return await recoverPaymentOrder(userId, existing.id) || existing;
     // An incoming transfer may already have a durable receipt after a crash.
     const older = await orders.find({ userId, tripId }).toArray();
     for (const old of older) {
       const recovered = await recoverPaymentOrder(userId, old.id);
-      if (recovered && recovered.paidSatang > 0) {
+      if (recovered && !recovered.autoCancelledAt && recovered.paidSatang > 0) {
         if (recovered.status === 'expired') throw new Error('รายการโอนก่อนหน้ารอแอดมินตรวจสอบ กรุณาติดต่อแอดมินก่อนชำระเพิ่ม');
         return recovered;
       }
     }
     if (await db.collection('bookings').findOne({ lineUserId: userId, tripId, status: { $in: ['approved', 'pending', 'cancel_pending'] } })) throw new Error('คุณมีการจองทริปนี้แล้ว กรุณาดูตั๋วของฉัน');
     const quote = paymentQuote({ cost: trip.cost, depositAmount: trip.depositAmount, departureDate: trip.departureDate, departureTime: trip.departureTime }, plan, now);
+    const creditSatang = Number.isInteger(requestedCreditSatang) ? Math.max(0, Math.min(requestedCreditSatang, quote.totalSatang)) : 0;
     // Read this revision BEFORE van availability. A booking releases its hold
     // only AFTER claiming the physical seat, invalidating a stale capacity CAS.
     const capacity = await capacityFor(tripId);
@@ -132,8 +139,12 @@ export async function createPaymentOrder(userId: string, tripId: string, plan: '
     if (own) return persistOrder(own.order);
     const available = countAvailableSeats(await db.collection('vans').find({ tripId }).toArray()) ?? 0;
     if (available <= holds.length) throw new Error('ทริปนี้เต็มหรือมีผู้กำลังชำระเงิน กรุณาทักแชทแอดมิน');
-    const order: PaymentOrder = { id: randomUUID(), userId, tripId, tripName: trip.name, ...(userName ? { userName: userName.slice(0, 120) } : {}), plan, ...quote, paidSatang: 0, createdAt: now, checkoutCreatedAt: now, expiresAt: Math.min(now + HOLD_MS, quote.departureAt), status: 'pending' };
-    if (!await replaceHolds(capacity, [...holds, { orderId: order.id, userId, expiresAt: order.expiresAt, paid: false, order }])) continue;
+    const order: PaymentOrder = { id: randomUUID(), userId, tripId, tripName: trip.name, ...(userName ? { userName: userName.slice(0, 120) } : {}), plan, ...quote, paidSatang: creditSatang, ...(creditSatang ? { creditUsedSatang: creditSatang } : {}), createdAt: now, checkoutCreatedAt: now, expiresAt: Math.min(now + HOLD_MS, quote.departureAt), status: creditSatang === quote.totalSatang ? 'paid' : creditSatang > 0 ? 'deposit_paid' : 'pending' };
+    if (!await replaceHolds(capacity, [...holds, { orderId: order.id, userId, expiresAt: order.expiresAt, paid: creditSatang > 0, order }])) continue;
+    if (creditSatang > 0) {
+      try { await consumeCredit({ userId, amountSatang: creditSatang, appliedTripId: tripId, paymentOrderId: order.id, reason: `ใช้เครดิตชำระทริป ${trip.name}` }); }
+      catch (error) { await releaseHold(order); throw error; }
+    }
     // The capacity document retains the complete initial order. A retry can
     // recreate this projection if the process stops before this write.
     return persistOrder(order);
@@ -234,7 +245,36 @@ export async function recoverPaymentOrder(userId: string, id: string) {
   if (order?.bookingId) await releaseHold(order);
   return order;
 }
+
+/** Automatically releases seats for deposit orders that missed the 7-day balance deadline. */
+export async function expireOverdueDepositBookings(now = Date.now()) {
+  const db = await paymentDb();
+  const candidates = await db.collection<PaymentOrder>('paymentOrders').find({ status: 'deposit_paid', balanceDueAt: { $lte: now }, autoCancelledAt: { $exists: false } }).toArray();
+  for (const candidate of candidates) {
+    if (candidate.paidSatang >= candidate.totalSatang) continue;
+    const order = await db.collection<PaymentOrder>('paymentOrders').findOneAndUpdate(
+      { id: candidate.id, status: 'deposit_paid', autoCancelledAt: { $exists: false } },
+      { $set: { autoCancelledAt: now, autoCancelReason: 'ไม่ชำระยอดคงเหลือภายใน 7 วันก่อนเดินทาง' } },
+      { returnDocument: 'after' },
+    );
+    if (!order) continue;
+    if (order.bookingId) {
+      const { data: booking } = await dataStore.from('bookings').select('id, vanId, seatId, status').eq('id', order.bookingId).maybeSingle();
+      if (booking && ['pending', 'approved', 'cancel_pending'].includes(booking.status)) {
+        await dataStore.from('bookings').update({ status: 'rejected', cancelReason: 'ไม่ชำระยอดคงเหลือภายใน 7 วันก่อนเดินทาง' }).eq('id', booking.id);
+        const { data: van } = await dataStore.from('vans').select('seats').eq('id', booking.vanId).maybeSingle();
+        if (van?.seats) {
+          const seats = van.seats.map((seat: any) => seat.id === booking.seatId ? { ...seat, status: 'available', bookingId: null } : seat);
+          await dataStore.from('vans').update({ seats }).eq('id', booking.vanId);
+        }
+      }
+    }
+    await releaseHold(order);
+  }
+}
+
 export async function recoverPaymentOrders(userId: string) {
+  await expireOverdueDepositBookings();
   const db = await paymentDb();
   // Repair initial order writes interrupted after their capacity CAS.
   const capacities = await db.collection<Capacity>('paymentCapacity').find({ 'holds.userId': userId }).toArray();
@@ -252,12 +292,13 @@ export async function recoverPaymentOrders(userId: string) {
 
 type PaidBookingInput = { tripId: string; vanId: string; seatId: string; nickname: string; fullName: string; phone: string; note?: string };
 export async function bookPaidSeat(userId: string, input: PaidBookingInput, user: { name?: string | null; image?: string | null }) {
+  await expireOverdueDepositBookings();
   const db = await paymentDb(), orders = db.collection<PaymentOrder>('paymentOrders');
   const candidates = await orders.find({ userId, tripId: input.tripId }).sort({ createdAt: -1 }).toArray();
   let order: PaymentOrder | null = null;
   for (const candidate of candidates) {
     const recovered = await recoverPaymentOrder(userId, candidate.id);
-    if (recovered && ['deposit_paid', 'paid'].includes(recovered.status)) { order = recovered; break; }
+    if (recovered && !recovered.autoCancelledAt && ['deposit_paid', 'paid'].includes(recovered.status)) { order = recovered; break; }
   }
   if (!order || !['deposit_paid', 'paid'].includes(order.status) || order.paidSatang <= 0) throw new Error('กรุณาชำระเงินและตรวจสลิปก่อนเลือกจองที่นั่ง');
   if (order.bookingId) {
@@ -265,7 +306,7 @@ export async function bookPaidSeat(userId: string, input: PaidBookingInput, user
     if (existing) return existing;
     throw new Error('รายการนี้เคยจองที่นั่งแล้ว กรุณาติดต่อแอดมิน');
   }
-  if (!await db.collection('trips').findOne({ id: input.tripId, status: 'active' })) throw new Error('ทริปนี้ไม่เปิดจอง');
+  if (!await db.collection('trips').findOne({ id: input.tripId, status: 'active', cost: { $gt: 0 } })) throw new Error('ทริปนี้ไม่เปิดจอง');
   if (Date.now() >= order.departureAt) throw new Error('ทริปนี้ออกเดินทางแล้ว กรุณาติดต่อแอดมิน');
   const van = await db.collection('vans').findOne({ id: input.vanId, tripId: input.tripId });
   const seat = (van?.seats as { id: string; label: string; type: string; status: string }[] | undefined)?.find(value => value.id === input.seatId && ['customer', 'staff'].includes(value.type) && value.status === 'available');

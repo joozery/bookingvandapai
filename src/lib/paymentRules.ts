@@ -1,5 +1,19 @@
 export const HOLD_MS = 30 * 60 * 1000;
 export const DAY_MS = 24 * 60 * 60 * 1000;
+export const BALANCE_DUE_DAYS = 7;
+export const BALANCE_DUE_MS = BALANCE_DUE_DAYS * DAY_MS;
+
+export function flashSaleActive(trip: { cost: unknown; flashSalePrice?: unknown; departureDate: string; departureTime: string }, now = Date.now()) {
+  const regular = Number(trip.cost);
+  const sale = Number(trip.flashSalePrice);
+  if (!Number.isFinite(regular) || !Number.isFinite(sale) || sale <= 0 || sale >= regular) return false;
+  const departureAt = departureTimestamp(trip.departureDate, trip.departureTime);
+  return now >= departureAt - BALANCE_DUE_MS && now < departureAt;
+}
+
+export function effectiveTripCost(trip: { cost: unknown; flashSalePrice?: unknown; departureDate: string; departureTime: string }, now = Date.now()) {
+  return flashSaleActive(trip, now) ? Number(trip.flashSalePrice) : Number(trip.cost);
+}
 
 export type PaymentReceiver = { accountType: string; accountNumber: string };
 export function paymentReceivers(config: { promptPayType: string; promptPayCode: string; receiverType: string; receiverNumber: string }): PaymentReceiver[] {
@@ -51,12 +65,12 @@ export function normalizeDepositAmount(value: unknown, cost: unknown): number | 
   return satang / 100;
 }
 
-export function paymentQuote(trip: { cost: unknown; depositAmount?: unknown; departureDate: string; departureTime: string }, plan: 'deposit' | 'full', now = Date.now()) {
+export function paymentQuote(trip: { cost: unknown; depositAmount?: unknown; flashSalePrice?: unknown; departureDate: string; departureTime: string }, plan: 'deposit' | 'full', now = Date.now()) {
   const departureAt = departureTimestamp(trip.departureDate, trip.departureTime);
   if (departureAt <= now) throw new Error('ทริปนี้ออกเดินทางแล้ว');
-  const totalSatang = toSatang(trip.cost);
-  const balanceDueAt = departureAt - DAY_MS;
-  if (plan === 'deposit' && now >= balanceDueAt) throw new Error('เหลือไม่ถึง 24 ชั่วโมงก่อนเดินทาง กรุณาชำระเต็มจำนวน');
+  const totalSatang = toSatang(effectiveTripCost(trip, now));
+  const balanceDueAt = departureAt - BALANCE_DUE_MS;
+  if (plan === 'deposit' && now >= balanceDueAt) throw new Error('เหลือไม่ถึง 7 วันก่อนเดินทาง กรุณาชำระเต็มจำนวน');
   const amountSatang = plan === 'deposit' ? depositSatang(trip) : totalSatang;
   return { totalSatang, amountSatang, balanceDueAt, departureAt };
 }

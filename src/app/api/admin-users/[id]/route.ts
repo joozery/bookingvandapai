@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
-import { supabase } from '@/lib/supabase';
+import { dataStore } from '@/lib/dataStore';
 import { requireAdmin, requireOwnerOrAdmin } from '@/lib/adminAuth';
 import { recordAudit } from '@/lib/audit';
 
@@ -19,7 +19,7 @@ export async function PUT(request: Request, props: RouteParams) {
     if (body.isBlocked !== undefined) updates.isBlocked = body.isBlocked;
     if (body.note !== undefined) updates.note = body.note;
 
-    const { data, error } = await supabase
+    const { data, error } = await dataStore
       .from('admin_users')
       .update(updates)
       .eq('id', id)
@@ -40,7 +40,7 @@ export async function DELETE(request: Request, props: RouteParams) {
   if (admin instanceof Response) return admin;
   try {
     const { id } = await props.params;
-    const { error } = await supabase
+    const { error } = await dataStore
       .from('admin_users')
       .delete()
       .eq('id', id);

@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { Shield, Search, Save, Check, RefreshCw, X, Download } from 'lucide-react';
+import { Shield, Search, Save, Check, RefreshCw, X, Download, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThaiDatePicker } from '@/components/ui/ThaiDatePicker';
 import type { Booking, Trip } from './types';
@@ -15,32 +15,28 @@ interface Props {
 
 export default function InsuranceTab({ trips, onRefresh }: Props) {
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [totalPassengers, setTotalPassengers] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  // Fetch bookings via admin API (bypass RLS)
+  const [selectedTripId, setSelectedTripId] = useState<string>('all');
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(() => typeof window === 'undefined' ? 1 : Math.max(1, Number(new URLSearchParams(window.location.search).get('page')) || 1));
+
+  // Fetch only the current insurance page from the admin API.
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const res = await fetch('/api/admin/bookings');
+        const params = new URLSearchParams({ page: String(page), pageSize: '30', tripId: selectedTripId, q: search });
+        const res = await fetch(`/api/admin/bookings?${params.toString()}`);
         const json = await res.json();
-        if (json.success) {
-          setBookings(json.bookings as Booking[]);
-        } else {
-          console.error('Failed to fetch bookings:', json.error);
-        }
-      } catch (e) {
-        console.error('Error fetching bookings:', e);
-      }
+        if (json.success) { setBookings(json.bookings as Booking[]); setTotalPassengers(json.total || 0); }
+        else console.error('Failed to fetch bookings:', json.error);
+      } catch (e) { console.error('Error fetching bookings:', e); }
       setLoading(false);
     };
     fetchData();
-  }, []);
-
-
-
-  const [selectedTripId, setSelectedTripId] = useState<string>('all');
-  const [search, setSearch] = useState('');
+  }, [page, selectedTripId, search]);
   
   // editing state
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -66,6 +62,16 @@ export default function InsuranceTab({ trips, onRefresh }: Props) {
         return (a.seatLabel || '').localeCompare(b.seatLabel || '');
       });
   }, [bookings, selectedTripId, search]);
+  const pageSize = 30;
+  const pageCount = Math.max(1, Math.ceil(totalPassengers / pageSize));
+  const currentPage = Math.min(page, pageCount);
+  const visiblePassengers = passengers;
+  useEffect(() => { setPage(1); }, [selectedTripId, search]);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    params.set('page', String(currentPage));
+    window.history.replaceState(null, '', `/admin/insurance?${params.toString()}`);
+  }, [currentPage]);
 
   const handleEdit = (booking: any) => {
     setEditingId(booking.id);
@@ -85,9 +91,10 @@ export default function InsuranceTab({ trips, onRefresh }: Props) {
       const data = await res.json();
       if (data.success) {
         // Refresh bookings via admin API
-        const freshRes = await fetch('/api/admin/bookings');
+        const freshParams = new URLSearchParams({ page: String(page), pageSize: '30', tripId: selectedTripId, q: search });
+        const freshRes = await fetch(`/api/admin/bookings?${freshParams.toString()}`);
         const freshJson = await freshRes.json();
-        if (freshJson.success) setBookings(freshJson.bookings as Booking[]);
+        if (freshJson.success) { setBookings(freshJson.bookings as Booking[]); setTotalPassengers(freshJson.total || 0); }
         setEditingId(null);
       } else {
         alert(data.error || 'บันทึกข้อมูลไม่สำเร็จ');
@@ -243,7 +250,7 @@ export default function InsuranceTab({ trips, onRefresh }: Props) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {passengers.map((p: any, idx: number) => {
+                  {visiblePassengers.map((p: any, idx: number) => {
                     const isEditing = editingId === p.id;
                     const hasNatId = !!p.nationalId;
                     const hasDob = !!p.birthDate;
@@ -362,7 +369,7 @@ export default function InsuranceTab({ trips, onRefresh }: Props) {
 
             {/* Mobile Card View */}
             <div className="md:hidden divide-y divide-slate-100">
-              {passengers.map((p: any, idx: number) => {
+              {visiblePassengers.map((p: any, idx: number) => {
                 const isEditing = editingId === p.id;
                 const hasNatId = !!p.nationalId;
                 const hasDob = !!p.birthDate;
@@ -476,6 +483,8 @@ export default function InsuranceTab({ trips, onRefresh }: Props) {
       </div>
 
       {/* ── PROFILE MODAL ────────────────────────────────────────────────── */}
+      {pageCount > 1 && <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-500"><span>แสดง {(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, passengers.length)} จาก {passengers.length} รายการ</span><div className="flex items-center gap-2"><button type="button" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)} className="rounded-lg border p-1.5 disabled:opacity-30"><ChevronLeft className="h-4 w-4" /></button><span>{currentPage} / {pageCount}</span><button type="button" disabled={currentPage >= pageCount} onClick={() => setPage(currentPage + 1)} className="rounded-lg border p-1.5 disabled:opacity-30"><ChevronRight className="h-4 w-4" /></button></div></div>}
+
       {selectedProfileBooking && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">

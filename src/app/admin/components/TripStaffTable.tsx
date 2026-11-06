@@ -10,7 +10,7 @@ interface TripStaffTableProps {
   vans: Van[];
   onEdit?: (trip: Trip) => void;
   onDelete?: (id: string) => void;
-  onStatusChange?: (id: string, status: 'active' | 'completed') => Promise<void>;
+  onStatusChange?: (id: string, status: 'draft' | 'active' | 'completed') => Promise<void>;
   canToggleCompleted?: boolean;
   onCopyLink?: (id: string) => void;
   copiedId?: string | null;

@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import { useSession, signIn, signOut } from "next-auth/react";
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/browserSupabase';
+import { dataStore } from '@/lib/browserDataStore';
 import { cn } from '@/lib/utils';
 import { formatThaiDate } from '@/lib/dateFormat';
 import {
@@ -83,9 +83,12 @@ interface Trip {
   departureDate: string;
   durationDays: number;
   cost: number;
+  displayCost?: number;
+  flashSaleActive?: boolean;
+  flashSalePrice?: number | null;
   pickupPoint: string;
   departureTime: string;
-  status: 'active' | 'completed';
+  status: 'draft' | 'active' | 'completed';
   image?: string;
   tripPeriod?: string;
   availableSeats?: number;
@@ -173,6 +176,7 @@ function CustomerPageContent() {
   // Main Data States
   const [trips, setTrips] = useState<Trip[]>([]);
   const [urlTripId, setUrlTripId] = useState<string | null>(null);
+  const [manualBookingToken, setManualBookingToken] = useState<string | null>(null);
   const [selectedTrip, setSelectedTrip] = useState<any>(null);
   const [tripSearch, setTripSearch] = useState('');
   const [vans, setVans] = useState<Van[]>([]);
@@ -310,10 +314,11 @@ function CustomerPageContent() {
     
     if (tripIdParam || stepParam) {
       if (tripIdParam) setUrlTripId(tripIdParam);
+      setManualBookingToken(searchParams.get('mode') === 'manual' ? searchParams.get('token') : null);
       setIsLandingMode(false);
       
       // Auto-select trip if step=5 is requested and trips are loaded
-      if ((stepParam === '5' || searchParams.get('fromPayment') === '1') && tripIdParam && trips.length > 0) {
+      if ((stepParam === '5' || searchParams.get('fromPayment') === '1' || searchParams.get('mode') === 'manual') && tripIdParam && trips.length > 0) {
         const trip = trips.find((t: Trip) => t.id === tripIdParam);
         if (trip) setSelectedTrip(trip);
       }
@@ -359,7 +364,7 @@ function CustomerPageContent() {
 
     fetchVans(selectedTrip.id);
 
-    const channel = supabase
+    const channel = dataStore
       .channel('frontend-vans')
       .on(
         'postgres_changes',
@@ -379,7 +384,7 @@ function CustomerPageContent() {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      dataStore.removeChannel(channel);
     };
   }, [selectedTrip, selectedVan?.id, lineUser]);
 
@@ -402,7 +407,7 @@ function CustomerPageContent() {
         const tripIdParam = params.get('tripId');
         const stepParam = params.get('step');
         
-        if (tripIdParam && (stepParam === '5' || params.get('fromPayment') === '1')) {
+        if (tripIdParam && (stepParam === '5' || params.get('fromPayment') === '1' || params.get('mode') === 'manual')) {
           const trip = data.trips.find((t: Trip) => t.id === tripIdParam);
           if (trip) {
             setSelectedTrip(trip);
@@ -749,6 +754,7 @@ function CustomerPageContent() {
           lineUserName: lineUser.displayName,
           lineUserProfilePic: lineUser.pictureUrl,
           note,
+          ...(manualBookingToken ? { manualToken: manualBookingToken } : {}),
         }),
       });
 
@@ -1682,10 +1688,10 @@ function CustomerPageContent() {
                       </p>
                     </div>
                   )}
-                  {!trips.some(t => t.status !== 'completed' && t.name.toLowerCase().includes(tripSearch.toLowerCase())) && (
+                  {!trips.some(t => t.status === 'active' && Number(t.cost) > 0 && t.name.toLowerCase().includes(tripSearch.toLowerCase())) && (
                     <p className="py-4 text-center text-xs text-slate-400">ไม่พบทริปที่เปิดรับจอง</p>
                   )}
-                  {trips.filter(t => t.status !== 'completed' && t.name.toLowerCase().includes(tripSearch.toLowerCase())).map((trip) => {
+                  {trips.filter(t => t.status === 'active' && Number(t.cost) > 0 && t.name.toLowerCase().includes(tripSearch.toLowerCase())).map((trip) => {
                   const isSelected = selectedTrip?.id === trip.id;
                   const nights = trip.durationDays - 1;
                   const seatsLeft = trip.availableSeats ?? 0;
@@ -1749,7 +1755,7 @@ function CustomerPageContent() {
                             </div>
                           </div>
                           <div className="flex items-center gap-1">
-                            <span className="text-yellow-300 text-xs font-black">฿{trip.cost?.toLocaleString('th-TH') || '0'}</span>
+                            <span className="text-yellow-300 text-xs font-black">{trip.flashSaleActive && <span className="mr-1 text-[10px] text-white/50 line-through">฿{trip.cost?.toLocaleString('th-TH')}</span>}฿{(trip.displayCost ?? trip.cost)?.toLocaleString('th-TH') || '0'}</span>
                             <span className="text-white/50 text-[9px]">/ ท่าน</span>
                           </div>
                         </div>

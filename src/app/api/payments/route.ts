@@ -19,7 +19,9 @@ export async function POST(request: Request) {
     await paymentConfig();
     const body = await request.json();
     if (typeof body.tripId !== 'string' || !body.tripId || body.tripId.length > 200 || !['deposit', 'full'].includes(body.plan)) throw new Error('กรุณาเลือกทริปและรูปแบบชำระเงิน');
-    const order = await createPaymentOrder(user.id, body.tripId, body.plan, user.name);
+    const requestedCreditSatang = body.useCredit ? Number(body.creditSatang || 0) : 0;
+    if (!Number.isInteger(requestedCreditSatang) || requestedCreditSatang < 0 || requestedCreditSatang > 10_000_000_00) throw new Error('จำนวนเครดิตไม่ถูกต้อง');
+    const order = await createPaymentOrder(user.id, body.tripId, body.plan, user.name, requestedCreditSatang);
     return Response.json({ success: true, order: publicOrder(order) });
   } catch (error) { return paymentError(error); }
 }

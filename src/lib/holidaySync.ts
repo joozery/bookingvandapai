@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { dataStore } from './dataStore';
 import { HOLIDAY_FEED_URL, HOLIDAY_REFRESH_MS, mergeHolidayFeed, parseHolidayFeed } from './holidayFeed';
 
 const CACHE_FILE = 'settings/thai-holidays-cache.json';
@@ -17,7 +17,7 @@ function result(snapshot: Snapshot | null, stale: boolean) {
 async function sync() {
   if (!memory) {
     try {
-      const { data, error } = await supabase.storage.from('images').download(CACHE_FILE);
+      const { data, error } = await dataStore.storage.from('images').download(CACHE_FILE);
       if (!error && data) {
         const candidate = JSON.parse(await data.text());
         if (typeof candidate.ics === 'string' && Number.isFinite(Date.parse(candidate.fetchedAt)) && Date.parse(candidate.fetchedAt) <= Date.now()) {
@@ -38,7 +38,7 @@ async function sync() {
     memory = { ics, fetchedAt: new Date().toISOString() };
     // Persist the last successful feed so a cold server can recover during an outage.
     try {
-      await supabase.storage.from('images').upload(CACHE_FILE, JSON.stringify(memory), { contentType: 'application/json', upsert: true, cacheControl: '0' });
+      await dataStore.storage.from('images').upload(CACHE_FILE, JSON.stringify(memory), { contentType: 'application/json', upsert: true, cacheControl: '0' });
     } catch { /* A cache write failure does not discard the valid live response. */ }
     nextAttempt = 0;
     return result(memory, false);

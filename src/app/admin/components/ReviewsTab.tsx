@@ -15,6 +15,7 @@ export default function ReviewsTab({ trips }: { trips: Trip[] }) {
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
   const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState('');
   const [notice, setNotice] = useState('');
@@ -32,13 +33,15 @@ export default function ReviewsTab({ trips }: { trips: Trip[] }) {
   }
   useEffect(() => {
     const controller = new AbortController();
-    fetch('/api/reviews?admin=1', { cache: 'no-store', signal: controller.signal }).then(res => res.json()).then(data => {
+    const params = new URLSearchParams({ admin: '1', page: String(page), trip: filters.trip, tripStatus: filters.tripStatus, rating: filters.rating, comment: filters.comment, search: filters.search, visibility: filters.visibility });
+    fetch(`/api/reviews?${params.toString()}`, { cache: 'no-store', signal: controller.signal }).then(res => res.json()).then(data => {
       if (!data.success) throw new Error(data.error);
       setReviews(data.reviews);
+      setTotal(data.total || 0);
     }).catch(err => { if (!controller.signal.aborted) setError(err instanceof Error ? err.message : 'โหลดข้อมูลไม่สำเร็จ'); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [retry]);
+  }, [retry, page, filters]);
   const names = useMemo(() => new Map(trips.map(trip => [trip.id, trip.name])), [trips]);
   const tripStatuses = useMemo(() => new Map(trips.map(trip => [trip.id, trip.status])), [trips]);
   const matchingTrips = trips.filter(trip => !filters.tripStatus || trip.status === filters.tripStatus);
@@ -52,8 +55,13 @@ export default function ReviewsTab({ trips }: { trips: Trip[] }) {
       && (!search || `${names.get(review.tripId) || ''} ${review.reviewerName} ${review.comment}`.toLocaleLowerCase('th').includes(search));
   }).sort((a, b) => (parseStoredDate(b.createdAt) || 0) - (parseStoredDate(a.createdAt) || 0)), [reviews, filters, tripStatuses, names]);
   const average = filtered.length ? (filtered.reduce((sum, r) => sum + r.rating, 0) / filtered.length).toFixed(1) : '—';
-  const pages = Math.max(1, Math.ceil(filtered.length / 20));
+  const pages = Math.max(1, Math.ceil(total / 20));
   const currentPage = Math.min(page, pages);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    params.set('page', String(currentPage));
+    window.history.replaceState(null, '', `/admin/reviews?${params.toString()}`);
+  }, [currentPage]);
   const update = (key: keyof typeof defaults, value: string) => {
     setFilters(previous => ({ ...previous, [key]: value, ...(key === 'tripStatus' && value && tripStatuses.get(previous.trip) !== value ? { trip: '' } : {}) }));
     setPage(1);
@@ -75,9 +83,9 @@ export default function ReviewsTab({ trips }: { trips: Trip[] }) {
     {actionError && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{actionError}</p>}
     {notice && <p role="status" className="rounded-xl bg-green-50 p-3 text-sm text-green-800">{notice}</p>}
     {error ? <p role="alert" className="rounded-xl bg-rose-50 p-4 text-rose-700">{error}</p> : loading ? <p role="status" className="p-8 text-center">กำลังโหลดรีวิว…</p> : <>
-      <div className="grid grid-cols-2 gap-3"><div className="rounded-2xl bg-purple-50 p-5"><p className="text-sm text-purple-800">คะแนนเฉลี่ยตามตัวกรอง</p><p className="mt-1 text-3xl font-bold text-purple-900">{average} <span className="text-base font-normal">/ 5</span></p></div><div className="rounded-2xl bg-white border p-5"><p className="text-sm text-slate-500">จำนวนผู้ประเมินตามตัวกรอง</p><p className="mt-1 text-3xl font-bold">{filtered.length.toLocaleString()} <span className="text-base font-normal">รีวิว</span></p></div></div>
+      <div className="grid grid-cols-2 gap-3"><div className="rounded-2xl bg-purple-50 p-5"><p className="text-sm text-purple-800">คะแนนเฉลี่ยตามหน้าที่โหลด</p><p className="mt-1 text-3xl font-bold text-purple-900">{average} <span className="text-base font-normal">/ 5</span></p></div><div className="rounded-2xl bg-white border p-5"><p className="text-sm text-slate-500">จำนวนผู้ประเมินตามตัวกรอง</p><p className="mt-1 text-3xl font-bold">{total.toLocaleString()} <span className="text-base font-normal">รีวิว</span></p></div></div>
       {!filtered.length && <p className="rounded-2xl border bg-white p-10 text-center text-slate-500">ไม่พบรีวิวตามเงื่อนไขที่เลือก</p>}
-      <div className="space-y-3">{filtered.slice((currentPage - 1) * 20, currentPage * 20).map(review => <article key={review.id} className="rounded-2xl border border-slate-200 bg-white p-5">
+      <div className="space-y-3">{filtered.map(review => <article key={review.id} className="rounded-2xl border border-slate-200 bg-white p-5">
         <div className="flex flex-wrap justify-between gap-2"><h2 className="font-bold">{review.reviewerName}</h2><span className="text-lg text-amber-500" aria-label={`${review.rating} จาก 5 ดาว`}>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span></div>
         <p className="mt-1 text-sm text-purple-700">{names.get(review.tripId) || review.tripId}</p>
         <div className="mt-3 flex items-center justify-between gap-3">

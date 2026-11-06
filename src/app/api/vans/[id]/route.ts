@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { dataStore } from '@/lib/dataStore';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
 import { extraSeatId, setExtraSeat } from '@/lib/extraSeat';
@@ -26,7 +26,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
       }
     }
 
-    const { data: van, error: vanError } = await supabase.from('vans').select('*').eq('id', id).single();
+    const { data: van, error: vanError } = await dataStore.from('vans').select('*').eq('id', id).single();
     if (vanError || !van) {
       return NextResponse.json({ success: false, error: 'Van not found' }, { status: 404 });
     }
@@ -34,7 +34,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
     if (body.extraSeatEnabled !== undefined) {
       if (!body.extraSeatEnabled) {
         // Transfer requests can be pending while the seat itself is still available.
-        const { data: bookings, error } = await supabase.from('bookings').select('id')
+        const { data: bookings, error } = await dataStore.from('bookings').select('id')
           .eq('vanId', id).eq('seatId', extraSeatId(id))
           .in('status', ['approved', 'pending', 'cancel_pending']).limit(1);
         if (error) throw error;
@@ -48,7 +48,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
       } catch (error) {
         return NextResponse.json({ success: false, error: (error as Error).message }, { status: 409 });
       }
-      const { data: updated, error } = await supabase.from('vans').update({ seats })
+      const { data: updated, error } = await dataStore.from('vans').update({ seats })
         // MongoDB stores seats as an array. Compare the value itself rather
         // than a JSON string, otherwise every valid toggle is reported as a
         // stale update (409) even when nobody changed the van.
@@ -69,13 +69,13 @@ export async function PUT(request: Request, { params }: RouteParams) {
       if (!seat || seat.type === 'driver' || seat.bookingId || !['available', 'blocked'].includes(seat.status)) {
         return NextResponse.json({ success: false, error: 'เปลี่ยนได้เฉพาะที่นั่งว่างหรือปิดรับจอง' }, { status: 409 });
       }
-      const { data: bookings, error: bookingError } = await supabase.from('bookings').select('id')
+      const { data: bookings, error: bookingError } = await dataStore.from('bookings').select('id')
         .eq('vanId', id).eq('seatId', body.seatId)
         .in('status', ['approved', 'pending', 'cancel_pending']).limit(1);
       if (bookingError) throw bookingError;
       if (bookings?.length) return NextResponse.json({ success: false, error: 'ที่นั่งมีการจองหรือรออนุมัติอยู่' }, { status: 409 });
       const seats = van.seats.map((s: any) => s.id === body.seatId ? { ...s, status: body.seatEnabled ? 'available' : 'blocked' } : s);
-      const { data: updated, error } = await supabase.from('vans').update({ seats })
+      const { data: updated, error } = await dataStore.from('vans').update({ seats })
         .eq('id', id).eq('seats', van.seats).select('id');
       if (error) throw error;
       if (!updated?.length) return NextResponse.json({ success: false, error: 'ข้อมูลที่นั่งเปลี่ยนแล้ว กรุณาลองอีกครั้ง' }, { status: 409 });
@@ -90,7 +90,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
       if (seatIndex !== -1 && seats[seatIndex].type === 'staff') {
         seats[seatIndex].staffName = body.staffName;
         
-        const { error: updateError } = await supabase.from('vans').update({ seats }).eq('id', id);
+        const { error: updateError } = await dataStore.from('vans').update({ seats }).eq('id', id);
         if (updateError) throw updateError;
         await recordAudit(admin, { action: 'update', resource: 'van', resourceId: id, request, summary: `ตั้งชื่อผู้จัดที่นั่ง ${body.updateSeatId} รถตู้คันที่ ${van.vanNumber}: ${body.staffName || '(ว่าง)'}` });
         return NextResponse.json({ success: true });
@@ -112,7 +112,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
         }
       }
 
-      const { error: updateError } = await supabase.from('vans').update(updates).eq('id', id);
+      const { error: updateError } = await dataStore.from('vans').update(updates).eq('id', id);
       if (updateError) throw updateError;
       
       await recordAudit(admin, { action: 'update', resource: 'van', resourceId: id, request, summary: `แก้ไขข้อมูลรถตู้คันที่ ${van.vanNumber}`, before: van, after: { ...van, ...updates }, fields: Object.keys(updates).filter(key => key !== 'seats') });
@@ -130,12 +130,12 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     const { id } = await params;
     
     // Check if it's the last van
-    const { data: van, error: vanError } = await supabase.from('vans').select('tripId').eq('id', id).single();
+    const { data: van, error: vanError } = await dataStore.from('vans').select('tripId').eq('id', id).single();
     if (vanError || !van) {
       return NextResponse.json({ success: false, error: 'Van not found' }, { status: 404 });
     }
 
-    const { count, error: countError } = await supabase.from('vans')
+    const { count, error: countError } = await dataStore.from('vans')
       .select('id', { count: 'exact' })
       .eq('tripId', van.tripId);
       
@@ -149,7 +149,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     }
 
     // Delete van (bookings cascade automatically in DB if setup correctly)
-    const { error: deleteError } = await supabase.from('vans').delete().eq('id', id);
+    const { error: deleteError } = await dataStore.from('vans').delete().eq('id', id);
     if (deleteError) throw deleteError;
 
     await recordAudit(admin, { action: 'delete', resource: 'van', resourceId: id, request, summary: `ลบรถตู้ ${id} (และการจองในรถคันนี้)` });

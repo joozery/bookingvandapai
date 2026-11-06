@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   LayoutDashboard, Compass, Bus, Users, QrCode, Settings,
-  ChevronDown, ChevronRight, RefreshCw, Shield, FileText,
+  ChevronDown, ChevronLeft, ChevronRight, RefreshCw, Shield, FileText,
   TrendingUp, Download, Check, X, Search, Filter,
   Phone, Edit2, Trash2, MoreHorizontal, BadgeCheck, Clock,
   AlertTriangle, ArrowRight, ArrowLeftRight
@@ -22,24 +22,45 @@ interface Props {
   onReject: (id: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onCheckIn: (id: string, current: boolean) => Promise<void>;
-  onManualSubmit: (data: { tripId: string; vanId: string; seatId: string; nickname: string; fullName: string; phone: string; note: string }) => Promise<void>;
+  onManualSubmit: (data: { tripId: string; vanId: string; seatId: string; nickname: string; fullName: string; phone: string; note: string; adminPartnerId?: string }) => Promise<void>;
   onMoveSeat?: (bookingId: string, vanId: string, seatId: string) => Promise<void>;
+  adminAccounts?: Array<{ id: string; username: string; name: string }>;
+  pendingOnly?: boolean;
 }
 
-export default function BookingsTab({ trips, vans, bookings, onApprove, onReject, onDelete, onCheckIn, onManualSubmit, onMoveSeat }: Props) {
+export default function BookingsTab({ trips, vans, bookings, onApprove, onReject, onDelete, onCheckIn, onManualSubmit, onMoveSeat, adminAccounts = [], pendingOnly = false }: Props) {
   const [showForm, setShowForm] = useState(false);
   const [moving, setMoving] = useState<Booking | null>(null);
   const canMove = (b: Booking) => !!onMoveSeat && (b.status === 'approved' || (b.status === 'pending' && !b.replacesBookingId));
   const [tripStatusFilter, setTripStatusFilter] = useState<'all' | 'active' | 'completed'>('active');
   const [tripFilter, setTripFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState(pendingOnly ? 'pending' : 'all');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(() => typeof window === 'undefined' ? 1 : Math.max(1, Number(new URLSearchParams(window.location.search).get('page')) || 1));
+  const [remoteBookings, setRemoteBookings] = useState<Booking[]>([]);
+  const [remoteTotal, setRemoteTotal] = useState(0);
+  const [remoteLoading, setRemoteLoading] = useState(true);
   const [tripSel, setTripSel] = useState('');
   const [vanSel, setVanSel] = useState('');
   const [seatSel, setSeatSel] = useState('');
-  const [form, setForm] = useState({ nickname: '', fullName: '', phone: '', note: '' });
+  const [form, setForm] = useState({ nickname: '', fullName: '', phone: '', note: '', adminPartnerId: '' });
 
-  const filtered = bookings.filter(b => {
+  useEffect(() => {
+    let active = true;
+    setRemoteLoading(true);
+    const params = new URLSearchParams({ page: String(page), pageSize: '20', tripStatus: tripStatusFilter });
+    if (tripFilter !== 'all') params.set('tripId', tripFilter);
+    if (pendingOnly) { params.set('status', 'pending'); params.set('pendingChange', '1'); }
+    else if (statusFilter !== 'all') params.set('status', statusFilter);
+    if (search.trim()) params.set('q', search.trim());
+    fetch(`/api/bookings?${params.toString()}`, { cache: 'no-store' })
+      .then(res => res.json())
+      .then(result => { if (active && result.success) { setRemoteBookings(result.bookings || []); setRemoteTotal(result.total || 0); } })
+      .finally(() => { if (active) setRemoteLoading(false); });
+    return () => { active = false; };
+  }, [page, tripStatusFilter, tripFilter, statusFilter, search, pendingOnly]);
+
+  const filtered = remoteBookings.filter(b => {
     const trip = trips.find(t => t.id === b.tripId);
     const matchTripStatus = tripStatusFilter === 'all' || 
                             (tripStatusFilter === 'active' && trip?.status !== 'completed') || 
@@ -53,6 +74,14 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
       (b.tripName && b.tripName.toLowerCase().includes(q))
     );
   });
+  const pages = Math.max(1, Math.ceil(remoteTotal / 20));
+  const currentPage = Math.min(page, pages);
+  const visibleBookings = filtered;
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    params.set('page', String(currentPage));
+    window.history.replaceState(null, '', `/admin/${pendingOnly ? 'pending' : 'bookings'}?${params.toString()}`);
+  }, [currentPage]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,7 +89,7 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
     if (!form.nickname || !form.fullName || !form.phone) { alert('กรุณากรอกข้อมูลลูกทริปให้ครบ'); return; }
     await onManualSubmit({ tripId: tripSel, vanId: vanSel, seatId: seatSel, ...form });
     setShowForm(false);
-    setForm({ nickname: '', fullName: '', phone: '', note: '' });
+    setForm({ nickname: '', fullName: '', phone: '', note: '', adminPartnerId: '' });
     setTripSel(''); setVanSel(''); setSeatSel('');
   };
 
@@ -165,6 +194,13 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
               <Input required type="tel" maxLength={10} value={form.phone} onChange={e => setForm({...form, phone: e.target.value.replace(/\D/g, '')})} placeholder="089xxxxxxx" className="h-8 text-xs" />
             </div>
             <div className="sm:col-span-3">
+              <label className="text-[10px] font-bold text-slate-500 block mb-1">จองในนาม Admin หุ้นส่วน (เฉพาะกรณี Admin คนนี้ไปทริป)</label>
+              <select value={form.adminPartnerId} onChange={e => setForm({...form, adminPartnerId: e.target.value})} className="w-full border border-slate-200 bg-white rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-violet-400">
+                <option value="">ไม่ใช่การจองของหุ้นส่วน</option>
+                {adminAccounts.map(account => <option key={account.id} value={account.id}>{account.name} ({account.username})</option>)}
+              </select>
+            </div>
+            <div className="sm:col-span-3">
               <label className="text-[10px] font-bold text-slate-500 block mb-1">หมายเหตุ</label>
               <Input value={form.note} onChange={e => setForm({...form, note: e.target.value})} placeholder="เช่น อาหารเจ, แพ้ยา..." className="h-8 text-xs" />
             </div>
@@ -178,20 +214,20 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
 
       {/* Filter bar */}
       <div className="flex flex-wrap gap-2 items-center">
-        <select value={tripStatusFilter} onChange={e => { setTripStatusFilter(e.target.value as any); setTripFilter('all'); }} className="h-8 border border-slate-200 bg-slate-50 rounded-lg px-3 text-xs focus:outline-none focus:border-violet-400 font-bold text-violet-700">
+        <select value={tripStatusFilter} onChange={e => { setTripStatusFilter(e.target.value as any); setTripFilter('all'); setPage(1); }} className="h-8 border border-slate-200 bg-slate-50 rounded-lg px-3 text-xs focus:outline-none focus:border-violet-400 font-bold text-violet-700">
           <option value="all">ทริปทั้งหมด</option>
           <option value="active">ทริปที่กำลังเปิดรับ</option>
           <option value="completed">ทริปที่จบไปแล้ว</option>
         </select>
-        <select value={tripFilter} onChange={e => setTripFilter(e.target.value)} className="h-8 border border-slate-200 bg-white rounded-lg px-3 text-xs focus:outline-none focus:border-violet-400 min-w-[110px]">
+        <select value={tripFilter} onChange={e => { setTripFilter(e.target.value); setPage(1); }} className="h-8 border border-slate-200 bg-white rounded-lg px-3 text-xs focus:outline-none focus:border-violet-400 min-w-[110px]">
           <option value="all">เลือกทริป...</option>
           {trips.filter(t => tripStatusFilter === 'all' || (tripStatusFilter === 'active' && t.status !== 'completed') || (tripStatusFilter === 'completed' && t.status === 'completed')).map(t => <option key={t.id} value={t.id}>{t.name.substring(0, 20)}...</option>)}
         </select>
         <div className="relative flex-1 min-w-[200px]">
           <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="ค้นหา ชื่อ, เบอร์โทร, เลขที่นั่ง, ทริป..." className="pl-8 h-8 text-xs" />
+          <Input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="ค้นหา ชื่อ, เบอร์โทร, เลขที่นั่ง, ทริป..." className="pl-8 h-8 text-xs" />
         </div>
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="h-8 border border-slate-200 bg-white rounded-lg px-3 text-xs focus:outline-none focus:border-violet-400">
+        <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }} className="h-8 border border-slate-200 bg-white rounded-lg px-3 text-xs focus:outline-none focus:border-violet-400">
           <option value="all">สถานะทั้งหมด</option>
           <option value="approved">ยืนยันแล้ว</option>
           <option value="pending">รออนุมัติ</option>
@@ -216,12 +252,14 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filtered.length === 0 ? (
+              {remoteLoading ? (
+                <tr><td colSpan={8} className="py-16 text-center text-slate-400"><RefreshCw className="w-6 h-6 mx-auto mb-2 animate-spin text-violet-400" /><p>กำลังโหลดรายการจอง...</p></td></tr>
+              ) : filtered.length === 0 ? (
                 <tr><td colSpan={8} className="py-16 text-center text-slate-400">
                   <Users className="w-10 h-10 mx-auto mb-2 text-slate-200" />
                   <p className="font-semibold text-sm">ไม่พบรายการจอง</p>
                 </td></tr>
-              ) : filtered.map(b => {
+              ) : visibleBookings.map(b => {
                 const isChange = !!(b as any).replacesBookingId;
 
                 // Find the original booking (the one being replaced)
@@ -399,13 +437,15 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
 
         {/* Mobile Card View */}
         <div className="md:hidden divide-y divide-slate-100">
-          {filtered.length === 0 ? (
+          {remoteLoading ? (
+            <div className="py-16 text-center text-slate-400"><RefreshCw className="w-6 h-6 mx-auto mb-2 animate-spin text-violet-400" /><p>กำลังโหลดรายการจอง...</p></div>
+          ) : filtered.length === 0 ? (
             <div className="py-12 text-center text-slate-400">
               <Users className="w-10 h-10 mx-auto mb-2 text-slate-200" />
               <p className="font-semibold text-sm">ไม่พบรายการจอง</p>
             </div>
           ) : (
-            filtered.map((b, idx) => {
+            visibleBookings.map((b, idx) => {
               const isChange = !!(b as any).replacesBookingId;
               const originalBooking = isChange
                 ? bookings.find(x => x.id === (b as any).replacesBookingId)
@@ -548,7 +588,8 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
         </div>
         {/* Footer */}
         <div className="border-t border-slate-100 px-4 py-3 flex items-center justify-between text-xs text-slate-500">
-          <span>แสดง {filtered.length} จาก {bookings.length} รายการ</span>
+          <span>แสดง {remoteTotal ? (currentPage - 1) * 20 + 1 : 0}-{Math.min(currentPage * 20, remoteTotal)} จาก {remoteTotal} รายการ</span>
+          {pages > 1 && <div className="flex items-center gap-2"><button type="button" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)} className="rounded-lg border border-slate-200 p-1.5 hover:bg-violet-50 disabled:opacity-30" aria-label="หน้าก่อนหน้า"><ChevronLeft className="h-4 w-4" /></button><span className="font-bold">{currentPage} / {pages}</span><button type="button" disabled={currentPage === pages} onClick={() => setPage(currentPage + 1)} className="rounded-lg border border-slate-200 p-1.5 hover:bg-violet-50 disabled:opacity-30" aria-label="หน้าถัดไป"><ChevronRight className="h-4 w-4" /></button></div>}
         </div>
       </div>
       {moving && onMoveSeat && (

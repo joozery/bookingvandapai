@@ -1,6 +1,6 @@
 import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
-import { supabase } from "@/lib/supabase"
+import { dataStore } from "@/lib/dataStore"
 import bcrypt from "bcryptjs"
 
 // Fix: next-auth/providers/line is a CJS module; Turbopack resolves it as
@@ -25,7 +25,7 @@ const authOptions = {
       async authorize(credentials) {
         if (!credentials?.username || !credentials?.password) return null;
         
-        const { data: admin } = await supabase
+        const { data: admin } = await dataStore
           .from("admins")
           .select("*")
           .eq("username", credentials.username)

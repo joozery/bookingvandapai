@@ -5,7 +5,7 @@ import ReviewCopyFields from '@/components/ReviewCopyFields';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from '@/lib/cropImage';
 import { convertImageToWebp } from '@/lib/imageToWebp';
-import { Compass, Plus, FileText, Trash2, Calendar, Clock, MapPin, Info, Link2, Check, ArrowLeft, Image as ImageIcon, Pencil, Search, X } from 'lucide-react';
+import { Compass, Plus, FileText, Trash2, Calendar, Clock, MapPin, Info, Link2, Check, ArrowLeft, Image as ImageIcon, Pencil, Search, X, ReceiptText, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,20 +15,24 @@ import { formatThaiDate } from '@/lib/dateFormat';
 import { parseCalendarDay } from '@/lib/tripCalendar';
 import type { Trip, Van } from './types';
 import { getTripTheme } from '@/lib/tripThemes';
+import { money, thaiDate, today } from './accounting/shared';
 
 interface Props {
   completed?: boolean;
+  draft?: boolean;
   canToggleCompleted?: boolean;
   trips: Trip[];
   vans: Van[];
-  onCreate: (form: { guideName: string; name: string; departureDate: string; durationDays: number; cost: number; depositAmount: number | ''; pickupPoint: string; departureTime: string; tripPeriod: string; reviewTitle: string; reviewDescription: string; vansCount: number; vansList: { plateNumber: string; driverName: string; driverPhone: string; }[]; imageFile?: File | null }) => Promise<void>;
-  onUpdate: (id: string, form: { guideName: string; name: string; departureDate: string; durationDays: number; cost: number; depositAmount: number | ''; pickupPoint: string; departureTime: string; tripPeriod: string; reviewTitle: string; reviewDescription: string; imageFile?: File | null }) => Promise<boolean>;
+  onCreate: (form: { guideName: string; name: string; departureDate: string; durationDays: number; cost: number | ''; flashSalePrice: number | ''; depositAmount: number | ''; pickupPoint: string; departureTime: string; tripPeriod: string; reviewTitle: string; reviewDescription: string; vansCount: number; vansList: { plateNumber: string; driverName: string; driverPhone: string; }[]; imageFile?: File | null }) => Promise<void>;
+  onUpdate: (id: string, form: { guideName: string; name: string; departureDate: string; durationDays: number; cost: number; flashSalePrice: number | ''; depositAmount: number | ''; pickupPoint: string; departureTime: string; tripPeriod: string; reviewTitle: string; reviewDescription: string; imageFile?: File | null }) => Promise<boolean>;
   onUpdateVan: (vanId: string, data: { staffName: string }) => Promise<void>;
   onDelete: (tripId: string) => Promise<void>;
   onStatusChange: (tripId: string, status: Trip['status']) => Promise<void>;
+  onCancel: (tripId: string) => Promise<void>;
+  onChanged?: () => Promise<void>;
 }
 
-const DEFAULT_FORM = { guideName: '', reviewTitle: '', reviewDescription: '', name: '', departureDate: '', returnDate: '', durationDays: 3, cost: 1500, depositAmount: '' as number | '', pickupPoint: '', departureTime: '06:00', tripPeriod: '', durationText: '', vansCount: 1, vansList: [{ plateNumber: '', driverName: '', driverPhone: '' }] };
+const DEFAULT_FORM = { guideName: '', reviewTitle: '', reviewDescription: '', name: '', departureDate: '', returnDate: '', durationDays: 3, cost: '' as number | '', flashSalePrice: '' as number | '', depositAmount: '' as number | '', pickupPoint: '', departureTime: '06:00', tripPeriod: '', durationText: '', vansCount: 1, vansList: [{ plateNumber: '', driverName: '', driverPhone: '' }] };
 
 const calculateEndDate = (startDate: string, days: number) => {
   if (!startDate || !days) return '';
@@ -75,7 +79,7 @@ const generatePeriod = (dateStr: string, days: number) => {
 
 import { ThaiDatePicker } from '@/components/ui/ThaiDatePicker';
 
-export default function TripsTab({ trips, vans, onCreate, onUpdate, onUpdateVan, onDelete, onStatusChange, completed = false, canToggleCompleted = true }: Props) {
+export default function TripsTab({ trips, vans, onCreate, onUpdate, onUpdateVan, onDelete, onStatusChange, onCancel, onChanged, completed = false, draft = false, canToggleCompleted = true }: Props) {
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
   const [form, setForm] = useState(DEFAULT_FORM);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -92,10 +96,103 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onUpdateVan,
 
   // Edit States
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
-  const [editForm, setEditForm] = useState({ guideName: '', reviewTitle: '', reviewDescription: '', name: '', departureDate: '', returnDate: '', durationDays: 3, cost: 1500, depositAmount: '' as number | '', pickupPoint: '', departureTime: '06:00', tripPeriod: '', durationText: '' });
+  const [editForm, setEditForm] = useState({ guideName: '', reviewTitle: '', reviewDescription: '', name: '', departureDate: '', returnDate: '', durationDays: 3, cost: 1500, flashSalePrice: '' as number | '', depositAmount: '' as number | '', pickupPoint: '', departureTime: '06:00', tripPeriod: '', durationText: '' });
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
   const [editImagePreview, setEditImagePreview] = useState<string | null>(null);
   const [editingStaffNames, setEditingStaffNames] = useState<Record<string, string>>({});
+  const [expenseTrip, setExpenseTrip] = useState<Trip | null>(null);
+  const [expenseCategories, setExpenseCategories] = useState<{ id: string; name: string }[]>([]);
+  const [tripExpenses, setTripExpenses] = useState<{ id: string; date: string; categoryId: string; description: string; amountSatang: number }[]>([]);
+  const [tripPayments, setTripPayments] = useState<{ totalSatang: number; paidSatang: number; balanceSatang: number; creditUsedSatang: number; cashPaidSatang: number; booking: { status: string } | null }[]>([]);
+  const [expenseEditingId, setExpenseEditingId] = useState<string | null>(null);
+  const [expenseForm, setExpenseForm] = useState({ date: today(), categoryId: '', amount: '', description: '' });
+  const [expenseBusy, setExpenseBusy] = useState(false);
+  const [expenseError, setExpenseError] = useState('');
+  const [cancelTrip, setCancelTrip] = useState<Trip | null>(null);
+  const [cancelRecipients, setCancelRecipients] = useState<{ name: string; amountSatang: number }[]>([]);
+  const [cancelBusy, setCancelBusy] = useState(false);
+  const [cancelError, setCancelError] = useState('');
+
+  const openCancelPreview = async (trip: Trip) => {
+    setCancelTrip(trip); setCancelRecipients([]); setCancelError(''); setCancelBusy(true);
+    try {
+      const response = await fetch(`/api/trips/${encodeURIComponent(trip.id)}`, { cache: 'no-store' });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.error || 'โหลดข้อมูลเครดิตไม่สำเร็จ');
+      setCancelRecipients(data.recipients || []);
+    } catch (error) { setCancelError((error as Error).message); }
+    finally { setCancelBusy(false); }
+  };
+
+  const openExpense = async (trip: Trip) => {
+    setExpenseError('');
+    try {
+      const [categoriesResponse, entriesResponse] = await Promise.all([
+        fetch('/api/admin/accounting/categories', { cache: 'no-store' }),
+        fetch(`/api/admin/accounting/entries?type=expense&tripId=${encodeURIComponent(trip.id)}&page=1&pageSize=100`, { cache: 'no-store' }),
+      ]);
+      const data = await categoriesResponse.json();
+      const entriesData = await entriesResponse.json();
+      if (!categoriesResponse.ok || !data.success || !entriesResponse.ok || !entriesData.success) throw new Error(data.error || entriesData.error || 'โหลดข้อมูลค่าใช้จ่ายไม่สำเร็จ');
+      const categories = (data.categories || []).filter((category: { type: string }) => category.type === 'expense');
+      setExpenseCategories(categories);
+      setTripExpenses(entriesData.entries || []);
+      const paymentsResponse = await fetch(`/api/admin/payments?tripId=${encodeURIComponent(trip.id)}`, { cache: 'no-store' });
+      const paymentsData = await paymentsResponse.json();
+      if (!paymentsResponse.ok || !paymentsData.success) throw new Error(paymentsData.error || 'โหลดรายรับไม่สำเร็จ');
+      setTripPayments(paymentsData.payments || []);
+      setExpenseForm({ date: today(), categoryId: categories[0]?.id || '', amount: '', description: '' });
+      setExpenseTrip(trip);
+    } catch (error) {
+      setExpenseError(error instanceof Error ? error.message : 'โหลดข้อมูลไม่สำเร็จ');
+    }
+  };
+
+  const saveExpense = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!expenseTrip) return;
+    setExpenseBusy(true);
+    setExpenseError('');
+    try {
+      const response = await fetch(`/api/admin/accounting/entries${expenseEditingId ? `/${encodeURIComponent(expenseEditingId)}` : ''}`, {
+        method: expenseEditingId ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...expenseForm, tripId: expenseTrip.id, amount: Number(expenseForm.amount) }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.error || 'บันทึกค่าใช้จ่ายไม่สำเร็จ');
+      if (data.item) setTripExpenses(previous => expenseEditingId ? previous.map(entry => entry.id === expenseEditingId ? data.item : entry) : [...previous, data.item]);
+      setExpenseEditingId(null);
+      setExpenseForm(previous => ({ ...previous, amount: '', description: '' }));
+      await onChanged?.();
+    } catch (error) {
+      setExpenseError(error instanceof Error ? error.message : 'บันทึกค่าใช้จ่ายไม่สำเร็จ');
+    } finally {
+      setExpenseBusy(false);
+    }
+  };
+
+  const editExpense = (entry: typeof tripExpenses[number]) => {
+    setExpenseEditingId(entry.id);
+    setExpenseForm({ date: entry.date, categoryId: entry.categoryId, amount: String(entry.amountSatang / 100), description: entry.description || '' });
+  };
+
+  const deleteExpense = async (entry: typeof tripExpenses[number]) => {
+    if (!confirm(`ลบค่าใช้จ่าย ${money(entry.amountSatang)} ใช่หรือไม่?`)) return;
+    try {
+      const response = await fetch(`/api/admin/accounting/entries/${encodeURIComponent(entry.id)}`, { method: 'DELETE' });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.error || 'ลบรายการไม่สำเร็จ');
+      setTripExpenses(previous => previous.filter(item => item.id !== entry.id));
+      if (expenseEditingId === entry.id) {
+        setExpenseEditingId(null);
+        setExpenseForm(previous => ({ ...previous, amount: '', description: '' }));
+      }
+      await onChanged?.();
+    } catch (error) {
+      setExpenseError(error instanceof Error ? error.message : 'ลบรายการไม่สำเร็จ');
+    }
+  };
 
   // Cropper States
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -148,6 +245,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onUpdateVan,
       returnDate: calculateEndDate(trip.departureDate, trip.durationDays),
       durationDays: trip.durationDays,
       cost: trip.cost,
+      flashSalePrice: trip.flashSalePrice ?? '',
       depositAmount: trip.depositAmount ?? '',
       pickupPoint: trip.pickupPoint,
       departureTime: trip.departureTime || '06:00',
@@ -197,14 +295,40 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onUpdateVan,
   };
 
   const copyLink = (id: string) => {
-    const url = `${window.location.origin}/?tripId=${id}`;
+    const url = `${window.location.origin}/payments?tripId=${encodeURIComponent(id)}`;
     navigator.clipboard.writeText(url);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const copyManualLink = async (id: string) => {
+    try {
+      const response = await fetch(`/api/trips/${encodeURIComponent(id)}/manual-link`, { method: 'POST' });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.error || 'สร้างลิงก์ Manual ไม่สำเร็จ');
+      const url = `${window.location.origin}/?tripId=${encodeURIComponent(id)}&mode=manual&token=${encodeURIComponent(data.token)}`;
+      await navigator.clipboard.writeText(url);
+      setCopiedId(`manual:${id}`);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (error) { setExpenseError((error as Error).message); }
+  };
+
+  const [remoteTrips, setRemoteTrips] = useState<Trip[]>([]);
+  const [remoteTotal, setRemoteTotal] = useState(0);
+  const [remoteLoading, setRemoteLoading] = useState(false);
+  const [page, setPage] = useState(() => typeof window === 'undefined' ? 1 : Math.max(1, Number(new URLSearchParams(window.location.search).get('page')) || 1));
+  React.useEffect(() => {
+    let active = true;
+    setRemoteLoading(true);
+    const params = new URLSearchParams({ page: String(page), pageSize: '20', status: completed ? 'completed' : draft ? 'draft' : 'active', q: search });
+    fetch(`/api/trips?${params.toString()}`, { cache: 'no-store' }).then(res => res.json()).then(result => {
+      if (active && result.success) { setRemoteTrips(result.trips || []); setRemoteTotal(result.total || 0); }
+    }).finally(() => { if (active) setRemoteLoading(false); });
+    return () => { active = false; };
+  }, [page, completed, draft, search]);
+  const tripSource = remoteTrips;
   const filteredTrips = React.useMemo(() => {
-    const filtered = trips.filter(trip => {
+    const filtered = tripSource.filter(trip => {
       const matchSearch =
         trip.name.toLowerCase().includes(search.toLowerCase()) ||
         trip.pickupPoint.toLowerCase().includes(search.toLowerCase()) ||
@@ -222,7 +346,16 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onUpdateVan,
       );
     }
     return filtered;
-  }, [trips, search, selectedTripFilter, completed]);
+  }, [tripSource, search, selectedTripFilter, completed]);
+  const pageCount = Math.max(1, Math.ceil((remoteTotal || filteredTrips.length) / 20));
+  const currentPage = Math.min(page, pageCount);
+  const visibleTrips = filteredTrips;
+  React.useEffect(() => { setPage(1); }, [search, selectedTripFilter, completed, draft]);
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    params.set('page', String(currentPage));
+    window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+  }, [currentPage]);
 
   const cropperModal = showCropper && originalImage && (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
@@ -329,8 +462,14 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onUpdateVan,
                     </div>
                     <div>
                       <label className="text-xs font-bold text-slate-700 block mb-1.5">ค่าบริการ (บาท) <span className="text-rose-500">*</span></label>
-                      <Input required type="number" min={0} value={editForm.cost === 0 ? '' : editForm.cost} onChange={e => setEditForm({ ...editForm, cost: e.target.value === '' ? ('' as any) : Number(e.target.value) })} className="h-10 text-sm font-bold text-violet-700" />
+                      <Input type="number" min={0} value={editForm.cost === 0 ? '' : editForm.cost} onChange={e => setEditForm({ ...editForm, cost: e.target.value === '' ? ('' as any) : Number(e.target.value) })} className="h-10 text-sm font-bold text-violet-700" />
                     </div>
+                  </div>
+
+                  <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3">
+                    <label className="text-xs font-bold text-slate-700 block mb-1.5">ราคา Flash Sale ช่วง 7 วันสุดท้าย (บาท)</label>
+                    <Input type="number" min={0} step="0.01" value={editForm.flashSalePrice} onChange={e => setEditForm({ ...editForm, flashSalePrice: e.target.value === '' ? '' : Number(e.target.value) })} placeholder="เว้นว่างถ้าไม่จัด Flash Sale" className="h-10 text-sm font-bold text-amber-700" />
+                    <p className="mt-1.5 text-[11px] text-slate-500">จะแสดงอัตโนมัติเมื่อเหลือไม่เกิน 7 วัน และลูกค้าต้องชำระเต็มจำนวน</p>
                   </div>
 
                   <DepositField cost={Number(editForm.cost) || 0} value={editForm.depositAmount} onChange={value => setEditForm({ ...editForm, depositAmount: value })} />
@@ -470,8 +609,14 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onUpdateVan,
                     </div>
                     <div>
                       <label className="text-xs font-bold text-slate-700 block mb-1.5">ค่าบริการ (บาท) <span className="text-rose-500">*</span></label>
-                      <Input required type="number" min={0} value={form.cost === 0 ? '' : form.cost} onChange={e => setForm({ ...form, cost: e.target.value === '' ? ('' as any) : Number(e.target.value) })} className="h-10 text-sm font-bold text-violet-700" />
+                       <Input type="number" min={0} value={form.cost === 0 ? '' : form.cost} onChange={e => setForm({ ...form, cost: e.target.value === '' ? '' : Number(e.target.value) })} className="h-10 text-sm font-bold text-violet-700" />
                     </div>
+                  </div>
+
+                  <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3">
+                    <label className="text-xs font-bold text-slate-700 block mb-1.5">ราคา Flash Sale ช่วง 7 วันสุดท้าย (บาท)</label>
+                    <Input type="number" min={0} step="0.01" value={form.flashSalePrice} onChange={e => setForm({ ...form, flashSalePrice: e.target.value === '' ? '' : Number(e.target.value) })} placeholder="เว้นว่างถ้าไม่จัด Flash Sale" className="h-10 text-sm font-bold text-amber-700" />
+                    <p className="mt-1.5 text-[11px] text-slate-500">จะแสดงอัตโนมัติเมื่อเหลือไม่เกิน 7 วัน และลูกค้าต้องชำระเต็มจำนวน</p>
                   </div>
 
                   <DepositField cost={Number(form.cost) || 0} value={form.depositAmount} onChange={value => setForm({ ...form, depositAmount: value })} />
@@ -590,8 +735,19 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onUpdateVan,
 
 
 
+  const expenseTotalSatang = expenseTrip ? tripExpenses.reduce((sum, entry) => sum + entry.amountSatang, 0) : 0;
+  const paidRevenueSatang = expenseTrip ? tripPayments.reduce((sum, payment) => sum + payment.paidSatang, 0) : 0;
+  const creditRevenueSatang = expenseTrip ? tripPayments.reduce((sum, payment) => sum + payment.creditUsedSatang, 0) : 0;
+  const cashRevenueSatang = expenseTrip ? tripPayments.reduce((sum, payment) => sum + payment.cashPaidSatang, 0) : 0;
+  const outstandingRevenueSatang = expenseTrip ? tripPayments.reduce((sum, payment) => sum + Math.max(0, payment.balanceSatang), 0) : 0;
+  const customerSeatTotal = expenseTrip ? vans.filter(van => van.tripId === expenseTrip.id).reduce((sum, van) => sum + van.seats.filter(seat => seat.type === 'customer').length, 0) : 0;
+  const soldSeatCount = expenseTrip ? vans.filter(van => van.tripId === expenseTrip.id).reduce((sum, van) => sum + van.seats.filter(seat => seat.type === 'customer' && ['booked', 'pending'].includes(seat.status)).length, 0) : 0;
+  const availableSeatCount = Math.max(0, customerSeatTotal - soldSeatCount);
+  const currentProfitSatang = paidRevenueSatang - expenseTotalSatang;
+  const flashSaleFloorSatang = availableSeatCount > 0 ? Math.ceil(Math.max(0, expenseTotalSatang - paidRevenueSatang * 0.93) / availableSeatCount / 0.93) : 0;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-draft-view={draft ? 'true' : undefined}>
       <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white border border-slate-200 rounded-xl shadow-sm p-4">
         <div>
           <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
@@ -632,7 +788,9 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onUpdateVan,
         </div>
       </div>
 
-      {trips.length === 0 ? (
+      {remoteLoading ? (
+        <div className="text-center py-20 bg-white border border-dashed border-slate-200 rounded-2xl shadow-sm text-sm text-slate-400">กำลังโหลดรายการทริป...</div>
+      ) : remoteTotal === 0 ? (
         <div className="text-center py-20 bg-white border border-dashed border-slate-200 rounded-2xl shadow-sm">
           <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <Compass className="w-8 h-8 text-slate-300" />
@@ -650,7 +808,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onUpdateVan,
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4">
-          {filteredTrips.map((trip, idx) => {
+          {visibleTrips.map((trip, idx) => {
             const theme = getTripTheme(idx);
             const tripVans = vans.filter(v => v.tripId === trip.id);
             let total = 0, occupied = 0;
@@ -713,31 +871,33 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onUpdateVan,
                      </div>
 
                      <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2">
-                      <span className="text-xs font-semibold text-slate-600">{trip.status === 'completed' ? 'ทริปที่จบไปแล้ว' : 'เปิดรับจอง'}</span>
+                      <span className="text-xs font-semibold text-slate-600">{trip.status === 'cancelled' ? 'ยกเลิกทริปแล้ว' : trip.status === 'completed' ? 'ทริปที่จบไปแล้ว' : 'เปิดรับจอง'}</span>
                       <button
                         type="button"
                         role="switch"
-                        aria-checked={trip.status !== 'completed'}
+                         aria-checked={trip.status === 'active' && Number(trip.cost) > 0}
                         aria-label={`เปิดรับจองทริป ${trip.name}`}
-                        disabled={updatingStatusId !== null || !canToggleCompleted}
+                        disabled={updatingStatusId !== null || !canToggleCompleted || trip.status === 'cancelled'}
                         title={!canToggleCompleted ? 'ต้องมีสิทธิ์ "ทริปที่จบไปแล้ว" จึงจะเปลี่ยนสถานะได้' : undefined}
                         onClick={async () => {
                           if (!canToggleCompleted) return;
                           setUpdatingStatusId(trip.id);
                           try {
-                            await onStatusChange(trip.id, trip.status === 'completed' ? 'active' : 'completed');
+                          await onStatusChange(trip.id, trip.status === 'draft' || Number(trip.cost) <= 0 || trip.status === 'completed' || trip.status === 'cancelled' ? 'active' : 'completed');
                           } finally {
                             setUpdatingStatusId(null);
                           }
                         }}
                         className={cn("flex items-center gap-2 text-xs font-bold disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-violet-600", !canToggleCompleted && "cursor-not-allowed")}
                       >
-                        <span>{updatingStatusId === trip.id ? 'กำลังบันทึก...' : trip.status === 'completed' ? 'ปิด' : 'เปิด'}</span>
+                        <span>{updatingStatusId === trip.id ? 'กำลังบันทึก...' : trip.status === 'cancelled' ? 'ยกเลิกแล้ว' : trip.status === 'completed' ? 'ปิด' : 'เปิด'}</span>
                         <span className={cn('flex h-6 w-11 items-center rounded-full p-0.5 transition-colors', trip.status === 'completed' ? 'bg-slate-300' : 'bg-emerald-500')}>
                           <span className={cn('h-5 w-5 rounded-full bg-white shadow transition-transform', trip.status === 'completed' ? 'translate-x-0' : 'translate-x-5')} />
                         </span>
                       </button>
                     </div>
+
+                    {trip.status === 'active' && <button type="button" disabled={updatingStatusId !== null} onClick={() => void openCancelPreview(trip)} className="mt-2 w-full rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100 disabled:opacity-50">ยกเลิกทริปและสร้างเครดิตคืน</button>}
 
                     <div className="flex items-end justify-between mt-auto pt-2">
                       <div className="flex-1 max-w-[200px]">
@@ -754,6 +914,14 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onUpdateVan,
 
                       <div className="flex gap-1.5 shrink-0 ml-4">
                         <button
+                          onClick={() => void openExpense(trip)}
+                          className="flex h-8 items-center justify-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-2 text-[11px] font-bold text-rose-700 transition hover:bg-rose-100"
+                          title="บันทึกค่าใช้จ่ายของทริป"
+                        >
+                          <ReceiptText className="h-3.5 w-3.5" />
+                          <span className="hidden 2xl:inline">บันทึกค่าใช้จ่าย</span>
+                        </button>
+                        <button
                           onClick={() => copyLink(trip.id)}
                           className={cn("flex items-center justify-center gap-1.5 px-3 h-8 rounded-lg border transition text-[11px] font-bold",
                             copiedId === trip.id ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : theme.shareBtn
@@ -761,6 +929,10 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onUpdateVan,
                         >
                           {copiedId === trip.id ? <Check className="w-3.5 h-3.5" /> : <Link2 className="w-3.5 h-3.5" />}
                           {copiedId === trip.id ? 'คัดลอกลิ้งก์แล้ว' : 'แชร์ลิ้งก์'}
+                        </button>
+                        <button onClick={() => void copyManualLink(trip.id)} className="flex items-center justify-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 h-8 text-[11px] font-bold text-amber-700 transition hover:bg-amber-100" title="สร้างลิงก์จอง Manual ข้ามการชำระเงิน">
+                          {copiedId === `manual:${trip.id}` ? <Check className="w-3.5 h-3.5" /> : <Link2 className="w-3.5 h-3.5" />}
+                          {copiedId === `manual:${trip.id}` ? 'ลิงก์ Manual แล้ว' : 'ลิงก์ Manual'}
                         </button>
                         <button
                           onClick={() => startEditing(trip)}
@@ -786,6 +958,68 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onUpdateVan,
         </div>
       )}
 
+      {pageCount > 1 && <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-500"><span>แสดง {(currentPage - 1) * 20 + 1}-{Math.min(currentPage * 20, remoteTotal)} จาก {remoteTotal} ทริป</span><div className="flex items-center gap-2"><button type="button" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)} className="rounded-lg border p-1.5 disabled:opacity-30"><ChevronLeft className="h-4 w-4" /></button><span>{currentPage} / {pageCount}</span><button type="button" disabled={currentPage >= pageCount} onClick={() => setPage(currentPage + 1)} className="rounded-lg border p-1.5 disabled:opacity-30"><ChevronRight className="h-4 w-4" /></button></div></div>}
+
+      {expenseTrip && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm" onClick={() => !expenseBusy && setExpenseTrip(null)}>
+          <div role="dialog" aria-modal="true" aria-labelledby="trip-expense-title" data-trip-expense-dialog className="grid max-h-[92vh] w-full max-w-5xl grid-cols-1 gap-4 overflow-y-auto rounded-[2rem] border border-white/70 bg-white p-5 shadow-2xl sm:p-7 md:grid-cols-2 xl:grid-cols-4" onClick={event => event.stopPropagation()}>
+            <style>{`[data-trip-expense-dialog] form > button[type="submit"] { order: 2; grid-column: 1 / -1 !important; height: 3rem; } [data-trip-expense-dialog] .flex.items-center.justify-between.gap-3 { flex-wrap: wrap; } [data-trip-expense-dialog] .flex.items-center.justify-between.gap-3 > p { order: 4; flex-basis: 100%; }`}</style>
+            <div className="col-span-full mb-5 flex items-start justify-between gap-3">
+              <div>
+                <div className="flex flex-wrap items-center gap-3"><h3 id="trip-expense-title" className="text-2xl font-black tracking-tight text-slate-900">บันทึกค่าใช้จ่าย</h3><span className="rounded-full bg-violet-100 px-5 py-2 text-sm font-black text-violet-800">ทริป: {expenseTrip.name}</span></div>
+              </div>
+              <button type="button" onClick={() => setExpenseTrip(null)} disabled={expenseBusy} className="rounded-xl bg-slate-50 p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="order-3 mb-0 mt-5 rounded-3xl border border-fuchsia-200 bg-gradient-to-br from-fuchsia-50 via-white to-violet-50 p-5 shadow-sm xl:col-span-4">
+              <div className="flex items-center justify-between gap-3">
+              <p className="mt-3 text-xs font-bold text-violet-700">ควรขายอย่างน้อย ฿{Math.ceil(tripExpenses.reduce((sum, entry) => sum + entry.amountSatang, 0) / 100 / Math.max(1, vans.filter(van => van.tripId === expenseTrip.id).reduce((sum, van) => sum + van.seats.filter(seat => seat.type === 'customer').length, 0) - 1) / 0.93).toLocaleString('th-TH')} / ที่ <span className="font-normal text-slate-500">(คำนวณจากยอดขายหลังหัก 7%) (คิดจาก 9 ที่นั่ง)</span></p>
+                <span className="text-lg font-black text-fuchsia-900">ค่าใช้จ่ายรอบทริปนี้</span>
+                <strong className="rounded-2xl bg-gradient-to-r from-fuchsia-600 to-rose-500 px-5 py-2 text-2xl font-black tabular-nums text-white shadow-sm">รวม {money(tripExpenses.reduce((sum, entry) => sum + entry.amountSatang, 0))}</strong>
+              </div>
+              {tripExpenses.length > 0 ? (
+                <div className="mt-3 max-h-56 space-y-2 overflow-y-auto border-t border-rose-100 pt-3">
+                  {tripExpenses.map(entry => (
+                    <div key={entry.id} className="flex items-start justify-between gap-3 text-xs">
+                      <div className="min-w-0"><p className="truncate font-bold text-slate-700">{entry.description || 'ไม่มีรายละเอียด'}</p><p className="mt-0.5 text-[10px] text-slate-500">{thaiDate(entry.date)} · {expenseCategories.find(category => category.id === entry.categoryId)?.name || 'ไม่ระบุหมวด'}</p></div>
+                       <div className="flex shrink-0 items-center gap-2"><span className="font-black tabular-nums text-rose-700">{money(entry.amountSatang)}</span><button type="button" onClick={() => editExpense(entry)} className="rounded-lg p-1 text-slate-400 hover:bg-violet-50 hover:text-violet-600" title="แก้ไขรายการ"><Pencil className="h-3.5 w-3.5" /></button><button type="button" onClick={() => void deleteExpense(entry)} className="rounded-lg p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600" title="ลบรายการ"><Trash2 className="h-3.5 w-3.5" /></button></div>
+                    </div>
+                  ))}
+                </div>
+              ) : <p className="mt-2 border-t border-rose-100 pt-3 text-[11px] text-slate-500">ยังไม่มีรายการค่าใช้จ่ายของทริปนี้</p>}
+            </div>
+            <div className="order-4 grid gap-2 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 text-xs md:col-span-2 xl:col-span-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div><p className="text-slate-500">รายรับที่ชำระแล้ว</p><p className="mt-1 text-lg font-black text-emerald-700">{money(paidRevenueSatang)}</p><p className="text-[10px] text-slate-500">เงิน {money(cashRevenueSatang)} · เครดิต {money(creditRevenueSatang)}</p></div>
+              <div><p className="text-slate-500">ยอดค้างชำระ</p><p className="mt-1 text-lg font-black text-amber-700">{money(outstandingRevenueSatang)}</p><p className="text-[10px] text-slate-500">จากรายการจองเดิม</p></div>
+              <div><p className="text-slate-500">กำไร/ขาดทุนปัจจุบัน</p><p className={cn('mt-1 text-lg font-black', currentProfitSatang >= 0 ? 'text-emerald-700' : 'text-rose-700')}>{currentProfitSatang < 0 ? '-' : ''}{money(Math.abs(currentProfitSatang))}</p><p className="text-[10px] text-slate-500">รายรับที่รับแล้ว - ค่าใช้จ่าย</p></div>
+              <div><p className="text-slate-500">ที่นั่งว่าง</p><p className="mt-1 text-lg font-black text-violet-700">{availableSeatCount} ที่นั่ง</p><p className="text-[10px] text-slate-500">ขายแล้ว {soldSeatCount} / ทั้งหมด {customerSeatTotal}</p></div>
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 sm:col-span-2 lg:col-span-4"><p className="font-black text-amber-800">ราคา Flash Sale ขั้นต่ำที่แนะนำ: {availableSeatCount > 0 ? `฿${money(flashSaleFloorSatang)}` : 'ไม่มีที่นั่งว่าง'}</p><p className="mt-1 text-[10px] leading-relaxed text-amber-700">คำนวณจาก (ค่าใช้จ่ายรวม - (รายรับที่ชำระแล้ว × 0.93)) ÷ ที่นั่งว่าง ÷ 0.93 เพื่อหัก VAT 7% จากรายรับเดิมและราคาขายใหม่</p></div>
+            </div>
+            <form onSubmit={saveExpense} className="contents">
+              <div className="contents">
+                <label className="block text-xs font-bold text-slate-700">วันที่<input type="date" required value={expenseForm.date} onChange={event => setExpenseForm({ ...expenseForm, date: event.target.value })} className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm" /></label>
+                <label className="block text-xs font-bold text-slate-700">จำนวนเงิน (บาท)<input type="number" required min="0.01" step="0.01" value={expenseForm.amount} onChange={event => setExpenseForm({ ...expenseForm, amount: event.target.value })} className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-bold" /></label>
+              </div>
+              <label className="block text-xs font-bold text-slate-700">หมวดค่าใช้จ่าย<select required value={expenseForm.categoryId} onChange={event => setExpenseForm({ ...expenseForm, categoryId: event.target.value })} className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm"><option value="">เลือกหมวดค่าใช้จ่าย</option>{expenseCategories.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
+              <label className="block text-xs font-bold text-slate-700">รายละเอียด<input required value={expenseForm.description} maxLength={300} onChange={event => setExpenseForm({ ...expenseForm, description: event.target.value })} placeholder="เช่น ค่าน้ำมันรถตู้ ค่าที่พัก ค่าอาหาร" className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm" /></label>
+              {expenseError && <p className="rounded-xl bg-rose-50 p-3 text-xs font-bold text-rose-700 md:col-span-2 xl:col-span-4">{expenseError}</p>}
+              <button type="submit" disabled={expenseBusy || !expenseCategories.length} className="h-12 w-full rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-sm font-black text-white shadow-lg shadow-violet-600/20 hover:from-violet-700 hover:to-fuchsia-700 disabled:opacity-40 md:col-span-2 xl:col-span-4">{expenseBusy ? 'กำลังบันทึก...' : 'บันทึกค่าใช้จ่าย'}</button>
+            </form>
+          </div>
+        </div>
+      )}
+      {cancelTrip && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm" onClick={() => !cancelBusy && setCancelTrip(null)}>
+          <div role="dialog" aria-modal="true" className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl" onClick={event => event.stopPropagation()}>
+            <div className="flex items-start justify-between gap-3">
+              <div><h3 className="text-xl font-black text-slate-900">ยืนยันยกเลิกทริป</h3><p className="mt-1 text-sm text-slate-500">{cancelTrip.name}</p></div>
+              <button type="button" onClick={() => setCancelTrip(null)} disabled={cancelBusy} className="rounded-xl bg-slate-50 p-2 text-slate-400 hover:text-rose-600"><X className="h-5 w-5" /></button>
+            </div>
+            <p className="mt-5 rounded-2xl bg-amber-50 p-3 text-xs leading-relaxed text-amber-800">ระบบจะยกเลิกการจองของทริปนี้ และสร้างเครดิตคืนให้ลูกค้าที่ชำระเงินแล้ว เครดิตมีอายุ 1 ปี</p>
+            {cancelBusy ? <p className="py-8 text-center text-sm text-violet-600">กำลังโหลดรายชื่อลูกค้า…</p> : cancelError ? <p className="mt-4 rounded-xl bg-rose-50 p-3 text-sm font-bold text-rose-700">{cancelError}</p> : cancelRecipients.length === 0 ? <p className="py-8 text-center text-sm text-slate-500">ไม่มีลูกค้าที่ชำระเงินแล้ว จึงไม่มีเครดิตที่ต้องคืน</p> : <div className="mt-4 max-h-64 space-y-2 overflow-y-auto rounded-2xl border border-slate-100 p-3">{cancelRecipients.map(recipient => <div key={`${recipient.name}-${recipient.amountSatang}`} className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2.5"><span className="min-w-0 truncate text-sm font-bold text-slate-700">{recipient.name}</span><span className="shrink-0 font-black text-emerald-700">฿{(recipient.amountSatang / 100).toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span></div>)}</div>}
+            <div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => setCancelTrip(null)} disabled={cancelBusy} className="rounded-xl px-4 py-2.5 text-sm font-bold text-slate-500 hover:bg-slate-100">กลับ</button><button type="button" disabled={cancelBusy || !!cancelError} onClick={async () => { setCancelBusy(true); try { await onCancel(cancelTrip.id); setCancelTrip(null); } finally { setCancelBusy(false); } }} className="rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-rose-700 disabled:opacity-50">ยืนยันยกเลิกทริป</button></div>
+          </div>
+        </div>
+      )}
       {cropperModal}
     </div>
   );

@@ -1,5 +1,5 @@
 import React from 'react';
-import { supabase } from '@/lib/supabase';
+import { dataStore } from '@/lib/dataStore';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
@@ -9,7 +9,7 @@ export default async function PrivacyPolicyPage() {
   let content = 'ไม่มีข้อมูลนโยบายความเป็นส่วนตัว';
   
   try {
-    const { data, error } = await supabase.storage.from('images').download('settings/footer.json');
+    const { data, error } = await dataStore.storage.from('images').download('settings/footer.json');
     if (!error && data) {
       const text = await data.text();
       const settings = JSON.parse(text);

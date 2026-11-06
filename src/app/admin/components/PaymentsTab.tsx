@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight, Download, Edit2, RefreshCw, Search, Wallet, X } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Download, Edit2, RefreshCw, Search, Wallet, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import type { AdminPaymentRow } from '@/lib/adminPayments';
@@ -27,12 +27,13 @@ const STATE_STYLE: Record<string, string> = {
   lapsed: 'bg-slate-100 text-slate-500 border-slate-200',
 };
 
-async function fetchPayments(): Promise<{ rows?: AdminPaymentRow[]; canEdit?: boolean; error?: string }> {
+async function fetchPayments(page: number, q: string, tripId: string, state: string): Promise<{ rows?: AdminPaymentRow[]; total?: number; canEdit?: boolean; error?: string }> {
   try {
-    const res = await fetch('/api/admin/payments', { cache: 'no-store' });
+    const params = new URLSearchParams({ page: String(page), q, tripId, state });
+    const res = await fetch(`/api/admin/payments?${params.toString()}`, { cache: 'no-store' });
     const data = await res.json();
     if (!data.success) return { error: data.error || 'โหลดข้อมูลไม่สำเร็จ' };
-    return { rows: data.payments, canEdit: data.canEdit !== false };
+    return { rows: data.payments, total: data.total, canEdit: data.canEdit !== false };
   } catch { return { error: 'โหลดข้อมูลไม่สำเร็จ' }; }
 }
 
@@ -46,22 +47,25 @@ export default function PaymentsTab({ trips }: { trips: Trip[] }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [editing, setEditing] = useState<AdminPaymentRow | null>(null);
   const [canEdit, setCanEdit] = useState(false);
+  const [remoteTotal, setRemoteTotal] = useState(0);
+  const [page, setPage] = useState(() => typeof window === 'undefined' ? 1 : Math.max(1, Number(new URLSearchParams(window.location.search).get('page')) || 1));
 
-  const apply = useCallback((result: { rows?: AdminPaymentRow[]; canEdit?: boolean; error?: string }) => {
+  const apply = useCallback((result: { rows?: AdminPaymentRow[]; total?: number; canEdit?: boolean; error?: string }) => {
     if (result.rows) setRows(result.rows);
+    if (result.total !== undefined) setRemoteTotal(result.total);
     if (result.canEdit !== undefined) setCanEdit(result.canEdit);
     setError(result.error || '');
     setLoading(false);
   }, []);
   const load = useCallback(async () => {
     setLoading(true);
-    apply(await fetchPayments());
-  }, [apply]);
+    apply(await fetchPayments(page, q, tripId, state));
+  }, [apply, page, q, tripId, state]);
   useEffect(() => {
     let cancelled = false;
-    void fetchPayments().then(result => { if (!cancelled) apply(result); });
+    void fetchPayments(page, q, tripId, state).then(result => { if (!cancelled) apply(result); });
     return () => { cancelled = true; };
-  }, [apply]);
+  }, [apply, page, q, tripId, state]);
 
   // Same rules as the server-side filter, so the export matches what is shown.
   const filtered = useMemo(() => {
@@ -78,10 +82,17 @@ export default function PaymentsTab({ trips }: { trips: Trip[] }) {
   const totals = useMemo(() => filtered.reduce((sum, row) => ({
     total: sum.total + row.totalSatang, paid: sum.paid + row.paidSatang, balance: sum.balance + row.balanceSatang,
   }), { total: 0, paid: 0, balance: 0 }), [filtered]);
+  const pages = Math.max(1, Math.ceil(remoteTotal / 20));
+  const currentPage = Math.min(page, pages);
+  const visibleRows = filtered;
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    params.set('page', String(currentPage));
+    window.history.replaceState(null, '', `/admin/payments?${params.toString()}`);
+  }, [currentPage]);
 
   const tripOptions = useMemo(() => {
-    const ids = new Set(rows.map(row => row.tripId));
-    const known = trips.filter(trip => ids.has(trip.id)).map(trip => ({ id: trip.id, name: trip.name }));
+    const known = trips.map(trip => ({ id: trip.id, name: trip.name }));
     for (const row of rows) if (!known.some(t => t.id === row.tripId)) known.push({ id: row.tripId, name: row.tripName });
     return known;
   }, [rows, trips]);
@@ -107,13 +118,13 @@ export default function PaymentsTab({ trips }: { trips: Trip[] }) {
       <div className="flex flex-col gap-2 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm lg:flex-row lg:items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <Input value={q} onChange={e => setQ(e.target.value)} placeholder="ค้นหาชื่อ, ชื่อผู้โอน, เบอร์, ที่นั่ง, เลขอ้างอิงการโอน, เลขรายการ" className="h-10 pl-9 text-sm" />
+          <Input value={q} onChange={e => { setQ(e.target.value); setPage(1); }} placeholder="ค้นหาชื่อ, ชื่อผู้โอน, เบอร์, ที่นั่ง, เลขอ้างอิงการโอน, เลขรายการ" className="h-10 pl-9 text-sm" />
         </div>
-        <select value={tripId} onChange={e => setTripId(e.target.value)} className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm">
+        <select value={tripId} onChange={e => { setTripId(e.target.value); setPage(1); }} className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm">
           <option value="all">ทุกทริป</option>
           {tripOptions.map(trip => <option key={trip.id} value={trip.id}>{trip.name}</option>)}
         </select>
-        <select value={state} onChange={e => setState(e.target.value)} className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm">
+        <select value={state} onChange={e => { setState(e.target.value); setPage(1); }} className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm">
           {STATES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
         </select>
         <div className="flex gap-2">
@@ -149,7 +160,7 @@ export default function PaymentsTab({ trips }: { trips: Trip[] }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filtered.map(row => {
+                {visibleRows.map(row => {
                   const open = expanded === row.id;
                   return (
                     <React.Fragment key={row.id}>
@@ -167,7 +178,7 @@ export default function PaymentsTab({ trips }: { trips: Trip[] }) {
                           </p>
                         </td>
                         <td className="px-3 py-3 text-right font-bold text-slate-800">{money(row.totalSatang)}</td>
-                        <td className="px-3 py-3 text-right font-bold text-emerald-600">{money(row.paidSatang)}</td>
+                        <td className="px-3 py-3 text-right font-bold text-emerald-600">{money(row.paidSatang)}{row.creditUsedSatang > 0 && <p className="text-[10px] font-normal text-violet-600">เครดิต ฿{money(row.creditUsedSatang)} · เงิน ฿{money(row.cashPaidSatang)}</p>}</td>
                         <td className={cn('px-3 py-3 text-right font-bold', row.balanceSatang ? 'text-amber-600' : 'text-slate-400')}>{money(row.balanceSatang)}</td>
                         <td className="px-3 py-3">
                           <span className={cn('inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-bold', STATE_STYLE[row.state])}>{row.stateLabel}</span>
@@ -189,6 +200,7 @@ export default function PaymentsTab({ trips }: { trips: Trip[] }) {
             </table>
           </div>
         )}
+        {remoteTotal > 20 && <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3"><span className="text-[11px] text-slate-400">แสดง {(currentPage - 1) * 20 + 1}-{Math.min(currentPage * 20, remoteTotal)} จาก {remoteTotal} รายการ</span><div className="flex items-center gap-2"><button type="button" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)} className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:bg-violet-50 disabled:opacity-30" aria-label="หน้าก่อนหน้า"><ChevronLeft className="h-4 w-4" /></button><span className="text-[11px] font-bold text-slate-500">{currentPage} / {pages}</span><button type="button" disabled={currentPage === pages} onClick={() => setPage(currentPage + 1)} className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:bg-violet-50 disabled:opacity-30" aria-label="หน้าถัดไป"><ChevronRight className="h-4 w-4" /></button></div></div>}
       </div>
 
       {editing && <AdjustDialog row={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); void load(); }} />}

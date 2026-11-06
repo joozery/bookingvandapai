@@ -73,8 +73,9 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
     return () => observer.disconnect();
   }, [trips]);
 
-  const destinations = trips && trips.length > 0
-    ? trips.map(t => {
+  const publicTrips = trips.filter(t => t.status === 'active' && Number(t.cost) > 0);
+  const destinations = publicTrips.length > 0
+    ? publicTrips.map(t => {
         const parts = (t.tripPeriod || '').split('||');
         const nights = t.durationDays - 1;
         const durationText = parts.length > 1 ? parts[0] : (nights > 0 ? `${t.durationDays} วัน ${nights} คืน` : 'ไปเช้าเย็นกลับ (1 วัน)');
@@ -453,7 +454,7 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
 
         </div>
       </section>
-      {completed && <div className="mobile-performance-section"><TripCalendar trips={trips} /></div>}
+      {completed && <div className="mobile-performance-section"><TripCalendar trips={publicTrips} /></div>}
       </React.Fragment>
         );
       })}

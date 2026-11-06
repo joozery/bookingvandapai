@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 import { useParams, useRouter } from 'next/navigation';
 import { useSession, signIn, signOut } from 'next-auth/react';
 
-import { supabase } from '@/lib/browserSupabase';
+import { dataStore } from '@/lib/browserDataStore';
 import { convertImageToWebp } from '@/lib/imageToWebp';
 
 import dynamic from 'next/dynamic';
@@ -45,7 +45,8 @@ const AuditLogTab = dynamic(() => import('../components/AuditLogTab'), { loading
 import type { Trip, Van, Booking } from '../components/types';
 
 // ── Nav structure ─────────────────────────────────────────────────────────────
-const NAV = [
+ const NAV = [
+  { id: 'draft-trips', label: 'ทริปรอใส่ราคา', icon: FileText },
   { id: 'dashboard', label: 'แดชบอร์ด', icon: LayoutDashboard },
   { id: 'calendar',  label: 'ปฏิทินการเดินทาง', icon: Calendar },
   { id: 'trips',     label: 'จัดการทริป', icon: Compass },
@@ -71,7 +72,7 @@ const NAV = [
   { id: 'profile',   label: 'โปรไฟล์ของฉัน', icon: User },
 ] as const;
 
-type TabId = 'dashboard' | 'calendar' | 'bookings' | 'payments' | 'accounting' | 'audit' | 'trips' | 'completed-trips' | 'vans' | 'checkin' | 'pending' | 'users' | 'staff' | 'insurance' | 'reviews' | 'profile' | 'settings' | 'leaderboard';
+type TabId = 'dashboard' | 'calendar' | 'bookings' | 'payments' | 'accounting' | 'audit' | 'trips' | 'draft-trips' | 'completed-trips' | 'vans' | 'checkin' | 'pending' | 'users' | 'staff' | 'insurance' | 'reviews' | 'profile' | 'settings' | 'leaderboard';
 
 export default function AdminPage() {
   const { data: session, status } = useSession();
@@ -127,6 +128,7 @@ export default function AdminPage() {
   const [trips, setTrips]     = useState<Trip[]>([]);
   const [vans, setVans]       = useState<Van[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [adminAccounts, setAdminAccounts] = useState<Array<{ id: string; username: string; name: string }>>([]);
   const [users, setUsers]     = useState<UserRecord[]>([]);
   const [loading, setLoading]  = useState(true);
   const [settings, setSettings] = useState({ line_url: 'https://line.me' });
@@ -151,15 +153,24 @@ export default function AdminPage() {
     try {
       if (!silent) setLoading(true);
       const tstamp = Date.now();
-      const [tr, vr, br, ur, sr, pr] = await Promise.all([
-        fetch(`/api/trips?_t=${tstamp}`), 
-        fetch(`/api/vans?_t=${tstamp}`), 
-        fetch(`/api/bookings?_t=${tstamp}`), 
-        fetch(`/api/users?_t=${tstamp}`), 
+      const [tr, vr, br, ur, sr, pr, ar] = await Promise.all([
+        fetch(['trips', 'draft-trips', 'completed-trips'].includes(activeTab)
+          ? `/api/trips?page=1&pageSize=20&status=${activeTab === 'completed-trips' ? 'completed' : activeTab === 'draft-trips' ? 'draft' : 'active'}&_t=${tstamp}`
+          : `/api/trips?_t=${tstamp}`),
+        fetch(activeTab === 'vans'
+          ? `/api/vans?page=1&pageSize=1&_t=${tstamp}`
+          : `/api/vans?_t=${tstamp}`),
+        fetch(activeTab === 'bookings' || (typeof window !== 'undefined' && window.location.pathname.endsWith('/bookings'))
+          ? `/api/bookings?page=1&pageSize=20&tripStatus=active&_t=${tstamp}`
+          : `/api/bookings?_t=${tstamp}`),
+        fetch(activeTab === 'users' || (typeof window !== 'undefined' && window.location.pathname.endsWith('/users'))
+          ? `/api/users?page=1&pageSize=20&_t=${tstamp}`
+          : `/api/users?_t=${tstamp}`),
         fetch(`/api/settings?_t=${tstamp}`),
-        fetch(`/api/admin/profile-requests?_t=${tstamp}`)
+        fetch(`/api/admin/profile-requests?page=1&_t=${tstamp}`),
+        fetch(`/api/admins?_t=${tstamp}`)
       ]);
-      const [td, vd, bd, ud, sd, pd] = await Promise.all([tr.json(), vr.json(), br.json(), ur.json(), sr.json(), pr.json()]);
+      const [td, vd, bd, ud, sd, pd, ad] = await Promise.all([tr.json(), vr.json(), br.json(), ur.json(), sr.json(), pr.json(), ar.json()]);
       const t = td.success ? td.trips : trips;
       const v = vd.success ? vd.vans  : vans;
       if (td.success) setTrips(t);
@@ -168,6 +179,7 @@ export default function AdminPage() {
       if (ud.success) setUsers(ud.users);
       if (sd.success && sd.settings) setSettings(sd.settings);
       if (pd.success) setProfileRequests(pd.requests);
+      if (ad.success) setAdminAccounts(ad.admins || []);
     } catch { if (!silent) showToast('error', 'โหลดข้อมูลไม่สำเร็จ'); }
     finally   { if (!silent) setLoading(false); }
   };
@@ -176,7 +188,7 @@ export default function AdminPage() {
     if (status !== 'authenticated' || adminRole !== 'admin') return;
     fetchAll();
 
-    const channel = supabase
+    const channel = dataStore
       .channel('admin-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'vans' }, () => fetchAll(true))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => fetchAll(true))
@@ -184,9 +196,9 @@ export default function AdminPage() {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      dataStore.removeChannel(channel);
     };
-  }, [adminId, adminRole, status]);
+  }, [adminId, adminRole, status, activeTab]);
 
   if (status === 'loading') {
     return (
@@ -300,13 +312,13 @@ export default function AdminPage() {
         const fileName = `${Math.random().toString(36).substring(2, 15)}.webp`;
         const filePath = `trips/${fileName}`;
 
-        const { error: uploadError } = await supabase.storage
+        const { error: uploadError } = await dataStore.storage
           .from('images')
           .upload(filePath, file, { contentType: 'image/webp' });
 
         if (uploadError) throw uploadError;
 
-        const { data } = supabase.storage.from('images').getPublicUrl(filePath);
+        const { data } = dataStore.storage.from('images').getPublicUrl(filePath);
         form.image = data.publicUrl;
       }
       
@@ -328,13 +340,13 @@ export default function AdminPage() {
         const fileName = `${Math.random().toString(36).substring(2, 15)}.webp`;
         const filePath = `trips/${fileName}`;
 
-        const { error: uploadError } = await supabase.storage
+        const { error: uploadError } = await dataStore.storage
           .from('images')
           .upload(filePath, file, { contentType: 'image/webp' });
 
         if (uploadError) throw uploadError;
 
-        const { data } = supabase.storage.from('images').getPublicUrl(filePath);
+        const { data } = dataStore.storage.from('images').getPublicUrl(filePath);
         image = data.publicUrl;
       }
       
@@ -395,7 +407,7 @@ export default function AdminPage() {
           const isSuperAdmin = (session?.user as any)?.username === 'admin';
           const perms = (session?.user as any)?.permissions || [];
           if (item.id === 'audit' && !isSuperAdmin) return null; // audit log: main admin only
-          if (isAdmin && !isSuperAdmin && item.id !== 'audit' && !hasPermission(perms, item.id, 'view') && !(item.id === 'completed-trips' && perms.includes('trips')) && !(item.id === 'calendar' && (perms.includes('trips') || perms.includes('dashboard')))) return null;
+           if (isAdmin && !isSuperAdmin && item.id !== 'audit' && !hasPermission(perms, item.id, 'view') && !(item.id === 'draft-trips' && perms.includes('trips')) && !(item.id === 'completed-trips' && perms.includes('trips')) && !(item.id === 'calendar' && (perms.includes('trips') || perms.includes('dashboard')))) return null;
 
           const Icon    = item.icon;
           const hasChildren = 'children' in item && item.children;
@@ -695,7 +707,7 @@ export default function AdminPage() {
            !(activeTab === 'pending' 
              ? (session?.user as any)?.permissions?.includes('bookings') || (session?.user as any)?.permissions?.includes('pending')
              : activeTab === 'audit' ? false
-             : hasPermission((session?.user as any)?.permissions, activeTab === 'completed-trips' ? ((session?.user as any)?.permissions?.includes('completed-trips') ? 'completed-trips' : 'trips') : activeTab, 'view')) ? (
+              : hasPermission((session?.user as any)?.permissions, activeTab === 'completed-trips' || activeTab === 'draft-trips' ? ((session?.user as any)?.permissions?.includes(activeTab) ? activeTab : 'trips') : activeTab, 'view')) ? (
              <div className="flex flex-col items-center justify-center h-full text-slate-400 space-y-3">
                <Lock className="w-12 h-12 opacity-20" />
                <p className="font-bold">คุณไม่มีสิทธิเข้าถึงหน้านี้</p>
@@ -770,16 +782,19 @@ export default function AdminPage() {
                   bookings={activeTab === 'pending' ? bookings.filter(b => b.status === 'pending' && !!(b as any).replacesBookingId) : bookings}
                   onApprove={handleApprove} onReject={handleReject}
                   onDelete={handleDelBook} onCheckIn={handleCheckIn}
-                  onManualSubmit={handleManual}
+                  onManualSubmit={handleManual} adminAccounts={adminAccounts}
                   onMoveSeat={handleMoveSeat}
+                  pendingOnly={activeTab === 'pending'}
                 />
               )}
-              {(activeTab === 'trips' || activeTab === 'completed-trips') && (
-                <TripsTab key={activeTab} completed={activeTab === 'completed-trips'}
+              {(activeTab === 'trips' || activeTab === 'draft-trips' || activeTab === 'completed-trips') && (
+                <TripsTab key={activeTab} completed={activeTab === 'completed-trips'} draft={activeTab === 'draft-trips'}
+                  onChanged={() => fetchAll(true)}
                   canToggleCompleted={(session?.user as any)?.username === 'admin' || (session?.user as any)?.permissions?.includes('completed-trips')}
-                  trips={trips.filter(trip => activeTab === 'completed-trips' ? trip.status === 'completed' : trip.status !== 'completed')}
+                  trips={trips.filter(trip => activeTab === 'completed-trips' ? trip.status === 'completed' || trip.status === 'cancelled' : activeTab === 'draft-trips' ? trip.status === 'draft' || (trip.status === 'active' && Number(trip.cost) <= 0) : trip.status === 'active' && Number(trip.cost) > 0)}
                     vans={vans} onCreate={handleCreateTrip} onUpdate={handleUpdateTrip} onUpdateVan={handleUpdateVan} onDelete={handleDelTrip}
                   onStatusChange={async (id, status) => { await api(() => fetch(`/api/trips/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) }), status === 'active' ? 'เปิดรับจองทริปแล้ว' : 'ย้ายไปทริปที่จบไปแล้ว'); }}
+                  onCancel={async (id) => { await api(() => fetch(`/api/trips/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'cancelled' }) }), 'ยกเลิกทริปและสร้างเครดิตคืนให้ลูกค้าแล้ว'); }}
                 />
               )}
               {activeTab === 'vans' && (
@@ -787,6 +802,7 @@ export default function AdminPage() {
                   trips={trips} vans={vans}
                   onAddVan={handleAddVan} onDeleteVan={handleDelVan}
                   onUpdateVan={handleUpdateVan} onUpdateStaff={handleUpdateStaff}
+                  onMoveSeat={handleMoveSeat}
                   onToggleSeat={async (id, seatId, enabled) => { await api(() => fetch(`/api/vans/${id}`, {
                     method: 'PUT', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ seatId, seatEnabled: enabled }),

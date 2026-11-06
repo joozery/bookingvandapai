@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { dataStore } from '@/lib/dataStore';
 import { requireAdmin, requireOwnerOrAdmin } from '@/lib/adminAuth';
 import { recordAudit } from '@/lib/audit';
 
@@ -11,7 +11,7 @@ export async function POST(request: Request) {
   if (admin.username !== 'admin') return NextResponse.json({ success: false, error: 'ไม่มีสิทธิ์' }, { status: 403 });
   try {
     // Delete all trips. Because of ON DELETE CASCADE, this will also wipe out vans and bookings.
-    const { error } = await supabase.from('trips').delete().neq('id', 'dummy');
+    const { error } = await dataStore.from('trips').delete().neq('id', 'dummy');
     if (error) throw error;
     
     await recordAudit(admin, { action: 'delete', resource: 'database', resourceId: 'trips', request, summary: 'รีเซ็ตฐานข้อมูล: ลบทริปทั้งหมด' });

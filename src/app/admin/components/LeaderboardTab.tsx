@@ -14,17 +14,20 @@ export default function LeaderboardTab() {
   const [search, setSearch] = useState('');
   const [visibility, setVisibility] = useState('all');
   const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true); setError('');
-    fetch('/api/admin/leaderboard', { signal: controller.signal, cache: 'no-store' }).then(async response => {
+    const params = new URLSearchParams({ page: String(page), q: search, visibility });
+    fetch(`/api/admin/leaderboard?${params.toString()}`, { signal: controller.signal, cache: 'no-store' }).then(async response => {
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(result.error || 'โหลดไม่สำเร็จ');
       setPeople(result.people);
+      setTotal(result.total || 0);
     }).catch(error => { if (!controller.signal.aborted) setError(error.message); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [retry]);
+  }, [retry, page, search, visibility]);
   async function toggle(person: Person) {
     if (saving) return;
     setSaving(person.key); setError(''); setNotice('');
@@ -37,9 +40,14 @@ export default function LeaderboardTab() {
     } catch (error) { setError(error instanceof Error ? error.message : 'บันทึกไม่สำเร็จ'); }
     finally { setSaving(null); }
   }
-  const filtered = people.filter(person => person.nickname.toLocaleLowerCase('th').includes(search.trim().toLocaleLowerCase('th')) && (visibility === 'all' || person.isHidden === (visibility === 'hidden')));
-  const pageCount = Math.max(1, Math.ceil(filtered.length / 20));
+  const filtered = people;
+  const pageCount = Math.max(1, Math.ceil(total / 20));
   const currentPage = Math.min(page, pageCount);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    params.set('page', String(currentPage));
+    window.history.replaceState(null, '', `/admin/leaderboard?${params.toString()}`);
+  }, [currentPage]);
   return <div className="space-y-4">
     <div><h2 className="text-lg font-black text-slate-800">จัดการอันดับคนจองทริป</h2><p className="text-sm text-slate-500 mt-1">ซ่อนรายชื่อจากตารางหน้าแรก หรือเปิดแสดงกลับได้ ข้อมูลการจองยังอยู่ครบ และอันดับจะเรียงใหม่เฉพาะรายชื่อที่แสดง</p></div>
     <div className="flex flex-wrap gap-3">
@@ -49,8 +57,8 @@ export default function LeaderboardTab() {
     {error && <div role="alert" className="text-sm text-red-600">{error} <button type="button" onClick={() => setRetry(value => value + 1)} className="underline">โหลดใหม่</button></div>}
     {notice && <p role="status" className="text-sm text-emerald-700">{notice}</p>}
     {loading ? <p className="p-6 text-sm text-slate-500">กำลังโหลดรายชื่อ…</p> : <>
-      <p className="text-xs text-slate-500">แสดงอยู่ {people.filter(person => !person.isHidden).length} คน • ซ่อนอยู่ {people.filter(person => person.isHidden).length} คน</p>
-      {!filtered.length ? <p className="p-6 text-center text-slate-500">ไม่พบรายชื่อตามเงื่อนไข</p> : <div className="space-y-2">{filtered.slice((currentPage - 1) * 20, currentPage * 20).map(person => <div key={person.key} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4">
+      <p className="text-xs text-slate-500">แสดง {total} รายการตามตัวกรอง (โหลดครั้งละ 20 รายการ)</p>
+      {!filtered.length ? <p className="p-6 text-center text-slate-500">ไม่พบรายชื่อตามเงื่อนไข</p> : <div className="space-y-2">{filtered.map(person => <div key={person.key} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4">
         <div className="min-w-0"><p className="font-bold text-slate-800 break-words">{person.nickname}</p><p className="text-xs text-slate-500 mt-1">{person.tripCount} ทริป • {person.isHidden ? 'ซ่อนอยู่' : 'แสดงอยู่'} <span className="text-slate-400">(รหัส {person.key.slice(0, 8)})</span></p></div>
         <button type="button" disabled={!!saving} onClick={() => toggle(person)} aria-label={`${person.isHidden ? 'แสดง' : 'ซ่อน'} ${person.nickname}`} className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-bold text-violet-800 disabled:opacity-50">{person.isHidden ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}{saving === person.key ? 'กำลังบันทึก…' : person.isHidden ? 'เปิดแสดง' : 'ซ่อนรายชื่อ'}</button>
       </div>)}</div>}

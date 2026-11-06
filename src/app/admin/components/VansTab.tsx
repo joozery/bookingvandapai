@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Bus, Plus, Trash2, Edit2, Save, X, Users, Phone, LayoutGrid, ChevronDown, ChevronUp, Search, UserCheck } from 'lucide-react';
+import { Bus, Plus, Trash2, Edit2, Save, X, Users, Phone, LayoutGrid, ChevronDown, ChevronUp, Search, UserCheck, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,9 +20,10 @@ interface Props {
   onUpdateStaff: (vanId: string, seatId: string, staffName: string) => Promise<void>;
   onToggleSeat: (vanId: string, seatId: string, enabled: boolean) => Promise<void>;
   onToggleExtraSeat: (vanId: string, enabled: boolean) => Promise<void>;
+  onMoveSeat: (bookingId: string, vanId: string, seatId: string) => Promise<void>;
 }
 
-export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVan, onUpdateStaff, onToggleExtraSeat, onToggleSeat }: Props) {
+export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVan, onUpdateStaff, onToggleExtraSeat, onToggleSeat, onMoveSeat }: Props) {
   const [savingSeat, setSavingSeat] = useState<string | null>(null);
   const [savingExtraSeat, setSavingExtraSeat] = useState<string | null>(null);
   const [editingVanId, setEditingVanId] = useState<string | null>(null);
@@ -32,11 +33,38 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
   const [tripStatusFilter, setTripStatusFilter] = useState<'all' | 'active' | 'completed'>('active');
   const [selectedTripId, setSelectedTripId] = useState<string>('all');
   const [tripSearch, setTripSearch] = useState('');
+  const [page, setPage] = useState(() => typeof window === 'undefined' ? 1 : Math.max(1, Number(new URLSearchParams(window.location.search).get('page')) || 1));
+  const [remoteTrips, setRemoteTrips] = useState<Trip[]>([]);
+  const [remoteTotal, setRemoteTotal] = useState(0);
+  const [remoteLoading, setRemoteLoading] = useState(false);
+  const [remoteVans, setRemoteVans] = useState<Van[]>([]);
+  const [vanRefresh, setVanRefresh] = useState(0);
+  const [moving, setMoving] = useState<{ bookingId: string; passengerName: string; tripId: string; fromLabel: string } | null>(null);
+  const [movingBusy, setMovingBusy] = useState(false);
+  React.useEffect(() => {
+    let active = true;
+    setRemoteLoading(true);
+    const params = new URLSearchParams({ page: String(page), pageSize: '20', status: tripStatusFilter === 'all' ? 'all' : tripStatusFilter, q: tripSearch });
+    fetch(`/api/trips?${params.toString()}`, { cache: 'no-store' }).then(res => res.json()).then(result => {
+      if (active && result.success) { setRemoteTrips(result.trips || []); setRemoteTotal(result.total || 0); }
+    }).finally(() => { if (active) setRemoteLoading(false); });
+    return () => { active = false; };
+  }, [page, tripStatusFilter, tripSearch]);
+
+  React.useEffect(() => {
+    let active = true;
+    const ids = remoteTrips.map(trip => trip.id);
+    if (!ids.length) { setRemoteVans([]); return () => { active = false; }; }
+    fetch(`/api/vans?tripIds=${encodeURIComponent(ids.join(','))}`, { cache: 'no-store' }).then(res => res.json()).then(result => {
+      if (active && result.success) setRemoteVans(result.vans || []);
+    }).catch(() => { if (active) setRemoteVans([]); });
+    return () => { active = false; };
+  }, [remoteTrips, vanRefresh]);
 
   const filteredTrips = useMemo(() => {
-    let arr = trips;
+    let arr = remoteTrips;
     if (tripStatusFilter === 'active') {
-      arr = arr.filter(t => t.status !== 'completed');
+      arr = arr.filter(t => t.status === 'active');
     } else if (tripStatusFilter === 'completed') {
       arr = arr.filter(t => t.status === 'completed');
     }
@@ -53,7 +81,16 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
       (a.departureDate || '').localeCompare(b.departureDate || '') ||
       (a.departureTime || '').localeCompare(b.departureTime || '')
     );
-  }, [trips, tripStatusFilter, selectedTripId, tripSearch]);
+  }, [remoteTrips, tripStatusFilter, selectedTripId, tripSearch]);
+  const pageCount = Math.max(1, Math.ceil((remoteTotal || filteredTrips.length) / 20));
+  const currentPage = Math.min(page, pageCount);
+  const visibleTrips = filteredTrips;
+  React.useEffect(() => { setPage(1); }, [tripStatusFilter, selectedTripId, tripSearch]);
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    params.set('page', String(currentPage));
+    window.history.replaceState(null, '', `/admin/vans?${params.toString()}`);
+  }, [currentPage]);
 
   const renderAdminSeat = (s: Seat | undefined, vanId: string, fitCell = false) => {
     if (!s) return <div className={cn('h-10', fitCell ? 'w-full min-w-0' : 'w-14')} />;
@@ -78,9 +115,10 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
 
     return (
       <button type="button" key={s.id}
-        disabled={isDriver || !!s.bookingId || !['available', 'blocked'].includes(s.status) || savingSeat !== null}
+        disabled={isDriver || (!s.bookingId && !['available', 'blocked'].includes(s.status)) || savingSeat !== null || movingBusy}
         aria-label={`ที่นั่ง ${s.label} ${s.status === 'blocked' ? 'เปิดรับจอง' : 'ปิดรับจอง'}`}
         onClick={async () => {
+          if (s.bookingId) { const tripId = remoteVans.find(van => van.id === vanId)?.tripId; if (tripId) setMoving({ bookingId: s.bookingId, passengerName: s.passengerName || s.label, tripId, fromLabel: s.label }); return; }
           setSavingSeat(s.id);
           try { await onToggleSeat(vanId, s.id, s.status === 'blocked'); }
           finally { setSavingSeat(null); }
@@ -149,15 +187,15 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
         </div>
       </div>
 
-      {trips.length === 0 && (
+      {remoteLoading ? <div className="py-16 text-center text-sm text-slate-400">กำลังโหลดข้อมูลรถตู้...</div> : remoteTotal === 0 && (
         <div className="text-center py-16 text-slate-400 border border-dashed border-slate-200 rounded-xl">
           <Bus className="w-10 h-10 mx-auto mb-2 text-slate-200" />
           <p className="text-sm font-semibold">ยังไม่มีทริปในระบบ กรุณาสร้างทริปก่อน</p>
         </div>
       )}
 
-      {filteredTrips.map(trip => {
-        const tripVans = vans.filter(v => v.tripId === trip.id);
+      {visibleTrips.map(trip => {
+        const tripVans = remoteVans.filter(v => v.tripId === trip.id);
 
         return (
           <Card key={trip.id} className="border-none shadow-sm bg-white">
@@ -351,6 +389,8 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
           </Card>
         );
       })}
+      {pageCount > 1 && <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-500"><span>แสดง {(currentPage - 1) * 20 + 1}-{Math.min(currentPage * 20, remoteTotal)} จาก {remoteTotal} ทริป</span><div className="flex items-center gap-2"><button type="button" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)} className="rounded-lg border p-1.5 disabled:opacity-30"><ChevronLeft className="h-4 w-4" /></button><span>{currentPage} / {pageCount}</span><button type="button" disabled={currentPage >= pageCount} onClick={() => setPage(currentPage + 1)} className="rounded-lg border p-1.5 disabled:opacity-30"><ChevronRight className="h-4 w-4" /></button></div></div>}
+      {moving && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" onClick={() => !movingBusy && setMoving(null)}><div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl" onClick={event => event.stopPropagation()}><div className="flex items-start justify-between gap-3"><div><h3 className="text-lg font-black text-slate-900">ย้ายที่นั่งให้ลูกค้า</h3><p className="mt-1 text-xs text-slate-500">{moving.passengerName} · ที่นั่งเดิม {moving.fromLabel}</p></div><button type="button" disabled={movingBusy} onClick={() => setMoving(null)} className="text-slate-400">✕</button></div><p className="mt-4 text-xs font-bold text-slate-600">เลือกที่นั่งว่างภายในทริปเดียวกัน</p><div className="mt-3 grid grid-cols-3 gap-2">{remoteVans.filter(van => van.tripId === moving.tripId).flatMap(van => van.seats.filter(seat => seat.type === 'customer' && seat.status === 'available').map(seat => <button key={`${van.id}-${seat.id}`} type="button" disabled={movingBusy} onClick={async () => { setMovingBusy(true); try { await onMoveSeat(moving.bookingId, van.id, seat.id); setMoving(null); setVanRefresh(value => value + 1); } finally { setMovingBusy(false); } }} className="rounded-xl border border-emerald-200 bg-emerald-50 px-2 py-3 text-xs font-black text-emerald-700 hover:bg-emerald-100 disabled:opacity-50">รถ {van.vanNumber}<br />{seat.label}</button>))}</div>{!remoteVans.some(van => van.tripId === moving.tripId && van.seats.some(seat => seat.type === 'customer' && seat.status === 'available')) && <p className="py-6 text-center text-sm text-slate-500">ไม่มีที่นั่งว่างในทริปนี้</p>}</div></div>}
     </div>
   );
 }

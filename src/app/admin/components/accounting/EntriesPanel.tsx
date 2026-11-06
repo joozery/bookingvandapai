@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
-import { Edit2, Plus, Search, Tags, Trash2, ReceiptText, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ChevronLeft, ChevronRight, Edit2, Plus, Search, Tags, Trash2, ReceiptText, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
-  accountingApi, fieldClass, labelClass, Modal, money, primaryButton, smallButton, thaiDate, today,
+  accountingApi, fieldClass, labelClass, Modal, money, primaryButton, queryPage, setQueryPage, smallButton, thaiDate, today,
   type AccountCategory, type AccountEntry, type AccountingData,
 } from './shared';
 
@@ -17,18 +17,37 @@ export default function EntriesPanel({ type, data, onChanged }: { type: EntryTyp
   const [q, setQ] = useState('');
   const [editing, setEditing] = useState<AccountEntry | 'new' | null>(null);
   const [managing, setManaging] = useState(false);
+  const [page, setPage] = useState(queryPage);
+  const [remoteEntries, setRemoteEntries] = useState<AccountEntry[]>([]);
+  const [remoteTotal, setRemoteTotal] = useState(0);
+  const [remoteLoading, setRemoteLoading] = useState(false);
   const categories = data.categories.filter(c => c.type === type);
   const categoryName = (id: string) => data.categories.find(c => c.id === id)?.name || 'ไม่ระบุหมวด';
   const tripName = (id: string | null) => (id ? data.trips.find(t => t.tripId === id)?.name || 'ทริปที่ถูกลบ' : 'ส่วนกลาง');
   const partnerName = (id?: string | null) => (id ? data.partners.find(p => p.id === id)?.name || '' : '');
 
-  const rows = useMemo(() => data.entries.filter(e => e.type === type
+  useEffect(() => {
+    let active = true;
+    setRemoteLoading(true);
+    const params = new URLSearchParams({ type, page: String(page), pageSize: '20', tripId, categoryId });
+    fetch(`/api/admin/accounting/entries?${params.toString()}`, { cache: 'no-store' })
+      .then(res => res.json())
+      .then(result => { if (active && result.success) { setRemoteEntries(result.entries || []); setRemoteTotal(result.total || 0); } })
+      .finally(() => { if (active) setRemoteLoading(false); });
+    return () => { active = false; };
+  }, [type, page, tripId, categoryId]);
+
+  const rows = useMemo(() => remoteEntries.filter(e => e.type === type
     && (tripId === 'all' || (tripId === 'none' ? !e.tripId : e.tripId === tripId))
     && (categoryId === 'all' || e.categoryId === categoryId)
     && (!q.trim() || [e.description, categoryName(e.categoryId), tripName(e.tripId), partnerName(e.paidByPartnerId), partnerName(e.payeePartnerId)].join(' ').toLowerCase().includes(q.trim().toLowerCase()))),
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  [data, type, tripId, categoryId, q]);
+  [data, remoteEntries, type, tripId, categoryId, q]);
   const total = rows.reduce((s, e) => s + e.amountSatang, 0);
+  const pages = Math.max(1, Math.ceil(remoteTotal / 20));
+  const currentPage = Math.min(page, pages);
+  const visibleRows = rows;
+  useEffect(() => { setQueryPage(currentPage); }, [currentPage]);
 
   const remove = async (entry: AccountEntry) => {
     if (!confirm(`ลบรายการ ${money(entry.amountSatang)} (${categoryName(entry.categoryId)})?`)) return;
@@ -45,14 +64,14 @@ export default function EntriesPanel({ type, data, onChanged }: { type: EntryTyp
       <div className="flex flex-col gap-3 rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm xl:flex-row xl:items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <input value={q} onChange={e => setQ(e.target.value)} aria-label="ค้นหารายการบัญชี" placeholder="ค้นหารายละเอียด หมวด ทริป หรือหุ้นส่วน" className={cn(fieldClass, 'mt-0 pl-9')} />
+          <input value={q} onChange={e => { setQ(e.target.value); setPage(1); }} aria-label="ค้นหารายการบัญชี" placeholder="ค้นหารายละเอียด หมวด ทริป หรือหุ้นส่วน" className={cn(fieldClass, 'mt-0 pl-9')} />
         </div>
-        <select aria-label="กรองรายการตามทริป" value={tripId} onChange={e => setTripId(e.target.value)} className={cn(fieldClass, 'mt-0 xl:w-48')}>
+        <select aria-label="กรองรายการตามทริป" value={tripId} onChange={e => { setTripId(e.target.value); setPage(1); }} className={cn(fieldClass, 'mt-0 xl:w-48')}>
           <option value="all">ทุกทริป</option>
           <option value="none">ส่วนกลาง (ไม่ผูกทริป)</option>
           {data.trips.map(t => <option key={t.tripId} value={t.tripId}>{t.name}</option>)}
         </select>
-        <select aria-label="กรองรายการตามหมวดหมู่" value={categoryId} onChange={e => setCategoryId(e.target.value)} className={cn(fieldClass, 'mt-0 xl:w-40')}>
+        <select aria-label="กรองรายการตามหมวดหมู่" value={categoryId} onChange={e => { setCategoryId(e.target.value); setPage(1); }} className={cn(fieldClass, 'mt-0 xl:w-40')}>
           <option value="all">ทุกหมวด</option>
           {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
@@ -69,7 +88,7 @@ export default function EntriesPanel({ type, data, onChanged }: { type: EntryTyp
           <span className="font-bold text-slate-700">{rows.length} รายการ</span>
           <span className={cn('font-black', type === 'income' ? 'text-emerald-600' : 'text-rose-600')}>รวม {money(total)}</span>
         </div>
-        {rows.length === 0 ? (
+        {remoteLoading ? <div className="flex flex-col items-center gap-3 py-14"><ReceiptText className="h-7 w-7 text-violet-300" /><p className="text-sm font-bold text-slate-500">กำลังโหลดรายการ...</p></div> : rows.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-14"><span className="rounded-2xl bg-violet-50 p-4"><ReceiptText className="h-7 w-7 text-violet-300" /></span><p className="text-sm font-bold text-slate-500">ยังไม่มีรายการ{type === 'income' ? 'รายรับอื่น ๆ' : 'รายจ่าย'}</p><p className="text-[11px] text-slate-400">ลองเปลี่ยนตัวกรอง หรือเพิ่มรายการใหม่</p></div>
         ) : (
           <div className="overflow-x-auto">
@@ -78,7 +97,7 @@ export default function EntriesPanel({ type, data, onChanged }: { type: EntryTyp
                 <tr><th className="px-4 py-3.5">วันที่</th><th className="px-4 py-3.5">หมวดหมู่</th><th className="px-4 py-3.5">ทริป</th><th className="px-4 py-3.5">รายละเอียด</th><th className="px-4 py-3.5 text-right">จำนวนเงิน</th><th className="px-4 py-3.5" /></tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {rows.map(e => (
+                {visibleRows.map(e => (
                   <tr key={e.id} className="transition-colors hover:bg-violet-50/30">
                     <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">{thaiDate(e.date)}</td>
                     <td className="px-4 py-3.5 font-semibold text-slate-700">{categoryName(e.categoryId)}</td>
@@ -101,6 +120,7 @@ export default function EntriesPanel({ type, data, onChanged }: { type: EntryTyp
             </table>
           </div>
         )}
+        {remoteTotal > 20 && <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3"><span className="text-[11px] text-slate-400">แสดง {(currentPage - 1) * 20 + 1}-{Math.min(currentPage * 20, remoteTotal)} จาก {remoteTotal} รายการ</span><div className="flex items-center gap-2"><button type="button" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)} className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:bg-violet-50 disabled:opacity-30"><ChevronLeft className="h-4 w-4" /></button><span className="text-[11px] font-bold text-slate-500">{currentPage} / {pages}</span><button type="button" disabled={currentPage === pages} onClick={() => setPage(currentPage + 1)} className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:bg-violet-50 disabled:opacity-30"><ChevronRight className="h-4 w-4" /></button></div></div>}
       </div>
 
       {editing && <EntryForm type={type} data={data} entry={editing === 'new' ? null : editing} defaultTripId={tripId !== 'all' && tripId !== 'none' ? tripId : ''}

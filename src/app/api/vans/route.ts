@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
-import { supabase } from '@/lib/supabase';
+import { dataStore } from '@/lib/dataStore';
 import { generateSeatsForVan } from '@/lib/db';
 import { requireAdmin, requireOwnerOrAdmin } from '@/lib/adminAuth';
 import { recordAudit } from '@/lib/audit';
@@ -9,17 +9,24 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const tripId = searchParams.get('tripId');
+    const tripIds = (searchParams.get('tripIds') || '').split(',').map(value => value.trim()).filter(Boolean);
+    const page = Math.max(1, Number(searchParams.get('page') || 1));
+    const pageSize = Math.min(20, Math.max(1, Number(searchParams.get('pageSize') || 20)));
+    const paged = searchParams.has('page');
 
-    let query = supabase.from('vans').select('*').order('vanNumber', { ascending: true });
+    let query = dataStore.from('vans').select('*', paged ? { count: 'exact' } : undefined).order('vanNumber', { ascending: true });
     if (tripId) {
       query = query.eq('tripId', tripId);
+    } else if (tripIds.length) {
+      query = query.in('tripId', tripIds);
     }
+    if (paged) query = query.range((page - 1) * pageSize, page * pageSize - 1);
     // Only bookings from the requested trip can reference these vans. This
     // keeps the response identical while avoiding a full bookings-table scan.
-    const bookingsQuery = supabase.from('bookings').select('id, nickname, "fullName"');
+    const bookingsQuery = dataStore.from('bookings').select('id, nickname, "fullName"');
     if (tripId) bookingsQuery.eq('tripId', tripId);
     // The two reads are independent; run them together.
-    const [{ data: vans, error: vansError }, { data: bookings, error: bookingsError }] = await Promise.all([query, bookingsQuery]);
+    const [{ data: vans, error: vansError, count }, { data: bookings, error: bookingsError }] = await Promise.all([query, bookingsQuery]);
     if (vansError) throw vansError;
     if (bookingsError) throw bookingsError;
     const bookingById = new Map((bookings || []).map((b: any) => [b.id, b]));
@@ -38,7 +45,7 @@ export async function GET(request: Request) {
       return { ...van, seats: newSeats };
     });
 
-    return NextResponse.json({ success: true, vans: enrichedVans });
+    return NextResponse.json({ success: true, vans: enrichedVans, ...(paged ? { total: count || 0, page, pageSize } : {}) });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
@@ -56,13 +63,13 @@ export async function POST(request: Request) {
     }
     
     // Check if trip exists
-    const { data: tripData, error: tripError } = await supabase.from('trips').select('id').eq('id', tripId).single();
+    const { data: tripData, error: tripError } = await dataStore.from('trips').select('id').eq('id', tripId).single();
     if (tripError || !tripData) {
       return NextResponse.json({ success: false, error: 'Trip not found' }, { status: 404 });
     }
 
     // Determine the next van number for this trip
-    const { data: tripVans, error: vansError } = await supabase.from('vans').select('vanNumber').eq('tripId', tripId);
+    const { data: tripVans, error: vansError } = await dataStore.from('vans').select('vanNumber').eq('tripId', tripId);
     if (vansError) throw vansError;
     
     const nextVanNumber = (tripVans && tripVans.length > 0) 
@@ -80,7 +87,7 @@ export async function POST(request: Request) {
       seats: generateSeatsForVan(newVanId),
     };
 
-    const { error: insertError } = await supabase.from('vans').insert([newVan]);
+    const { error: insertError } = await dataStore.from('vans').insert([newVan]);
     if (insertError) throw insertError;
 
     await recordAudit(admin, { action: 'create', resource: 'van', resourceId: newVan.id, request, summary: `เพิ่มรถตู้คันที่ ${newVan.vanNumber} ในทริป ${body.tripId}` });

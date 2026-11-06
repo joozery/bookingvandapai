@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { dataStore } from '@/lib/dataStore';
 import { bookingPayments } from '@/lib/bookingPayments';
 import { syncPaymentSeat } from '@/lib/seatMove';
 import { requireAdmin, requireOwnerOrAdmin } from '@/lib/adminAuth';
@@ -13,7 +13,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
     const body = await request.json();
     const { status, checkedIn, nationalId, birthDate } = body;
 
-    const { data: booking, error: bookingError } = await supabase.from('bookings').select('*').eq('id', id).single();
+    const { data: booking, error: bookingError } = await dataStore.from('bookings').select('*').eq('id', id).single();
     if (bookingError || !booking) {
       return NextResponse.json({ success: false, error: 'Booking not found' }, { status: 404 });
     }
@@ -37,7 +37,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
         checkedInAt: checkedIn ? new Date().toISOString() : null,
       };
       
-      const { error: updateError } = await supabase.from('bookings').update(updates).eq('id', id);
+      const { error: updateError } = await dataStore.from('bookings').update(updates).eq('id', id);
       if (updateError) throw updateError;
       
       if (actor) await recordAudit(actor, { action: 'update', resource: 'booking', resourceId: id, request, summary: `${updates.checkedIn ? 'เช็คอิน' : 'ยกเลิกเช็คอิน'} ${who}` });
@@ -48,7 +48,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
     if (status) {
       if (status === 'approved') {
         // Check and update the current seat status to 'booked' (red)
-        const { data: van, error: vanError } = await supabase.from('vans').select('*').eq('id', booking.vanId).single();
+        const { data: van, error: vanError } = await dataStore.from('vans').select('*').eq('id', booking.vanId).single();
         if (van && !vanError) {
           const seats = [...(van.seats || [])];
           const seatIndex = seats.findIndex((s: any) => s.id === booking.seatId);
@@ -58,41 +58,41 @@ export async function PUT(request: Request, { params }: RouteParams) {
             }
             seats[seatIndex].status = 'booked';
             seats[seatIndex].bookingId = id;
-            await supabase.from('vans').update({ seats }).eq('id', booking.vanId);
+            await dataStore.from('vans').update({ seats }).eq('id', booking.vanId);
           }
         }
 
         // Update booking status
-        const { error: updateError } = await supabase.from('bookings').update({ status: 'approved' }).eq('id', id);
+        const { error: updateError } = await dataStore.from('bookings').update({ status: 'approved' }).eq('id', id);
         if (updateError) throw updateError;
         booking.status = 'approved';
 
         // Handle seat change request replacement if exists
         if (booking.replacesBookingId) {
           const replacesBookingId = booking.replacesBookingId;
-          const { data: oldBooking } = await supabase.from('bookings').select('*').eq('id', replacesBookingId).single();
+          const { data: oldBooking } = await dataStore.from('bookings').select('*').eq('id', replacesBookingId).single();
           
           if (oldBooking) {
             // Free the old seat
-            const { data: oldVan } = await supabase.from('vans').select('*').eq('id', oldBooking.vanId).single();
+            const { data: oldVan } = await dataStore.from('vans').select('*').eq('id', oldBooking.vanId).single();
             if (oldVan) {
               const oldSeats = [...(oldVan.seats || [])];
               const oldSeatIndex = oldSeats.findIndex((s: any) => s.id === oldBooking.seatId);
               if (oldSeatIndex !== -1) {
                 oldSeats[oldSeatIndex].status = 'available';
                 oldSeats[oldSeatIndex].bookingId = null;
-                await supabase.from('vans').update({ seats: oldSeats }).eq('id', oldBooking.vanId);
+                await dataStore.from('vans').update({ seats: oldSeats }).eq('id', oldBooking.vanId);
               }
             }
             
             // Delete the old booking
-            await supabase.from('bookings').delete().eq('id', replacesBookingId);
+            await dataStore.from('bookings').delete().eq('id', replacesBookingId);
 
             // The payment moves with the customer to the replacement booking
             // (the old booking is gone, so the unique paymentOrderId is free).
             try {
               if (oldBooking.paymentOrderId) {
-                await supabase.from('bookings').update({ paymentOrderId: oldBooking.paymentOrderId }).eq('id', id);
+                await dataStore.from('bookings').update({ paymentOrderId: oldBooking.paymentOrderId }).eq('id', id);
                 booking.paymentOrderId = oldBooking.paymentOrderId;
               }
               await syncPaymentSeat(booking, { vanId: oldBooking.vanId, seatId: oldBooking.seatId, seatLabel: oldBooking.seatLabel || '' }, 'อนุมัติคำขอเปลี่ยนที่นั่งของลูกค้า', replacesBookingId);
@@ -102,26 +102,26 @@ export async function PUT(request: Request, { params }: RouteParams) {
           }
           
           // Clear replacesBookingId from current booking
-          await supabase.from('bookings').update({ replacesBookingId: null }).eq('id', id);
+          await dataStore.from('bookings').update({ replacesBookingId: null }).eq('id', id);
         }
       } else if (status === 'rejected') {
-        const { error: updateError } = await supabase.from('bookings').update({ status: 'rejected' }).eq('id', id);
+        const { error: updateError } = await dataStore.from('bookings').update({ status: 'rejected' }).eq('id', id);
         if (updateError) throw updateError;
         booking.status = 'rejected';
 
         // Free up the seat
-        const { data: van, error: vanError } = await supabase.from('vans').select('*').eq('id', booking.vanId).single();
+        const { data: van, error: vanError } = await dataStore.from('vans').select('*').eq('id', booking.vanId).single();
         if (van && !vanError) {
           const seats = [...(van.seats || [])];
           const seatIndex = seats.findIndex((s: any) => s.id === booking.seatId);
           if (seatIndex !== -1) {
             seats[seatIndex].status = 'available';
             seats[seatIndex].bookingId = null;
-            await supabase.from('vans').update({ seats }).eq('id', booking.vanId);
+            await dataStore.from('vans').update({ seats }).eq('id', booking.vanId);
           }
         }
       } else if (status === 'cancel_pending') {
-        const { error: updateError } = await supabase.from('bookings').update({ status: 'cancel_pending' }).eq('id', id);
+        const { error: updateError } = await dataStore.from('bookings').update({ status: 'cancel_pending' }).eq('id', id);
         if (updateError) throw updateError;
         booking.status = 'cancel_pending';
       }
@@ -136,7 +136,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
       if (nationalId !== undefined) updates.nationalId = nationalId;
       if (birthDate !== undefined) updates.birthDate = birthDate;
       
-      const { error: updateError } = await supabase.from('bookings').update(updates).eq('id', id);
+      const { error: updateError } = await dataStore.from('bookings').update(updates).eq('id', id);
       if (updateError) throw updateError;
 
       // Sync to profiles table so the user's profile is updated permanently
@@ -145,7 +145,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
         if (nationalId !== undefined) profileUpdates.nationalId = nationalId;
         if (birthDate !== undefined) profileUpdates.birthDate = birthDate;
         
-        await supabase
+        await dataStore
           .from('profiles')
           .update(profileUpdates)
           .eq('lineUserId', booking.lineUserId);
@@ -167,25 +167,25 @@ export async function DELETE(request: Request, { params }: RouteParams) {
   try {
     const { id } = await params;
 
-    const { data: booking, error: bookingError } = await supabase.from('bookings').select('*').eq('id', id).single();
+    const { data: booking, error: bookingError } = await dataStore.from('bookings').select('*').eq('id', id).single();
     if (bookingError || !booking) {
       return NextResponse.json({ success: false, error: 'Booking not found' }, { status: 404 });
     }
 
     // Free the seat associated with this booking
-    const { data: van } = await supabase.from('vans').select('*').eq('id', booking.vanId).single();
+    const { data: van } = await dataStore.from('vans').select('*').eq('id', booking.vanId).single();
     if (van) {
       const seats = [...(van.seats || [])];
       const seatIndex = seats.findIndex((s: any) => s.id === booking.seatId);
       if (seatIndex !== -1 && seats[seatIndex].bookingId === id) {
         seats[seatIndex].status = 'available';
         seats[seatIndex].bookingId = null;
-        await supabase.from('vans').update({ seats }).eq('id', booking.vanId);
+        await dataStore.from('vans').update({ seats }).eq('id', booking.vanId);
       }
     }
 
     // Delete the booking
-    const { error: deleteError } = await supabase.from('bookings').delete().eq('id', id);
+    const { error: deleteError } = await dataStore.from('bookings').delete().eq('id', id);
     if (deleteError) throw deleteError;
 
     await recordAudit(admin, { action: 'delete', resource: 'booking', resourceId: id, request, summary: `ลบการจอง ${booking.fullName || booking.nickname || ''} ที่นั่ง ${booking.seatLabel || '-'}` });
@@ -199,7 +199,7 @@ export async function GET(request: Request, { params }: RouteParams) {
   try {
     const { id } = await params;
     
-    const { data: booking, error: bookingError } = await supabase.from('bookings').select('*').eq('id', id).single();
+    const { data: booking, error: bookingError } = await dataStore.from('bookings').select('*').eq('id', id).single();
     if (bookingError || !booking) {
       return NextResponse.json({ success: false, error: 'Booking not found' }, { status: 404 });
     }
@@ -210,11 +210,11 @@ export async function GET(request: Request, { params }: RouteParams) {
 
     // Include trip and van details for convenience
     const payments = await bookingPayments([booking]);
-    const { data: trip } = await supabase.from('trips').select('*').eq('id', booking.tripId).single();
-    const { data: van } = await supabase.from('vans').select('*').eq('id', booking.vanId).single();
+    const { data: trip } = await dataStore.from('trips').select('*').eq('id', booking.tripId).single();
+    const { data: van } = await dataStore.from('vans').select('*').eq('id', booking.vanId).single();
 
     // Fetch user profile to merge insurance details
-    const { data: profile } = await supabase
+    const { data: profile } = await dataStore
       .from('profiles')
       .select('*')
       .eq('lineUserId', booking.lineUserId)

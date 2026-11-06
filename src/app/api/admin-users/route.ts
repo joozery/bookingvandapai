@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
-import { supabase } from '@/lib/supabase';
+import { dataStore } from '@/lib/dataStore';
 import { requireAdmin, requireOwnerOrAdmin } from '@/lib/adminAuth';
 import { recordAudit } from '@/lib/audit';
 
@@ -8,7 +8,7 @@ export async function GET() {
   const admin = await requireAdmin(['users']);
   if (admin instanceof Response) return admin;
   try {
-    const { data: adminUsers, error } = await supabase
+    const { data: adminUsers, error } = await dataStore
       .from('admin_users')
       .select('*')
       .order('createdAt', { ascending: false });
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'กรุณาระบุ LINE User ID' }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await dataStore
       .from('admin_users')
       .insert([{
         lineUserId,

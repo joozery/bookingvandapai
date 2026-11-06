@@ -22,9 +22,9 @@ test('50% deposit rounds up by one satang; balance preserves total exactly', () 
   assert.equal(quote.totalSatang - quote.amountSatang, 50000);
   assert.equal(quote.balanceDueAt, Date.parse('2030-01-02T01:00:00Z'));
 });
-test('Bangkok cutoff uses actual departure time; full payment allowed inside 24 hours', () => {
-  const cutoff = now + rules.DAY_MS;
-  assert.throws(() => rules.paymentQuote(trip, 'deposit', cutoff), /24/);
+test('Bangkok cutoff uses actual departure time; full payment allowed inside 7 days', () => {
+  const cutoff = now + rules.BALANCE_DUE_MS;
+  assert.throws(() => rules.paymentQuote(trip, 'deposit', cutoff), /7/);
   assert.equal(rules.paymentQuote(trip, 'full', cutoff).amountSatang, 100001);
   assert.throws(() => rules.paymentQuote(trip, 'full', cutoff + rules.DAY_MS), /ออกเดินทางแล้ว/);
 });

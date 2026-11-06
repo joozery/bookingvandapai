@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
-import { supabase } from '@/lib/supabase';
+import { dataStore } from '@/lib/dataStore';
 import { defaultHomepageSettings } from '@/lib/homepageSettings';
 import { validShareImage } from '@/lib/shareSettings';
 import { requireAdmin, requireOwnerOrAdmin } from '@/lib/adminAuth';
@@ -51,7 +51,7 @@ export async function GET() {
     return NextResponse.json({ success: true, settings: settingsCache.settings }, { headers: cacheHeaders });
   }
   try {
-    const { data, error } = await supabase.storage.from('images').download(SETTINGS_FILE);
+    const { data, error } = await dataStore.storage.from('images').download(SETTINGS_FILE);
     if (error) {
       settingsCache = { settings: defaultSettings, expiresAt: Date.now() + SETTINGS_CACHE_TTL_MS };
       return NextResponse.json({ success: true, settings: defaultSettings }, { headers: cacheHeaders });
@@ -96,7 +96,7 @@ export async function PUT(request: Request) {
         body[key] = body[key].slice((r2PublicUrl || '').length + 1);
       }
     }
-    const { error } = await supabase.storage.from('images').upload(SETTINGS_FILE, JSON.stringify(body), {
+    const { error } = await dataStore.storage.from('images').upload(SETTINGS_FILE, JSON.stringify(body), {
       contentType: 'application/json',
       cacheControl: '0',
       upsert: true

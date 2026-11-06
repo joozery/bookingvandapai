@@ -37,9 +37,10 @@ export interface Trip {
   departureDate: string;
   durationDays: number;
   cost: number;
+  flashSalePrice?: number | null;
   pickupPoint: string;
   departureTime: string;
-  status: 'active' | 'completed';
+  status: 'draft' | 'active' | 'completed' | 'cancelled';
   image?: string;
   tripPeriod?: string;
 }

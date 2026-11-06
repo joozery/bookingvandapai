@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
-import { supabase } from '@/lib/supabase';
+import { dataStore } from '@/lib/dataStore';
 import bcrypt from 'bcryptjs';
 import { recordAudit } from '@/lib/audit';
 import { applyPermissionChange, describePermission } from '@/lib/permissions';
@@ -10,7 +10,7 @@ export async function GET() {
   const admin = await requireAdmin(['staff']);
   if (admin instanceof Response) return admin;
   try {
-    const { data: admins, error } = await supabase
+    const { data: admins, error } = await dataStore
       .from('admins')
       .select('id, username, name, avatar_url, permissions, isBlocked, createdAt')
       .order('createdAt', { ascending: false });
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const { data, error } = await supabase
+    const { data, error } = await dataStore
       .from('admins')
       .insert([{
         username,

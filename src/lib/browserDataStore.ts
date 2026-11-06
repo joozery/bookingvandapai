@@ -8,7 +8,7 @@ const storage = {
   }),
 };
 
-export const supabase = {
+export const dataStore = {
   storage,
   channel: (_name?: string) => ({ on: (_event?: string, _filter?: unknown, _callback?: () => void) => ({ on: (_event2?: string, _filter2?: unknown, _callback2?: () => void) => ({ on: (_event3?: string, _filter3?: unknown, _callback3?: () => void) => ({ subscribe: () => ({}) }), subscribe: () => ({}) }), subscribe: () => ({}) }), subscribe: () => ({}) }),
   removeChannel: (_channel?: unknown) => {},

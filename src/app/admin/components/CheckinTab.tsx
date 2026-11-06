@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { QrCode, Check, X, Clock, UserCheck, ArrowRight, ScanLine, Search } from 'lucide-react';
+import { QrCode, Check, X, Clock, UserCheck, ArrowRight, ScanLine, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Scanner } from '@yudiel/react-qr-scanner';
 import { Button } from '@/components/ui/button';
@@ -22,8 +22,20 @@ export default function CheckinTab({ trips, bookings, onCheckIn }: Props) {
   const [loading, setLoading] = useState(false);
   const [selectedTripId, setSelectedTripId] = useState<string>('all');
   const [search, setSearch] = useState('');
+  const [remoteBookings, setRemoteBookings] = useState<Booking[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(() => typeof window === 'undefined' ? 1 : Math.max(1, Number(new URLSearchParams(window.location.search).get('page')) || 1));
+  React.useEffect(() => {
+    let active = true;
+    const params = new URLSearchParams({ page: String(page), pageSize: '20', tripId: selectedTripId, status: 'approved', q: search });
+    fetch(`/api/bookings?${params.toString()}`, { cache: 'no-store' }).then(res => res.json()).then(data => {
+      if (active && data.success) { setRemoteBookings(data.bookings || []); setTotal(data.total || 0); }
+    });
+    return () => { active = false; };
+  }, [page, selectedTripId, search]);
+  React.useEffect(() => { setPage(1); }, [selectedTripId, search]);
 
-  const tripBookings = bookings.filter(b => b.status === 'approved' && (selectedTripId === 'all' || b.tripId === selectedTripId));
+  const tripBookings = remoteBookings;
   const filteredBookings = tripBookings.filter(b => {
     if (!search.trim()) return true;
     const q = search.toLowerCase();
@@ -35,6 +47,7 @@ export default function CheckinTab({ trips, bookings, onCheckIn }: Props) {
   
   const waitingList = filteredBookings.filter(b => !b.checkedIn);
   const checkedInList = filteredBookings.filter(b => b.checkedIn);
+  const pageCount = Math.max(1, Math.ceil(total / 20));
 
   const handleScan = async (id: string) => {
     if (!id.trim()) return;
@@ -195,6 +208,7 @@ export default function CheckinTab({ trips, bookings, onCheckIn }: Props) {
               )}
             </div>
           </div>
+          {pageCount > 1 && <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-500"><span>หน้า {page} / {pageCount} · {total} รายการ</span><div className="flex gap-2"><button type="button" disabled={page <= 1} onClick={() => setPage(page - 1)} className="rounded-lg border p-1.5 disabled:opacity-30"><ChevronLeft className="h-4 w-4" /></button><button type="button" disabled={page >= pageCount} onClick={() => setPage(page + 1)} className="rounded-lg border p-1.5 disabled:opacity-30"><ChevronRight className="h-4 w-4" /></button></div></div>}
         </CardContent>
       </Card>
 

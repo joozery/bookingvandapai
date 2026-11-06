@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
-import { supabase } from '@/lib/supabase';
+import { dataStore } from '@/lib/dataStore';
 import { reviewCopyUpdates } from '@/lib/reviewCopy';
 import { countAvailableSeats } from '@/lib/seatAvailability';
 import { generateSeatsForVan, getDb, Trip, Van } from '@/lib/db';
 import { getMongoDb } from '@/lib/mongodb';
-import { normalizeDepositAmount } from '@/lib/paymentRules';
+import { normalizeDepositAmount, flashSaleActive } from '@/lib/paymentRules';
 import { requireAdmin, requireOwnerOrAdmin } from '@/lib/adminAuth';
 import { recordAudit } from '@/lib/audit';
 
@@ -72,18 +72,30 @@ async function loadVanSummaries() {
   ]).toArray();
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const params = new URL(request.url).searchParams;
+    const page = Math.max(1, Number(params.get('page') || 1));
+    const pageSize = Math.min(20, Math.max(1, Number(params.get('pageSize') || 20)));
+    const paged = params.has('page');
+    const status = params.get('status') || 'all';
+    const search = (params.get('q') || '').trim();
     // These reads are independent. Start them together so a cold Mongo
     // connection and the second collection do not add their latencies.
+    let tripsQuery = dataStore.from('trips').select('id,name,departureDate,durationDays,cost,flashSalePrice,depositAmount,pickupPoint,departureTime,status,image,tripPeriod,guideName,reviewTitle,reviewDescription,isTestTrip', paged ? { count: 'exact' } : undefined).order('created_at', { ascending: false });
+    if (status !== 'all') tripsQuery = tripsQuery.eq('status', status);
+    if (search) tripsQuery = tripsQuery.or(`name.ilike.%${search.replace(/[%(),]/g, ' ')}%,pickupPoint.ilike.%${search.replace(/[%(),]/g, ' ')}%,departureDate.ilike.%${search.replace(/[%(),]/g, ' ')}%`);
+    if (paged) tripsQuery = tripsQuery.range((page - 1) * pageSize, page * pageSize - 1);
     const [tripsResult, vans] = await Promise.all([
-      supabase.from('trips').select('id,name,departureDate,durationDays,cost,depositAmount,pickupPoint,departureTime,status,image,tripPeriod,guideName,reviewTitle,reviewDescription,isTestTrip').order('created_at', { ascending: false }),
+      tripsQuery,
       loadVanSummaries(),
     ]);
     if (tripsResult.error) throw tripsResult.error;
 
     const enrichedTrips = enrichTrips(tripsResult.data || [], vans as any[]).map((trip: any) => ({
       ...trip,
+      flashSaleActive: flashSaleActive(trip),
+      displayCost: flashSaleActive(trip) ? Number(trip.flashSalePrice) : Number(trip.cost),
       // The landing page only needs staff information. Full seat maps are
       // fetched later when the visitor selects a trip.
       vans: (trip.vans || []).map((van: any) => {
@@ -108,7 +120,7 @@ export async function GET() {
       const capacities = await db.collection('paymentCapacity').find({}, { projection: { holds: 1 } }).toArray();
       for (const capacity of capacities) byTrip.set(capacity._id, (capacity.holds || []).filter((hold: { paid: boolean; expiresAt: number }) => hold.paid || hold.expiresAt > Date.now()).length);
       for (const trip of enrichedTrips) trip.availableSeats = Math.max(0, trip.availableSeats - (byTrip.get(trip.id) || 0));
-      return NextResponse.json({ success: true, trips: enrichedTrips }, { headers: { 'Cache-Control': 'no-store' } });
+      return NextResponse.json({ success: true, trips: enrichedTrips, ...(paged ? { total: tripsResult.count || 0, page, pageSize } : {}) }, { headers: { 'Cache-Control': 'no-store' } });
     }
   } catch (error: any) {
     // Development fallback only: keep the local preview usable when the
@@ -133,12 +145,21 @@ export async function POST(request: Request) {
     }
     const { name, departureDate, durationDays, cost, pickupPoint, departureTime, tripPeriod, plateNumber, driverName, driverPhone, image } = body;
 
-    if (!name || !departureDate || !durationDays || !cost || !pickupPoint || !departureTime) {
+    if (!name || !departureDate || !durationDays || !pickupPoint || !departureTime) {
       return NextResponse.json({ success: false, error: 'Please provide all required trip fields' }, { status: 400 });
     }
 
+    const tripCost = cost === '' || cost === null || cost === undefined ? 0 : Number(cost);
+    if (!Number.isFinite(tripCost) || tripCost < 0) {
+      return NextResponse.json({ success: false, error: 'Invalid trip cost' }, { status: 400 });
+    }
+    const flashSalePrice = body.flashSalePrice === '' || body.flashSalePrice === null || body.flashSalePrice === undefined ? null : Number(body.flashSalePrice);
+    if (flashSalePrice !== null && (!Number.isFinite(flashSalePrice) || flashSalePrice <= 0 || flashSalePrice >= tripCost)) {
+      return NextResponse.json({ success: false, error: 'ราคา Flash Sale ต้องมากกว่า 0 และต่ำกว่าราคาปกติ' }, { status: 400 });
+    }
+
     let depositAmount: number | null;
-    try { depositAmount = normalizeDepositAmount(body.depositAmount, cost); }
+    try { depositAmount = tripCost > 0 ? normalizeDepositAmount(body.depositAmount, tripCost) : null; }
     catch (error) { return NextResponse.json({ success: false, error: (error as Error).message }, { status: 400 }); }
 
     const newTripId = `trip-${Date.now()}`;
@@ -153,16 +174,17 @@ export async function POST(request: Request) {
       name,
       departureDate,
       durationDays: Number(durationDays),
-      cost: Number(cost),
+      cost: tripCost,
+      flashSalePrice,
       depositAmount,
       pickupPoint,
       departureTime,
       tripPeriod,
       image,
-      status: 'active',
+      status: 'draft',
     };
 
-    const { error: tripError } = await supabase.from('trips').insert([newTrip]);
+    const { error: tripError } = await dataStore.from('trips').insert([newTrip]);
     if (tripError) throw tripError;
 
     // Auto-create Vans for this trip
@@ -185,7 +207,7 @@ export async function POST(request: Request) {
       });
     }
 
-    const { error: vanError } = await supabase.from('vans').insert(vansToInsert);
+    const { error: vanError } = await dataStore.from('vans').insert(vansToInsert);
     if (vanError) throw vanError;
 
     await recordAudit(admin, { action: 'create', resource: 'trip', resourceId: newTripId, request, summary: `สร้างทริป ${name}`, after: { name, departureDate, cost: Number(cost), depositAmount } });

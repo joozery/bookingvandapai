@@ -1,4 +1,4 @@
-type Filter = { field: string; op: 'eq' | 'neq' | 'in'; value: unknown };
+type Filter = { field: string; op: 'eq' | 'neq' | 'in'; value: unknown } | { field: '$or'; op: 'or'; value: Array<Record<string, unknown>> };
 
 function stripId<T extends Record<string, unknown>>(row: T): T {
   const { _id, ...rest } = row;
@@ -35,6 +35,18 @@ class MongoQuery<T extends Record<string, unknown> = Record<string, unknown>> {
   eq(field: string, value: unknown) { this.filters.push({ field, op: 'eq', value }); return this; }
   neq(field: string, value: unknown) { this.filters.push({ field, op: 'neq', value }); return this; }
   in(field: string, value: unknown[]) { this.filters.push({ field, op: 'in', value }); return this; }
+  or(expression: string) {
+    const clauses = expression.split(',').map(part => {
+      const like = part.match(/^([^\.]+)\.ilike\.%(.+)%$/);
+      if (like) return { [like[1]]: { $regex: like[2], $options: 'i' } };
+      const equal = part.match(/^([^\.]+)\.eq\.(true|false|null|.+)$/);
+      if (!equal) return null;
+      const value = equal[2] === 'true' ? true : equal[2] === 'false' ? false : equal[2] === 'null' ? null : equal[2];
+      return { [equal[1]]: value };
+    }).filter(Boolean) as Array<Record<string, unknown>>;
+    if (clauses.length) this.filters.push({ field: '$or', op: 'or', value: clauses });
+    return this;
+  }
   order(field: string, options?: { ascending?: boolean }) { this.sort.push({ field: field.replaceAll('"', ''), direction: options?.ascending === false ? -1 : 1 }); return this; }
   limit(value: number) { this.max = value; return this; }
   range(from: number, to: number) { this.offset = from; this.end = to; return this; }
@@ -50,7 +62,15 @@ class MongoQuery<T extends Record<string, unknown> = Record<string, unknown>> {
     return (await getMongoDb()).collection(this.table);
   }
   private filterQuery() {
-    return Object.fromEntries(this.filters.map(({ field, op, value }) => [field, op === 'eq' ? value : op === 'neq' ? { $ne: value } : { $in: value as unknown[] }]));
+    const query: Record<string, unknown> = {};
+    for (const { field, op, value } of this.filters) {
+      const condition = op === 'eq' ? value : op === 'neq' ? { $ne: value } : op === 'in' ? { $in: value as unknown[] } : value;
+      if (field === '$or' && query.$or) {
+        query.$and = [...(Array.isArray(query.$and) ? query.$and : []), { $or: query.$or }, { $or: condition }];
+        delete query.$or;
+      } else query[field] = condition;
+    }
+    return query;
   }
   private output(row: Record<string, unknown>) {
     const clean = stripId(row);
@@ -122,7 +142,7 @@ function browserStorage() {
   };
 }
 
-export const supabase = {
+export const dataStore = {
   from: (table: string) => new MongoQuery<any>(table),
   storage: typeof window === 'undefined' ? {
     from: (bucket: string) => ({

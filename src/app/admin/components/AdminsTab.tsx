@@ -6,7 +6,7 @@ import {
   UserPlus, UserCog, UserX, AlertCircle, Key, User, Eye, EyeOff
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/lib/browserSupabase';
+import { dataStore } from '@/lib/browserDataStore';
 import { convertImageToWebp } from '@/lib/imageToWebp';
 import { useSession } from 'next-auth/react';
 import { describePermission, LEVEL_LABELS, LEVELED_PERMISSIONS, levelOf, PERMISSIONS, withLevel, type Level } from '@/lib/permissions';
@@ -115,7 +115,7 @@ export default function AdminsTab() {
         const fileName = `admin-${Date.now()}.webp`;
         const filePath = `avatars/${fileName}`;
 
-        const { error: uploadError } = await supabase.storage
+        const { error: uploadError } = await dataStore.storage
           .from('images')
           .upload(filePath, webpFile, { contentType: 'image/webp' });
 
@@ -123,7 +123,7 @@ export default function AdminsTab() {
           return alert('อัปโหลดรูปภาพไม่สำเร็จ: ' + uploadError.message);
         }
 
-        const { data: urlData } = supabase.storage.from('images').getPublicUrl(filePath);
+        const { data: urlData } = dataStore.storage.from('images').getPublicUrl(filePath);
         finalAvatarUrl = urlData.publicUrl;
       } else {
         // If no new file is selected, but we are editing, we keep the old URL (which is passed in admin.avatar_url).
@@ -188,7 +188,7 @@ export default function AdminsTab() {
         <p className="font-bold">{error}</p>
         {error.includes('ตาราง') && (
           <div className="text-xs text-rose-500 max-w-lg bg-white p-4 rounded border border-rose-100 mt-2 text-left">
-            <p className="font-semibold mb-2">คำสั่ง SQL สำหรับสร้างตาราง (Run ใน Supabase SQL Editor):</p>
+            <p className="font-semibold mb-2">คำสั่ง SQL สำหรับสร้างตาราง (Run ใน DataStore SQL Editor):</p>
             <pre className="overflow-x-auto">
 {`create table admins (
   id uuid default uuid_generate_v4() primary key,

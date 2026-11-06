@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { dataStore } from '@/lib/dataStore';
 import { referralTripId, tripReply, verifyMessengerSignature, type MessengerEvent } from '@/lib/messenger';
 import { createMessengerLogger, safeErrorFields } from '@/lib/messengerLogging';
 import { countAvailableSeats } from '@/lib/seatAvailability';
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
         }
         context = { ...context, tripId };
         operation = 'trip_lookup';
-        const { data: trip, error } = await supabase.from('trips')
+        const { data: trip, error } = await dataStore.from('trips')
           .select('name, departureDate, departureTime, pickupPoint, status, cost').eq('id', tripId).maybeSingle();
         if (error) {
           log('trip_lookup_failed', { ...context, ...safeErrorFields(error) }, 'error');
@@ -80,9 +80,9 @@ export async function POST(request: Request) {
         }
         log('trip_lookup_result', { ...context, found: !!trip });
         let availableSeats: number | null = null;
-        if (trip && trip.status !== 'completed') {
+        if (trip && trip.status === 'active' && Number(trip.cost) > 0) {
           try {
-            const { data: vans, error: vansError } = await supabase.from('vans').select('seats').eq('tripId', tripId);
+            const { data: vans, error: vansError } = await dataStore.from('vans').select('seats').eq('tripId', tripId);
             if (!vansError) availableSeats = countAvailableSeats(vans);
           } catch {
             // Availability is optional: still reply with the trip details on lookup failure.

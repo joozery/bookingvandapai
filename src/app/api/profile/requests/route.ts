@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
-import { supabase } from '@/lib/supabase';
+import { dataStore } from '@/lib/dataStore';
 import { requireAdmin, requireOwnerOrAdmin } from '@/lib/adminAuth';
 
 export async function POST(request: Request) {
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
       requestedAt: new Date().toISOString()
     };
 
-    const { error } = await supabase.storage.from('images').upload(fileName, JSON.stringify(payload), {
+    const { error } = await dataStore.storage.from('images').upload(fileName, JSON.stringify(payload), {
       contentType: 'application/json',
       upsert: true
     });

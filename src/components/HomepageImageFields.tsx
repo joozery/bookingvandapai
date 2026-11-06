@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { supabase } from '@/lib/browserSupabase';
+import { dataStore } from '@/lib/browserDataStore';
 import { convertImageToWebp } from '@/lib/imageToWebp';
 import { Upload, Image as ImageIcon, RotateCcw, Link2 } from 'lucide-react';
 
@@ -30,9 +30,9 @@ function ImageField({ field, title, description, value, defaultValue, onChange }
     try {
       const webpFile = await convertImageToWebp(file);
       const path = `homepage/${field}/${crypto.randomUUID()}.webp`;
-      const { error: uploadError } = await supabase.storage.from('images').upload(path, webpFile, { contentType: 'image/webp' });
+      const { error: uploadError } = await dataStore.storage.from('images').upload(path, webpFile, { contentType: 'image/webp' });
       if (uploadError) throw uploadError;
-      const { data } = supabase.storage.from('images').getPublicUrl(path);
+      const { data } = dataStore.storage.from('images').getPublicUrl(path);
       onChange({ [field]: data.publicUrl });
     } catch {
       setError('อัปโหลดรูปไม่สำเร็จ กรุณาตรวจสอบไฟล์และลองอีกครั้ง');

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useSession, signIn } from 'next-auth/react';
+import { useSession, signIn, signOut } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { QRCodeCanvas } from 'qrcode.react';
@@ -11,11 +11,12 @@ import { depositSatang, paymentQuote } from '@/lib/paymentRules';
 import type { PaymentOrder } from '@/lib/paymentStore';
 
 type Order = Omit<PaymentOrder, 'userId'>;
-type Trip = { id: string; name: string; cost: number; depositAmount?: number | null; departureDate: string; departureTime: string; availableSeats: number };
-const needsSeatSelection = (order: Order) => !order.bookingId && order.paidSatang > 0 && ['deposit_paid', 'paid'].includes(order.status);
+type Trip = { id: string; name: string; image?: string | null; displayCost?: number; cost: number; flashSalePrice?: number | null; flashSaleActive?: boolean; depositAmount?: number | null; departureDate: string; departureTime: string; durationDays?: number; tripPeriod?: string; pickupPoint?: string; availableSeats: number };
+const needsSeatSelection = (order: Order) => !order.autoCancelledAt && !order.bookingId && order.paidSatang > 0 && ['deposit_paid', 'paid'].includes(order.status);
 const seatSelectionHref = (tripId: string) => `/?tripId=${encodeURIComponent(tripId)}&step=2&fromPayment=1`;
 const money = (satang: number) => (satang / 100).toLocaleString('th-TH', { minimumFractionDigits: 2 });
 const dateTime = (value: number) => new Intl.DateTimeFormat('th-TH', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Bangkok' }).format(value);
+const thaiTripDate = (value: string) => value ? new Intl.DateTimeFormat('th-TH', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Bangkok' }).format(new Date(`${value}T00:00:00+07:00`)) : '-';
 
 async function readResponse(response: Response) {
   const data = await response.json();
@@ -33,6 +34,8 @@ export default function PaymentPortal() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [current, setCurrent] = useState<Order | null>(null);
   const [plan, setPlan] = useState<'deposit' | 'full'>('full');
+  const [creditBalanceSatang, setCreditBalanceSatang] = useState(0);
+  const [useCredit, setUseCredit] = useState(false);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -56,6 +59,7 @@ export default function PaymentPortal() {
     setCurrent(previous => previous ? latest.find(order => order.id === previous.id) || previous : previous);
     const awaitingSeat = latest.find(order => needsSeatSelection(order) && (!tripId || order.tripId === tripId) && (!requestedOrderId || order.id === requestedOrderId));
     if (awaitingSeat) presentSeatPrompt(awaitingSeat);
+    try { const credits = await readResponse(await fetch('/api/credits', { cache: 'no-store' })); setCreditBalanceSatang(Number(credits.balanceSatang || 0)); } catch { /* payment history remains usable if credits are unavailable */ }
     return latest;
   }, [tripId, requestedOrderId, presentSeatPrompt]);
 
@@ -68,8 +72,15 @@ export default function PaymentPortal() {
     if (status === 'loading') return;
     async function load() {
       try {
+        if (tripId) {
+          const trips = await readResponse(await fetch('/api/trips', { cache: 'no-store' }));
+          const selected = trips.trips.find((value: Trip) => value.id === tripId);
+          if (!selected) throw new Error('ไม่พบทริปนี้');
+          if (!cancelled) setTrip(selected);
+        }
         if (!session?.user) return;
         const data = await readResponse(await fetch('/api/payments', { cache: 'no-store' }));
+        try { const credits = await readResponse(await fetch('/api/credits', { cache: 'no-store' })); if (!cancelled) setCreditBalanceSatang(Number(credits.balanceSatang || 0)); } catch { /* ignore credit history loading errors */ }
         if (!cancelled) {
           setOrders(data.orders);
           const awaitingSeat = (data.orders as Order[]).find(order => needsSeatSelection(order) && (!tripId || order.tripId === tripId) && (!requestedOrderId || order.id === requestedOrderId));
@@ -85,12 +96,6 @@ export default function PaymentPortal() {
             const prepared = await readResponse(await fetch(`/api/payments/${encodeURIComponent(requested.id)}`, { method: 'POST' }));
             if (!cancelled) setCurrent(prepared.order);
           }
-        }
-        if (tripId) {
-          const trips = await readResponse(await fetch('/api/trips', { cache: 'no-store' }));
-          const selected = trips.trips.find((value: Trip) => value.id === tripId);
-          if (!selected) throw new Error('ไม่พบทริปนี้');
-          if (!cancelled) setTrip(selected);
         }
       } catch (error) { if (!cancelled) setError((error as Error).message); }
       finally { if (!cancelled) { setLoading(false); setNow(Date.now()); } }
@@ -149,7 +154,9 @@ export default function PaymentPortal() {
     try {
       if (order) await prepare(order);
       else {
-        const data = await readResponse(await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tripId: trip?.id, plan }) }));
+        const requestedTotal = plan === 'deposit' && trip ? depositSatang(trip) : trip ? Math.round((trip.displayCost ?? trip.cost) * 100) : 0;
+        const creditSatang = useCredit ? Math.min(creditBalanceSatang, requestedTotal) : 0;
+        const data = await readResponse(await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tripId: trip?.id, plan, useCredit: creditSatang > 0, creditSatang }) }));
         await prepare(data.order);
       }
       await refresh();
@@ -179,20 +186,28 @@ export default function PaymentPortal() {
   }
   let depositAllowed = false;
   try { if (trip && now) { paymentQuote(trip, 'deposit', now); depositAllowed = true; } } catch { /* full payment only */ }
-  const active = orders.find(order => order.tripId === tripId && (['paid', 'deposit_paid'].includes(order.status) || (order.status === 'pending' && order.expiresAt > now)));
+  const active = orders.find(order => order.tripId === tripId && !order.autoCancelledAt && (['paid', 'deposit_paid'].includes(order.status) || (order.status === 'pending' && order.expiresAt > now)));
   const expired = current?.status === 'pending' && current.expiresAt <= now;
+  const selectedTotalSatang = plan === 'deposit' && trip ? depositSatang(trip) : trip ? Math.round((trip.displayCost ?? trip.cost) * 100) : 0;
+  const selectedCreditSatang = useCredit ? Math.min(creditBalanceSatang, selectedTotalSatang) : 0;
   const action = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-purple-700 px-4 py-3 text-sm font-bold text-white transition hover:bg-purple-800 disabled:cursor-wait disabled:opacity-50';
+  const isAdminSession = (session?.user as { role?: string } | undefined)?.role === 'admin';
+  const isPaymentCustomer = !!session?.user && !isAdminSession;
+  const loginCustomer = () => { void signOut({ redirect: false }).then(() => signIn('line', { callbackUrl: `/payments${search.toString() ? `?${search.toString()}` : ''}` })); };
 
   return <div className="min-h-screen bg-[#f8f6fd] text-slate-800">
-    <header className="border-b border-purple-100 bg-white"><div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4"><Link href="/" className="inline-flex items-center gap-2 text-xs font-bold text-purple-700"><ArrowLeft className="h-4 w-4" />กลับหน้าแรก</Link><Link href="/tickets" className="text-xs font-bold text-purple-700">ตั๋วของฉัน</Link></div></header>
+    <header className="border-b border-purple-100 bg-white"><div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-4"><Link href="/" className="inline-flex items-center gap-2 text-xs font-bold text-purple-700"><ArrowLeft className="h-4 w-4" />กลับหน้าแรก</Link><div className="flex items-center gap-3">{isPaymentCustomer && <Link href="/tickets" className="text-xs font-bold text-purple-700">ตั๋วของฉัน</Link>}{!isPaymentCustomer && status !== 'loading' && <button type="button" onClick={loginCustomer} className="inline-flex min-h-9 items-center justify-center rounded-xl bg-purple-700 px-3 text-xs font-bold text-white shadow-sm transition hover:bg-purple-800">เข้าสู่ระบบ LINE</button>}</div></div></header>
     <main className="mx-auto max-w-5xl space-y-6 px-4 py-8 sm:py-12">
+      <style>{`main > div.p-8.text-center > div.mb-5.overflow-hidden { display: none; }`}</style>
+      {trip && !isPaymentCustomer && <section className="overflow-hidden rounded-3xl border border-purple-100 bg-white shadow-sm"><div className="relative h-44"><img src={trip.image || 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=900&auto=format&fit=crop&q=80'} alt={trip.name} className="h-full w-full object-cover" /><div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" /><div className="absolute bottom-4 left-5 right-5 text-white"><h2 className="text-xl font-black">{trip.name}</h2><p className="mt-1 text-sm font-bold">{trip.flashSaleActive ? `Flash Sale ฿${money(Math.round((trip.displayCost ?? trip.cost) * 100))}` : `฿${money(Math.round(trip.cost * 100))}`} / ท่าน</p></div></div><div className="grid gap-3 p-5 text-sm text-slate-600 sm:grid-cols-2"><p>📅 ช่วงทริป: <b className="text-slate-800">{trip.tripPeriod || `${trip.durationDays || '-'} วัน`}</b></p><p>🗓️ วันออกเดินทาง: <b className="text-slate-800">{thaiTripDate(trip.departureDate)}</b></p><p>🕓 เวลาออกเดินทาง: <b className="text-slate-800">{trip.departureTime} น.</b></p><p>📍 จุดขึ้นรถ: <b className="text-slate-800">{trip.pickupPoint || '-'}</b></p><p>💺 ที่นั่งว่าง: <b className="text-slate-800">{trip.availableSeats} ที่นั่ง</b></p></div></section>}
       <div><p className="mb-2 text-[10px] font-bold tracking-[0.2em] text-purple-500">DAPAI DERNPAI PAYMENT</p><h1 className="text-2xl font-black text-purple-950 sm:text-3xl">ชำระเงินทริปของคุณ</h1><p className="mt-2 text-sm text-slate-500">ชำระเงิน → ตรวจสลิป → เลือกที่นั่ง</p></div>
       {error && <p role="alert" className="sticky top-3 z-20 break-words rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800 shadow-sm">{error}</p>}
-      {status === 'loading' || loading ? <p role="status" className="py-8 text-center text-purple-600">กำลังโหลดข้อมูล…</p> : !session?.user ? <div className="rounded-3xl border border-purple-100 bg-white p-8 text-center"><h2 className="mb-4 font-bold">เข้าสู่ระบบ LINE เพื่อเก็บประวัติการชำระเงินและเลือกที่นั่ง</h2><button type="button" className={action} onClick={() => signIn('line', { callbackUrl: `/payments${search.toString() ? `?${search.toString()}` : ''}` })}>เข้าสู่ระบบด้วย LINE</button></div> : <>
-        {trip && !current && <section className="rounded-3xl border border-purple-100 bg-white p-5 sm:p-7"><h2 className="text-xl font-black text-purple-950">{trip.name}</h2><p className="mt-2 text-sm text-slate-500">ราคาทริป ฿{money(Math.round(trip.cost * 100))} / ท่าน</p>
+      {status === 'loading' || loading ? <p role="status" className="py-8 text-center text-purple-600">กำลังโหลดข้อมูล…</p> : !isPaymentCustomer ? <div className="rounded-3xl border border-purple-100 bg-white p-8 text-center">{trip && <div className="mb-5 overflow-hidden rounded-2xl bg-purple-50 text-left"><img src={trip.image || 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=900&auto=format&fit=crop&q=80'} alt={trip.name} className="h-40 w-full object-cover" /><div className="p-4"><p className="text-xs font-bold text-purple-500">ทริปที่เลือก</p><h2 className="mt-1 text-lg font-black text-purple-950">{trip.name}</h2><p className="mt-1 text-sm text-slate-600">ราคา ฿{money(Math.round((trip.displayCost ?? trip.cost) * 100))} / ท่าน · เหลือ {trip.availableSeats} ที่นั่ง</p></div></div>}<h2 className="mb-4 font-bold">เข้าสู่ระบบด้วย LINE เพื่อชำระเงิน</h2><button type="button" className={action} onClick={loginCustomer}>เข้าสู่ระบบด้วย LINE</button></div> : <>
+        {trip && !current && <section className="rounded-3xl border border-purple-100 bg-white p-5 sm:p-7"><h2 className="text-xl font-black text-purple-950">{trip.name}</h2><p className="mt-2 text-sm text-slate-500">ราคาทริป {trip.flashSaleActive && <><span className="mr-2 text-slate-400 line-through">฿{money(Math.round(trip.cost * 100))}</span><span className="font-black text-amber-600">Flash Sale ฿{money(Math.round((trip.displayCost ?? trip.cost) * 100))}</span></>} {!trip.flashSaleActive && <>฿{money(Math.round(trip.cost * 100))}</>} / ท่าน</p>
           {active ? <div className="mt-5 space-y-3"><p className="text-sm text-purple-700">คุณมีรายการชำระเงินสำหรับทริปนี้แล้ว</p><button disabled={busy} className={action} onClick={() => start(active)}>เปิดรายการเดิม</button></div> : trip.availableSeats <= 0 ? <a className={`${action} mt-5`} href={tripMessengerUrl(trip.id)} target="_blank" rel="noopener noreferrer"><MessageSquare className="h-4 w-4" />ทริปเต็มแล้ว ทักแชทแอดมิน</a> : <>
             <fieldset disabled={busy} className="mt-5 grid gap-3 sm:grid-cols-2"><legend className="mb-3 text-sm font-bold">เลือกรูปแบบชำระเงิน</legend>{(['deposit', 'full'] as const).map(option => <label key={option} className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 ${plan === option ? 'border-purple-500 bg-purple-50 ring-1 ring-purple-500' : 'border-slate-200'} ${option === 'deposit' && !depositAllowed ? 'opacity-50' : ''}`}><input className="mt-1 accent-purple-600" type="radio" name="plan" value={option} checked={plan === option} disabled={option === 'deposit' && !depositAllowed} onChange={() => setPlan(option)} /><span><span className="block text-sm font-bold">{option === 'deposit' ? 'ชำระมัดจำ' : 'ชำระเต็มจำนวน'}</span><span className="mt-2 block text-xl font-black text-purple-800">฿{money(option === 'deposit' ? depositSatang(trip) : Math.round(trip.cost * 100))}</span></span></label>)}</fieldset>
-            <p className="my-4 text-xs leading-relaxed text-slate-500">ยอดคงเหลือต้องชำระก่อนออกเดินทางอย่างน้อย 24 ชั่วโมง หากเหลือไม่ถึง 24 ชั่วโมงให้ชำระเต็มจำนวน ระบบกันจำนวนที่ว่างให้ 30 นาทีระหว่างชำระเงิน</p><button disabled={busy} className={action} onClick={() => start()}>{busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}สร้าง QR ชำระเงิน</button>
+            {creditBalanceSatang > 0 && <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4"><input type="checkbox" className="mt-1 accent-emerald-600" checked={useCredit} onChange={event => setUseCredit(event.target.checked)} /><span className="text-sm"><span className="block font-bold text-emerald-800">ใช้เครดิตของฉัน</span><span className="mt-1 block text-xs text-emerald-700">มีเครดิต ฿{money(creditBalanceSatang)} · ใช้ครั้งนี้ ฿{money(selectedCreditSatang)} · เหลือชำระด้วยการโอน ฿{money(selectedTotalSatang - selectedCreditSatang)}</span><span className="mt-1 block text-[11px] text-emerald-700">เครดิตมีอายุ 1 ปีนับจากวันที่ได้รับ</span></span></label>}
+            <p className="my-4 text-xs leading-relaxed text-slate-500">ยอดคงเหลือต้องชำระก่อนออกเดินทางอย่างน้อย 7 วัน หากเหลือไม่ถึง 7 วันให้ชำระเต็มจำนวน ระบบกันจำนวนที่ว่างให้ 30 นาทีระหว่างชำระเงิน</p><button disabled={busy} className={action} onClick={() => start()}>{busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}สร้าง QR ชำระเงิน</button>
           </>}
         </section>}
 

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
-import { supabase } from '@/lib/supabase';
+import { dataStore } from '@/lib/dataStore';
 import { adminWith, requireAdmin, requireOwnerOrAdmin } from '@/lib/adminAuth';
 import { recordAudit } from '@/lib/audit';
 
@@ -15,7 +15,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, error: 'lineUserId is required' }, { status: 400 });
     }
 
-    const { data: profile, error } = await supabase
+    const { data: profile, error } = await dataStore
       .from('profiles')
       .select('*')
       .eq('lineUserId', lineUserId)
@@ -29,7 +29,7 @@ export async function GET(request: Request) {
 
     // Older users may have insurance fields stored on bookings but no profile row.
     // Reuse the latest booking data so migration/login never forces re-entry.
-    const { data: booking } = await supabase
+    const { data: booking } = await dataStore
       .from('bookings')
       .select('lineUserId, fullName, nickname, phone, nationalId, birthDate, emergencyName, emergencyPhone, allergies, medicalConditions')
       .eq('lineUserId', lineUserId)
@@ -106,14 +106,14 @@ export async function POST(request: Request) {
       medicalConditions: medicalConditions || '',
     };
 
-    const { error } = await supabase
+    const { error } = await dataStore
       .from('profiles')
       .upsert([profileData], { onConflict: 'lineUserId' });
 
     if (error) throw error;
 
     // Proactively sync the updated profile fields to all bookings of this user
-    await supabase
+    await dataStore
       .from('bookings')
       .update({
         fullName: cleanFullName,

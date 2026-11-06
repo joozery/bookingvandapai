@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
-import { supabase } from '@/lib/supabase';
+import { dataStore } from '@/lib/dataStore';
 import { requireAdmin, requireOwnerOrAdmin } from '@/lib/adminAuth';
 
 type RouteParams = { params: Promise<{ id: string }> };
@@ -12,7 +12,7 @@ export async function GET(request: Request, props: RouteParams) {
     const { id: lineUserId } = await props.params;
     
     // Fetch bookings for this lineUserId, joining with trips and vans
-    const { data: bookings, error } = await supabase
+    const { data: bookings, error } = await dataStore
       .from('bookings')
       .select(`
         id,
