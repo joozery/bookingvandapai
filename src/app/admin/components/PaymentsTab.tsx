@@ -68,16 +68,7 @@ export default function PaymentsTab({ trips }: { trips: Trip[] }) {
   }, [apply, page, q, tripId, state]);
 
   // Same rules as the server-side filter, so the export matches what is shown.
-  const filtered = useMemo(() => {
-    const query = q.trim().toLowerCase();
-    return rows.filter(row => {
-      if (tripId !== 'all' && row.tripId !== tripId) return false;
-      if (state !== 'all' && (state === 'active' ? row.state === 'lapsed' : row.state !== state)) return false;
-      if (!query) return true;
-      return [row.id, row.tripName, row.userName, row.booking?.fullName, row.booking?.nickname, row.booking?.phone, row.booking?.seatLabel,
-        ...row.receipts.flatMap(r => [r.transRef, r.payerName, r.registrantName])].filter(Boolean).join(' ').toLowerCase().includes(query);
-    });
-  }, [rows, q, tripId, state]);
+  const filtered = rows;
 
   const totals = useMemo(() => filtered.reduce((sum, row) => ({
     total: sum.total + row.totalSatang, paid: sum.paid + row.paidSatang, balance: sum.balance + row.balanceSatang,

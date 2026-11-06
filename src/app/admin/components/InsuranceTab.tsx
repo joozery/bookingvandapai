@@ -47,17 +47,7 @@ export default function InsuranceTab({ trips, onRefresh }: Props) {
 
   // Filter passengers who are approved or checked-in
   const passengers = useMemo(() => {
-    return bookings
-      .filter(b => b.status === 'approved' || b.checkedIn)
-      .filter(b => selectedTripId === 'all' || b.tripId === selectedTripId)
-      .filter(b => 
-        search === '' || 
-        b.fullName.toLowerCase().includes(search.toLowerCase()) || 
-        b.phone.includes(search) ||
-        (b.nationalId && b.nationalId.includes(search)) ||
-        (b.tripName && b.tripName.toLowerCase().includes(search.toLowerCase()))
-      )
-      .sort((a, b) => {
+    return [...bookings].sort((a, b) => {
         if (a.vanNumber !== b.vanNumber) return (a.vanNumber || 0) - (b.vanNumber || 0);
         return (a.seatLabel || '').localeCompare(b.seatLabel || '');
       });

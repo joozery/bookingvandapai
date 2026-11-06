@@ -29,13 +29,13 @@ export default function EntriesPanel({ type, data, onChanged }: { type: EntryTyp
   useEffect(() => {
     let active = true;
     setRemoteLoading(true);
-    const params = new URLSearchParams({ type, page: String(page), pageSize: '20', tripId, categoryId });
+    const params = new URLSearchParams({ type, page: String(page), pageSize: '20', tripId, categoryId, q });
     fetch(`/api/admin/accounting/entries?${params.toString()}`, { cache: 'no-store' })
       .then(res => res.json())
       .then(result => { if (active && result.success) { setRemoteEntries(result.entries || []); setRemoteTotal(result.total || 0); } })
       .finally(() => { if (active) setRemoteLoading(false); });
     return () => { active = false; };
-  }, [type, page, tripId, categoryId]);
+  }, [type, page, tripId, categoryId, q]);
 
   const rows = useMemo(() => remoteEntries.filter(e => e.type === type
     && (tripId === 'all' || (tripId === 'none' ? !e.tripId : e.tripId === tripId))

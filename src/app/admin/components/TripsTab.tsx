@@ -321,23 +321,15 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onUpdateVan,
     let active = true;
     setRemoteLoading(true);
     const params = new URLSearchParams({ page: String(page), pageSize: '20', status: completed ? 'completed' : draft ? 'draft' : 'active', q: search });
+    if (selectedTripFilter) params.set('tripName', selectedTripFilter);
     fetch(`/api/trips?${params.toString()}`, { cache: 'no-store' }).then(res => res.json()).then(result => {
       if (active && result.success) { setRemoteTrips(result.trips || []); setRemoteTotal(result.total || 0); }
     }).finally(() => { if (active) setRemoteLoading(false); });
     return () => { active = false; };
-  }, [page, completed, draft, search]);
+  }, [page, completed, draft, search, selectedTripFilter]);
   const tripSource = remoteTrips;
   const filteredTrips = React.useMemo(() => {
-    const filtered = tripSource.filter(trip => {
-      const matchSearch =
-        trip.name.toLowerCase().includes(search.toLowerCase()) ||
-        trip.pickupPoint.toLowerCase().includes(search.toLowerCase()) ||
-        (trip.tripPeriod && trip.tripPeriod.toLowerCase().includes(search.toLowerCase())) ||
-        trip.departureDate.includes(search) ||
-        formatThaiDate(trip.departureDate).includes(search);
-      const matchNameFilter = selectedTripFilter ? trip.name === selectedTripFilter : true;
-      return matchSearch && matchNameFilter;
-    });
+    const filtered = [...tripSource];
     if (!completed) {
       filtered.sort((a, b) =>
         (parseCalendarDay(a.departureDate) ?? Number.MAX_SAFE_INTEGER) -

@@ -60,20 +60,10 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
     return () => { active = false; };
   }, [page, tripStatusFilter, tripFilter, statusFilter, search, pendingOnly]);
 
-  const filtered = remoteBookings.filter(b => {
-    const trip = trips.find(t => t.id === b.tripId);
-    const matchTripStatus = tripStatusFilter === 'all' || 
-                            (tripStatusFilter === 'active' && trip?.status !== 'completed') || 
-                            (tripStatusFilter === 'completed' && trip?.status === 'completed');
-    const matchTrip   = tripFilter === 'all' || b.tripId === tripFilter;
-    const matchStatus = statusFilter === 'all' || b.status === statusFilter;
-    const q = search.toLowerCase();
-    return matchTripStatus && matchTrip && matchStatus && (
-      b.fullName.toLowerCase().includes(q) || b.nickname.toLowerCase().includes(q) ||
-      b.phone.includes(q) || b.seatLabel.toLowerCase().includes(q) ||
-      (b.tripName && b.tripName.toLowerCase().includes(q))
-    );
-  });
+  // Filters and pagination are applied by /api/bookings. Filtering the
+  // already-paged response here caused the visible rows to disagree with
+  // remoteTotal, especially after selecting a trip.
+  const filtered = remoteBookings;
   const pages = Math.max(1, Math.ceil(remoteTotal / 20));
   const currentPage = Math.min(page, pages);
   const visibleBookings = filtered;

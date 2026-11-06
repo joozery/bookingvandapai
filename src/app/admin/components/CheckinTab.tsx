@@ -36,14 +36,7 @@ export default function CheckinTab({ trips, bookings, onCheckIn }: Props) {
   React.useEffect(() => { setPage(1); }, [selectedTripId, search]);
 
   const tripBookings = remoteBookings;
-  const filteredBookings = tripBookings.filter(b => {
-    if (!search.trim()) return true;
-    const q = search.toLowerCase();
-    return b.fullName.toLowerCase().includes(q) ||
-           b.nickname.toLowerCase().includes(q) ||
-           b.seatLabel.toLowerCase().includes(q) ||
-           (b.tripName && b.tripName.toLowerCase().includes(q));
-  });
+  const filteredBookings = tripBookings;
   
   const waitingList = filteredBookings.filter(b => !b.checkedIn);
   const checkedInList = filteredBookings.filter(b => b.checkedIn);

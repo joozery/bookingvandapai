@@ -45,11 +45,12 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
     let active = true;
     setRemoteLoading(true);
     const params = new URLSearchParams({ page: String(page), pageSize: '20', status: tripStatusFilter === 'all' ? 'all' : tripStatusFilter, q: tripSearch });
+    if (selectedTripId !== 'all') params.set('tripId', selectedTripId);
     fetch(`/api/trips?${params.toString()}`, { cache: 'no-store' }).then(res => res.json()).then(result => {
       if (active && result.success) { setRemoteTrips(result.trips || []); setRemoteTotal(result.total || 0); }
     }).finally(() => { if (active) setRemoteLoading(false); });
     return () => { active = false; };
-  }, [page, tripStatusFilter, tripSearch]);
+  }, [page, tripStatusFilter, selectedTripId, tripSearch]);
 
   React.useEffect(() => {
     let active = true;
@@ -62,19 +63,7 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
   }, [remoteTrips, vanRefresh]);
 
   const filteredTrips = useMemo(() => {
-    let arr = remoteTrips;
-    if (tripStatusFilter === 'active') {
-      arr = arr.filter(t => t.status === 'active');
-    } else if (tripStatusFilter === 'completed') {
-      arr = arr.filter(t => t.status === 'completed');
-    }
-    if (selectedTripId !== 'all') {
-      arr = arr.filter(t => t.id === selectedTripId);
-    }
-    if (tripSearch.trim() !== '') {
-      const q = tripSearch.toLowerCase();
-      arr = arr.filter(t => t.name.toLowerCase().includes(q));
-    }
+    const arr = [...remoteTrips];
     return [...arr].sort((a, b) =>
       (parseCalendarDay(a.departureDate) ?? Number.MAX_SAFE_INTEGER) -
       (parseCalendarDay(b.departureDate) ?? Number.MAX_SAFE_INTEGER) ||

@@ -80,11 +80,18 @@ export async function GET(request: Request) {
     const paged = params.has('page');
     const status = params.get('status') || 'all';
     const search = (params.get('q') || '').trim();
+    const tripId = params.get('tripId') || '';
+    const tripName = params.get('tripName') || '';
     // These reads are independent. Start them together so a cold Mongo
     // connection and the second collection do not add their latencies.
     let tripsQuery = dataStore.from('trips').select('id,name,departureDate,durationDays,cost,flashSalePrice,depositAmount,pickupPoint,departureTime,status,image,tripPeriod,guideName,reviewTitle,reviewDescription,isTestTrip', paged ? { count: 'exact' } : undefined).order('created_at', { ascending: false });
     if (status !== 'all') tripsQuery = tripsQuery.eq('status', status);
-    if (search) tripsQuery = tripsQuery.or(`name.ilike.%${search.replace(/[%(),]/g, ' ')}%,pickupPoint.ilike.%${search.replace(/[%(),]/g, ' ')}%,departureDate.ilike.%${search.replace(/[%(),]/g, ' ')}%`);
+    if (tripId) tripsQuery = tripsQuery.eq('id', tripId);
+    if (tripName) tripsQuery = tripsQuery.eq('name', tripName);
+    if (search) {
+      const safeSearch = search.replace(/[%(),]/g, ' ');
+      tripsQuery = tripsQuery.or(`name.ilike.%${safeSearch}%,pickupPoint.ilike.%${safeSearch}%,departureDate.ilike.%${safeSearch}%,tripPeriod.ilike.%${safeSearch}%`);
+    }
     if (paged) tripsQuery = tripsQuery.range((page - 1) * pageSize, page * pageSize - 1);
     const [tripsResult, vans] = await Promise.all([
       tripsQuery,

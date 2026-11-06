@@ -172,14 +172,14 @@ function TripTable({ title, trips, onOpenTrip, totals, serverStatus }: { title: 
     if (!serverStatus) return;
     let active = true;
     setRemoteLoading(true);
-    fetch(`/api/admin/accounting/trip-accounts?${new URLSearchParams({ page: String(page), pageSize: '20', status: serverStatus })}`, { cache: 'no-store' })
+    fetch(`/api/admin/accounting/trip-accounts?${new URLSearchParams({ page: String(page), pageSize: '20', status: serverStatus, q })}`, { cache: 'no-store' })
       .then(res => res.json()).then(result => { if (active && result.success) { setRemoteTrips(result.trips || []); setRemoteTotal(result.total || 0); } })
       .finally(() => { if (active) setRemoteLoading(false); });
     return () => { active = false; };
-  }, [page, serverStatus]);
+  }, [page, serverStatus, q]);
   useEffect(() => { if (serverStatus) setPage(1); }, [serverStatus]);
   const sourceTrips = serverStatus ? remoteTrips : trips;
-  const filtered = sourceTrips.filter(trip => trip.name.toLowerCase().includes(q.trim().toLowerCase()));
+  const filtered = sourceTrips;
   const totalRows = serverStatus ? remoteTotal : filtered.length;
   const pages = Math.max(1, Math.ceil((serverStatus ? remoteTotal : filtered.length) / 20));
   const currentPage = Math.min(page, pages);

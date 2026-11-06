@@ -20,7 +20,17 @@ export async function GET(request: Request) {
     let bookingsQuery = dataStore.from('bookings').select('*', paged ? { count: 'exact' } : undefined).order('createdAt', { ascending: false });
     bookingsQuery = bookingsQuery.or('status.eq.approved,checkedIn.eq.true');
     if (tripId && tripId !== 'all') bookingsQuery = bookingsQuery.eq('tripId', tripId);
-    if (q) bookingsQuery = bookingsQuery.or(`fullName.ilike.%${q}%,nickname.ilike.%${q}%,phone.ilike.%${q}%,nationalId.ilike.%${q}%`);
+    if (q) {
+      const { data: matchingTrips } = await dataStore.from('trips').select('id').or(`name.ilike.%${q}%`);
+      const tripNameClauses = (matchingTrips || []).map((trip: any) => `tripId.eq.${trip.id}`);
+      bookingsQuery = bookingsQuery.or([
+        `fullName.ilike.%${q}%`,
+        `nickname.ilike.%${q}%`,
+        `phone.ilike.%${q}%`,
+        `nationalId.ilike.%${q}%`,
+        ...tripNameClauses,
+      ].join(','));
+    }
     if (paged) bookingsQuery = bookingsQuery.range((page - 1) * pageSize, page * pageSize - 1);
     const { data: bookings, error, count } = await bookingsQuery;
     if (error) {

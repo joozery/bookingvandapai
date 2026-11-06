@@ -392,7 +392,7 @@ export async function loadPartnerTripsPage(page = 1, pageSize = 15) {
 }
 
 /** Paginated accounting entries; the legacy accounting payload remains unchanged. */
-export async function loadAccountingEntriesPage(input: { type: EntryType; page?: number; pageSize?: number; tripId?: string; categoryId?: string }) {
+export async function loadAccountingEntriesPage(input: { type: EntryType; page?: number; pageSize?: number; tripId?: string; categoryId?: string; q?: string }) {
   const db = await getMongoDb();
   const page = Math.max(1, Math.floor(input.page || 1));
   const pageSize = Math.min(100, Math.max(1, Math.floor(input.pageSize || 20)));
@@ -401,14 +401,33 @@ export async function loadAccountingEntriesPage(input: { type: EntryType; page?:
   else if (input.tripId && input.tripId !== 'all') filter.tripId = input.tripId;
   if (input.categoryId && input.categoryId !== 'all') filter.categoryId = input.categoryId;
   const entriesCollection = db.collection<AccountEntry>('accountEntries');
-  const [total, entries] = await Promise.all([
-    entriesCollection.countDocuments(filter),
-    entriesCollection.find(filter, { projection: { _id: 0 } }).sort({ date: -1, createdAt: -1 }).skip((page - 1) * pageSize).limit(pageSize).toArray(),
-  ]);
-  return { entries, total, page, pageSize };
+  const allEntries = await entriesCollection.find(filter, { projection: { _id: 0 } }).sort({ date: -1, createdAt: -1 }).toArray();
+  const query = (input.q || '').trim().toLocaleLowerCase('th');
+  const entries = query
+    ? await (async () => {
+        const [categories, trips, partners] = await Promise.all([
+          db.collection<AccountCategory>('accountCategories').find({}, { projection: { _id: 0, id: 1, name: 1 } }).toArray(),
+          db.collection<TripRow>('trips').find({}, { projection: { _id: 0, id: 1, name: 1 } }).toArray(),
+          db.collection<Partner>('partners').find({}, { projection: { _id: 0, id: 1, name: 1 } }).toArray(),
+        ]);
+        const categoryNames = new Map(categories.map(item => [item.id, item.name]));
+        const tripNames = new Map(trips.map(item => [item.id, item.name]));
+        const partnerNames = new Map(partners.map(item => [item.id, item.name]));
+        return allEntries.filter(entry => [
+          entry.description,
+          categoryNames.get(entry.categoryId),
+          tripNames.get(entry.tripId || ''),
+          partnerNames.get(entry.paidByPartnerId || ''),
+          partnerNames.get(entry.payeePartnerId || ''),
+        ].filter(Boolean).join(' ').toLocaleLowerCase('th').includes(query));
+      })()
+    : allEntries;
+  const total = entries.length;
+  const pagedEntries = entries.slice((page - 1) * pageSize, page * pageSize);
+  return { entries: pagedEntries, total, page, pageSize };
 }
 
-export async function loadTripAccountsPage(input: { page?: number; pageSize?: number; status?: string; onlyPaying?: boolean }) {
+export async function loadTripAccountsPage(input: { page?: number; pageSize?: number; status?: string; onlyPaying?: boolean; q?: string }) {
   const db = await getMongoDb();
   const page = Math.max(1, Math.floor(input.page || 1));
   const pageSize = Math.min(20, Math.max(1, Math.floor(input.pageSize || 20)));
@@ -417,6 +436,7 @@ export async function loadTripAccountsPage(input: { page?: number; pageSize?: nu
     const payingOrders = await db.collection<OrderRow>('paymentOrders').find({ $or: [{ paidSatang: { $gt: 0 } }, { amountSatang: { $gt: 0 } }] }, { projection: { _id: 0, tripId: 1 } }).toArray();
     filter.id = { $in: [...new Set(payingOrders.map(order => order.tripId))] };
   }
+  if (input.q?.trim()) filter.name = { $regex: input.q.trim(), $options: 'i' };
   const tripsCollection = db.collection<TripRow>('trips');
   const [total, trips, partners] = await Promise.all([
     tripsCollection.countDocuments(filter),

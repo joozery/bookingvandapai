@@ -45,15 +45,7 @@ export default function ReviewsTab({ trips }: { trips: Trip[] }) {
   const names = useMemo(() => new Map(trips.map(trip => [trip.id, trip.name])), [trips]);
   const tripStatuses = useMemo(() => new Map(trips.map(trip => [trip.id, trip.status])), [trips]);
   const matchingTrips = trips.filter(trip => !filters.tripStatus || trip.status === filters.tripStatus);
-  const filtered = useMemo(() => reviews.filter(review => {
-    const search = filters.search.trim().toLocaleLowerCase('th');
-    return (!filters.trip || review.tripId === filters.trip)
-      && (!filters.tripStatus || tripStatuses.get(review.tripId) === filters.tripStatus)
-      && (!filters.visibility || (filters.visibility === 'hidden' ? review.isHidden : !review.isHidden))
-      && (!filters.rating || review.rating === Number(filters.rating))
-      && (!filters.comment || (filters.comment === 'with' ? !!review.comment.trim() : !review.comment.trim()))
-      && (!search || `${names.get(review.tripId) || ''} ${review.reviewerName} ${review.comment}`.toLocaleLowerCase('th').includes(search));
-  }).sort((a, b) => (parseStoredDate(b.createdAt) || 0) - (parseStoredDate(a.createdAt) || 0)), [reviews, filters, tripStatuses, names]);
+  const filtered = reviews;
   const average = filtered.length ? (filtered.reduce((sum, r) => sum + r.rating, 0) / filtered.length).toFixed(1) : '—';
   const pages = Math.max(1, Math.ceil(total / 20));
   const currentPage = Math.min(page, pages);

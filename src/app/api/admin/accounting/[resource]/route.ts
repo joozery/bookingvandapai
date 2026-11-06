@@ -12,7 +12,7 @@ export async function GET(request: Request, context: { params: Promise<{ resourc
   if (resource === 'trip-accounts') {
     const { searchParams } = new URL(request.url);
     const page = Number(searchParams.get('page') || 1);
-    return Response.json({ success: true, ...await loadTripAccountsPage({ page: Number.isFinite(page) ? page : 1, pageSize: 20, status: searchParams.get('status') || 'all', onlyPaying: searchParams.get('onlyPaying') === '1' }) }, { headers: { 'Cache-Control': 'private, no-store' } });
+    return Response.json({ success: true, ...await loadTripAccountsPage({ page: Number.isFinite(page) ? page : 1, pageSize: 20, status: searchParams.get('status') || 'all', onlyPaying: searchParams.get('onlyPaying') === '1', q: searchParams.get('q') || '' }) }, { headers: { 'Cache-Control': 'private, no-store' } });
   }
   if (resource === 'entries') {
     const { searchParams } = new URL(request.url);
@@ -20,7 +20,7 @@ export async function GET(request: Request, context: { params: Promise<{ resourc
     if (type !== 'income' && type !== 'expense') return Response.json({ success: false, error: 'ประเภทบัญชีไม่ถูกต้อง' }, { status: 400 });
     const page = Number(searchParams.get('page') || 1);
     const pageSize = Math.min(100, Math.max(1, Number(searchParams.get('pageSize') || 20)));
-    return Response.json({ success: true, ...await loadAccountingEntriesPage({ type, page: Number.isFinite(page) ? page : 1, pageSize: Number.isFinite(pageSize) ? pageSize : 20, tripId: searchParams.get('tripId') || 'all', categoryId: searchParams.get('categoryId') || 'all' }) }, { headers: { 'Cache-Control': 'private, no-store' } });
+    return Response.json({ success: true, ...await loadAccountingEntriesPage({ type, page: Number.isFinite(page) ? page : 1, pageSize: Number.isFinite(pageSize) ? pageSize : 20, tripId: searchParams.get('tripId') || 'all', categoryId: searchParams.get('categoryId') || 'all', q: searchParams.get('q') || '' }) }, { headers: { 'Cache-Control': 'private, no-store' } });
   }
   if (resource === 'categories') {
     return Response.json({ success: true, categories: await listCategories() }, { headers: { 'Cache-Control': 'private, no-store' } });

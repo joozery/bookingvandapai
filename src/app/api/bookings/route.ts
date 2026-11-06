@@ -44,7 +44,20 @@ export async function GET(request: Request) {
     if (tripScope) query = tripScope.length ? query.in('tripId', tripScope) : query.eq('tripId', '__no_matching_trip__');
     if (search) {
       const safeSearch = search.replace(/[%(),]/g, ' ').trim();
-      if (safeSearch) query = query.or(`fullName.ilike.%${safeSearch}%,nickname.ilike.%${safeSearch}%,phone.ilike.%${safeSearch}%,seatLabel.ilike.%${safeSearch}%`);
+      if (safeSearch) {
+        const { data: matchingTrips } = await dataStore
+          .from('trips')
+          .select('id')
+          .or(`name.ilike.%${safeSearch}%`);
+        const tripNameClauses = (matchingTrips || []).map((trip: any) => `tripId.eq.${trip.id}`);
+        query = query.or([
+          `fullName.ilike.%${safeSearch}%`,
+          `nickname.ilike.%${safeSearch}%`,
+          `phone.ilike.%${safeSearch}%`,
+          `seatLabel.ilike.%${safeSearch}%`,
+          ...tripNameClauses,
+        ].join(','));
+      }
     }
     if (paged) query = query.range((pageValue - 1) * pageSize, pageValue * pageSize - 1);
 
