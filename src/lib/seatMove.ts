@@ -67,3 +67,56 @@ export async function moveBookingSeat(bookingId: string, vanId: string, seatId: 
   const paymentsUpdated = await syncPaymentSeat(updated, previous, by);
   return { booking: updated, from: previous, paymentsUpdated };
 }
+
+/**
+ * Admin-only seat swap. Both seats must already belong to valid bookings in
+ * the same trip. Keeping this separate from moveBookingSeat preserves the
+ * existing free-seat move behavior.
+ */
+export async function swapBookingSeats(bookingId: string, targetVanId: string, targetSeatId: string, by: string) {
+  const db = await getMongoDb();
+  const bookings = db.collection<BookingDoc>('bookings');
+  const vans = db.collection<VanDoc>('vans');
+  const source = await bookings.findOne({ id: bookingId });
+  if (!source) throw new Error('ไม่พบรายการจอง');
+  if (!['approved', 'pending'].includes(source.status)) throw new Error('สลับได้เฉพาะรายการที่อนุมัติแล้วหรือรออนุมัติ');
+
+  const [targetVan, sourceVan] = await Promise.all([
+    vans.findOne({ id: targetVanId, tripId: source.tripId }),
+    vans.findOne({ id: source.vanId }),
+  ]);
+  const sourceSeat = sourceVan?.seats?.find(seat => seat.id === source.seatId && seat.bookingId === source.id);
+  const targetSeat = targetVan?.seats?.find(seat => seat.id === targetSeatId);
+  if (!sourceVan || !sourceSeat) throw new Error('ไม่พบที่นั่งเดิมของรายการจอง');
+  if (!targetVan) throw new Error('ไม่พบรถปลายทางในทริปเดียวกัน');
+  if (!targetSeat || !['customer', 'staff'].includes(targetSeat.type)) throw new Error('ที่นั่งปลายทางไม่สามารถใช้งานได้');
+  if (!targetSeat.bookingId || targetSeat.bookingId === source.id) throw new Error('กรุณาเลือกที่นั่งที่มีลูกค้าอยู่เพื่อสลับ');
+  if (source.vanId === targetVanId && source.seatId === targetSeatId) throw new Error('เป็นที่นั่งเดิมอยู่แล้ว');
+
+  const target = await bookings.findOne({ id: targetSeat.bookingId });
+  if (!target || !['approved', 'pending'].includes(target.status)) throw new Error('ไม่พบรายการจองของที่นั่งปลายทาง');
+  if (target.tripId !== source.tripId || target.vanId !== targetVanId || target.seatId !== targetSeatId) throw new Error('ข้อมูลที่นั่งปลายทางไม่ตรงกับรายการจอง');
+
+  const sourcePrevious: SeatSnapshot = { vanId: source.vanId, seatId: source.seatId, seatLabel: source.seatLabel || '', ...(typeof sourceVan.vanNumber === 'number' ? { vanNumber: sourceVan.vanNumber } : {}) };
+  const targetPrevious: SeatSnapshot = { vanId: target.vanId, seatId: target.seatId, seatLabel: target.seatLabel || '', ...(typeof targetVan.vanNumber === 'number' ? { vanNumber: targetVan.vanNumber } : {}) };
+  const sourceUpdated = { ...source, vanId: targetVanId, seatId: targetSeat.id, seatLabel: targetSeat.label };
+  const targetUpdated = { ...target, vanId: source.vanId, seatId: source.seatId, seatLabel: sourceSeat.label };
+  const sourceSeatStatus = source.status === 'pending' ? 'pending' : 'booked';
+  const targetSeatStatus = target.status === 'pending' ? 'pending' : 'booked';
+
+  const updatedSourceVan = (sourceVan.seats || []).map(seat => seat.id === sourceSeat.id ? { ...seat, status: targetSeatStatus, bookingId: target.id } : seat);
+  const updatedTargetVan = sourceVan.id === targetVan.id ? updatedSourceVan.map(seat => seat.id === targetSeat.id ? { ...seat, status: sourceSeatStatus, bookingId: source.id } : seat) : (targetVan.seats || []).map(seat => seat.id === targetSeat.id ? { ...seat, status: sourceSeatStatus, bookingId: source.id } : seat);
+  if (sourceVan.id === targetVan.id) {
+    await vans.updateOne({ id: sourceVan.id, 'seats.id': sourceSeat.id, 'seats.bookingId': source.id, 'seats': { $elemMatch: { id: targetSeat.id, bookingId: target.id } } }, { $set: { seats: updatedTargetVan } });
+  } else {
+    await vans.updateOne({ id: sourceVan.id, 'seats': { $elemMatch: { id: sourceSeat.id, bookingId: source.id } } }, { $set: { seats: updatedSourceVan } });
+    await vans.updateOne({ id: targetVan.id, 'seats': { $elemMatch: { id: targetSeat.id, bookingId: target.id } } }, { $set: { seats: updatedTargetVan } });
+  }
+  await bookings.updateOne({ id: source.id, vanId: source.vanId, seatId: source.seatId }, { $set: { vanId: sourceUpdated.vanId, seatId: sourceUpdated.seatId, seatLabel: sourceUpdated.seatLabel } });
+  await bookings.updateOne({ id: target.id, vanId: target.vanId, seatId: target.seatId }, { $set: { vanId: targetUpdated.vanId, seatId: targetUpdated.seatId, seatLabel: targetUpdated.seatLabel } });
+  const [sourcePaymentsUpdated, targetPaymentsUpdated] = await Promise.all([
+    syncPaymentSeat(sourceUpdated, sourcePrevious, by),
+    syncPaymentSeat(targetUpdated, targetPrevious, by),
+  ]);
+  return { swapped: true, booking: sourceUpdated, otherBooking: targetUpdated, paymentsUpdated: sourcePaymentsUpdated + targetPaymentsUpdated };
+}
