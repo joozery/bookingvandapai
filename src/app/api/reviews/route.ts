@@ -52,13 +52,22 @@ export async function GET(request: Request) {
       const filter: Record<string, unknown> = {};
       if (trip) filter.tripId = trip;
       if (tripStatus) filter.tripId = { $in: tripRows.filter((item: any) => item.status === tripStatus).map((item: any) => item.id) };
-      if (visibility) filter.isHidden = visibility === 'hidden';
+      if (visibility === 'hidden') filter.isHidden = true;
+      // Older reviews may not have an isHidden field. They are visible by
+      // default, so include both explicit false and missing values here.
+      if (visibility === 'visible') filter.$or = [{ isHidden: false }, { isHidden: { $exists: false } }];
       if (rating) filter.rating = rating;
       if (comment === 'with') filter.comment = { $regex: /\S/ };
       if (comment === 'without') filter.comment = { $not: /\S/ };
       if (q) {
         const tripIds = tripRows.filter((item: any) => String(item.name || '').toLocaleLowerCase('th').includes(q)).map((item: any) => item.id);
-        filter.$or = [{ reviewerName: { $regex: q, $options: 'i' } }, { comment: { $regex: q, $options: 'i' } }, ...(tripIds.length ? [{ tripId: { $in: tripIds } }] : [])];
+        const searchClauses = [{ reviewerName: { $regex: q, $options: 'i' } }, { comment: { $regex: q, $options: 'i' } }, ...(tripIds.length ? [{ tripId: { $in: tripIds } }] : [])];
+        if (filter.$or) {
+          filter.$and = [{ $or: filter.$or }, { $or: searchClauses }];
+          delete filter.$or;
+        } else {
+          filter.$or = searchClauses;
+        }
       }
       const reviewsCollection = db.collection('trip_reviews');
       const [total, rows] = await Promise.all([
@@ -92,7 +101,7 @@ export async function POST(request: Request) {
     if (!body || typeof body.tripId !== 'string' || !Number.isInteger(body.rating) || body.rating < 1 || body.rating > 5 || typeof body.comment !== 'string' || body.comment.length > 2000) return fail('กรุณาให้คะแนน 1–5 ดาว และข้อความไม่เกิน 2,000 ตัวอักษร', 400);
     const eligible = await eligibility(body.tripId, user.id);
     if (eligible.error) return fail(eligible.error, eligible.status!);
-    const { data: review, error } = await dataStore.from('trip_reviews').insert({ tripId: body.tripId, lineUserId: user.id, reviewerName: eligible.name, rating: body.rating, comment: body.comment.trim(), createdAt: new Date() }).select(fields).single();
+    const { data: review, error } = await dataStore.from('trip_reviews').insert({ tripId: body.tripId, lineUserId: user.id, reviewerName: eligible.name, rating: body.rating, comment: body.comment.trim(), createdAt: new Date(), isHidden: false }).select(fields).single();
     if (error?.code === '23505') return fail('คุณประเมินทริปนี้แล้ว ประเมินได้หนึ่งครั้งต่อทริป', 409);
     if (error) throw error;
     return NextResponse.json({ success: true, review }, { status: 201 });

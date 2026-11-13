@@ -41,7 +41,10 @@ export async function GET(request: Request) {
     if (lineUserId) query = query.eq('lineUserId', lineUserId);
     if (status && status !== 'all') query = query.eq('status', status);
     if (pendingChange) query = query.neq('replacesBookingId', null);
-    if (tripScope) query = tripScope.length ? query.in('tripId', tripScope) : query.eq('tripId', '__no_matching_trip__');
+    // A selected trip is already an exact scope. Do not combine it with the
+    // broad trip-status scope: stale/mismatched status data would otherwise
+    // hide valid bookings for the selected trip.
+    if (tripScope && !tripId) query = tripScope.length ? query.in('tripId', tripScope) : query.eq('tripId', '__no_matching_trip__');
     if (search) {
       const safeSearch = search.replace(/[%(),]/g, ' ').trim();
       if (safeSearch) {

@@ -779,7 +779,7 @@ export default function AdminPage() {
               {(activeTab === 'bookings' || activeTab === 'pending') && (
                 <BookingsTab
                   trips={trips} vans={vans}
-                  bookings={activeTab === 'pending' ? bookings.filter(b => b.status === 'pending' && !!(b as any).replacesBookingId) : bookings}
+                  bookings={bookings}
                   onApprove={handleApprove} onReject={handleReject}
                   onDelete={handleDelBook} onCheckIn={handleCheckIn}
                   onManualSubmit={handleManual} adminAccounts={adminAccounts}

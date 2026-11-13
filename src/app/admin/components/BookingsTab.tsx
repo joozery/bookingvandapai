@@ -48,8 +48,9 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
   useEffect(() => {
     let active = true;
     setRemoteLoading(true);
-    const params = new URLSearchParams({ page: String(page), pageSize: '20', tripStatus: tripStatusFilter });
+    const params = new URLSearchParams({ page: String(page), pageSize: '20' });
     if (tripFilter !== 'all') params.set('tripId', tripFilter);
+    else if (tripStatusFilter !== 'all') params.set('tripStatus', tripStatusFilter);
     if (pendingOnly) { params.set('status', 'pending'); params.set('pendingChange', '1'); }
     else if (statusFilter !== 'all') params.set('status', statusFilter);
     if (search.trim()) params.set('q', search.trim());
