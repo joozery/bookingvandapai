@@ -131,6 +131,80 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
     setEditingStaff(null);
   };
 
+  const handleMoveTarget = async (vanId: string, seatId: string) => {
+    if (!moving) return;
+    setMovingBusy(true);
+    try {
+      await onMoveSeat(moving.bookingId, vanId, seatId);
+      setMoving(null);
+      setVanRefresh(value => value + 1);
+    } finally {
+      setMovingBusy(false);
+    }
+  };
+
+  const renderMoveSeatMap = (van: Van) => {
+    const extraSeat = van.seats.some(seat => seat.row === 4 && seat.col === 1.5);
+    const seatAt = (row: number, col: number) => van.seats.find(seat => seat.row === row && seat.col === col);
+
+    const renderTargetSeat = (seat: Seat | undefined) => {
+      if (!seat) return <div className="h-14 w-[58px]" />;
+
+      const isDriver = seat.type === 'driver';
+      const isMovingSource = seat.bookingId === moving?.bookingId;
+      const isSelectable = seat.type === 'customer' && (seat.status === 'available' || !!seat.bookingId) && !isMovingSource;
+      const isOccupied = !!seat.bookingId;
+      const seatClass = isDriver
+        ? 'border-slate-950 bg-slate-900 text-white'
+        : isMovingSource
+          ? 'border-amber-400 bg-amber-100 text-amber-900 ring-2 ring-amber-300 ring-offset-1'
+        : isOccupied
+          ? 'border-violet-300 bg-violet-100 text-violet-800 hover:bg-violet-200'
+          : seat.status === 'available'
+            ? 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+            : 'border-slate-200 bg-slate-100 text-slate-400';
+
+      return (
+        <button
+          key={seat.id}
+          type="button"
+          disabled={!isSelectable || movingBusy}
+          onClick={() => handleMoveTarget(van.id, seat.id)}
+          title={isDriver ? 'คนขับ' : isSelectable ? (isOccupied ? 'คลิกเพื่อสลับที่นั่ง' : 'คลิกเพื่อย้ายมาที่นั่งนี้') : 'เลือกที่นั่งนี้ไม่ได้'}
+          className={cn('h-14 w-[58px] rounded-xl border-2 px-1 flex flex-col items-center justify-center text-center leading-tight transition disabled:cursor-not-allowed disabled:opacity-70', seatClass)}
+        >
+          <span className="text-[10px] font-black">{isDriver ? 'D' : seat.label}</span>
+          {isDriver ? <span className="text-[8px] font-bold">คนขับ</span> : isMovingSource ? <span className="text-[8px] font-black">กำลังย้าย</span> : seat.passengerName ? <span className="w-full truncate text-[8px] font-bold">{seat.passengerName}</span> : null}
+          {isOccupied && !isDriver && !isMovingSource && <span className="text-[7px] font-bold">สลับได้</span>}
+        </button>
+      );
+    };
+
+    return (
+      <div key={van.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+        <div className="mb-2 flex items-center justify-between px-1">
+          <span className="text-xs font-black text-slate-800">รถตู้คันที่ {van.vanNumber}</span>
+          <span className="text-[10px] font-bold text-slate-400">{van.plateNumber}</span>
+        </div>
+        <div className="mx-auto flex w-[274px] flex-col gap-2 rounded-[28px] border-4 border-slate-200 bg-white p-3 shadow-inner">
+          <div className="flex gap-2">
+            {renderTargetSeat(seatAt(1, 1))}
+            <div className="h-14 w-[58px]" />
+            {renderTargetSeat(seatAt(1, 3))}
+          </div>
+          {[2, 3].map(row => (
+            <div key={row} className="flex gap-2">
+              {[1, 2, 3].map(col => renderTargetSeat(seatAt(row, col)))}
+            </div>
+          ))}
+          <div className={cn(extraSeat ? 'grid grid-cols-4' : 'flex', 'gap-2')}>
+            {(extraSeat ? [1, 1.5, 2, 3] : [1, 2, 3]).map(col => renderTargetSeat(seatAt(4, col)))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* ── Toolbar ────────────────────────────────────── */}
@@ -379,7 +453,32 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
         );
       })}
       {pageCount > 1 && <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-500"><span>แสดง {(currentPage - 1) * 20 + 1}-{Math.min(currentPage * 20, remoteTotal)} จาก {remoteTotal} ทริป</span><div className="flex items-center gap-2"><button type="button" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)} className="rounded-lg border p-1.5 disabled:opacity-30"><ChevronLeft className="h-4 w-4" /></button><span>{currentPage} / {pageCount}</span><button type="button" disabled={currentPage >= pageCount} onClick={() => setPage(currentPage + 1)} className="rounded-lg border p-1.5 disabled:opacity-30"><ChevronRight className="h-4 w-4" /></button></div></div>}
-      {moving && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" onClick={() => !movingBusy && setMoving(null)}><div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl" onClick={event => event.stopPropagation()}><div className="flex items-start justify-between gap-3"><div><h3 className="text-lg font-black text-slate-900">ย้ายหรือสลับที่นั่ง</h3><p className="mt-1 text-xs text-slate-500">{moving.passengerName} · ที่นั่งเดิม {moving.fromLabel}</p></div><button type="button" disabled={movingBusy} onClick={() => setMoving(null)} className="text-slate-400">✕</button></div><p className="mt-4 text-xs font-bold text-slate-600">เลือกที่นั่งว่างเพื่อย้าย หรือเลือกที่นั่งของลูกค้าอีกคนเพื่อสลับ</p><div className="mt-3 grid grid-cols-3 gap-2">{remoteVans.filter(van => van.tripId === moving.tripId).flatMap(van => van.seats.filter(seat => seat.type === 'customer' && (seat.status === 'available' || !!seat.bookingId)).map(seat => <button key={`${van.id}-${seat.id}`} type="button" disabled={movingBusy} onClick={async () => { setMovingBusy(true); try { await onMoveSeat(moving.bookingId, van.id, seat.id); setMoving(null); setVanRefresh(value => value + 1); } finally { setMovingBusy(false); } }} className={seat.bookingId ? "rounded-xl border border-violet-200 bg-violet-50 px-2 py-3 text-xs font-black text-violet-700 hover:bg-violet-100 disabled:opacity-50" : "rounded-xl border border-emerald-200 bg-emerald-50 px-2 py-3 text-xs font-black text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"}>รถ {van.vanNumber}<br />{seat.label}{seat.bookingId ? ' · สลับ' : ''}</button>))}</div>{!remoteVans.some(van => van.tripId === moving.tripId && van.seats.some(seat => seat.type === 'customer' && (seat.status === 'available' || !!seat.bookingId))) && <p className="py-6 text-center text-sm text-slate-500">ไม่มีที่นั่งสำหรับย้ายหรือสลับในทริปนี้</p>}</div></div>}
+      {moving && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" onClick={() => !movingBusy && setMoving(null)}>
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl" onClick={event => event.stopPropagation()}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-black text-slate-900">ย้ายหรือสลับที่นั่ง</h3>
+                <p className="mt-1 text-xs text-slate-500">{moving.passengerName} · ที่นั่งเดิม {moving.fromLabel}</p>
+              </div>
+              <button type="button" disabled={movingBusy} onClick={() => setMoving(null)} className="text-slate-400">✕</button>
+            </div>
+            <p className="mt-4 text-xs font-bold text-slate-600">เลือกที่นั่งว่างเพื่อย้าย หรือเลือกที่นั่งของลูกค้าอีกคนเพื่อสลับ</p>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              {remoteVans.filter(van => van.tripId === moving.tripId).map(renderMoveSeatMap)}
+            </div>
+            {!remoteVans.some(van => van.tripId === moving.tripId && van.seats.some(seat => seat.type === 'customer' && (seat.status === 'available' || !!seat.bookingId) && seat.bookingId !== moving.bookingId)) && (
+              <p className="py-6 text-center text-sm text-slate-500">ไม่มีที่นั่งสำหรับย้ายหรือสลับในทริปนี้</p>
+            )}
+            <div className="mt-4 flex flex-wrap justify-center gap-3 text-[10px] font-bold text-slate-500">
+              <span className="flex items-center gap-1"><span className="h-3 w-3 rounded border border-emerald-300 bg-emerald-50" /> ว่าง / ย้ายได้</span>
+              <span className="flex items-center gap-1"><span className="h-3 w-3 rounded border border-violet-300 bg-violet-100" /> มีลูกค้า / สลับได้</span>
+              <span className="flex items-center gap-1"><span className="h-3 w-3 rounded border border-amber-400 bg-amber-100" /> เบาะที่เลือก</span>
+              <span className="flex items-center gap-1"><span className="h-3 w-3 rounded border border-slate-950 bg-slate-900" /> คนขับ</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
