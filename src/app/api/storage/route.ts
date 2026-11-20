@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { deleteFromR2, downloadFromR2, uploadToR2 } from '@/lib/r2';
-import { requireAdmin, requireOwnerOrAdmin } from '@/lib/adminAuth';
+import { requireAdmin } from '@/lib/adminAuth';
 import { recordAudit } from '@/lib/audit';
 
 export async function POST(request: Request) {
@@ -19,8 +19,13 @@ export async function GET(request: Request) {
   const path = new URL(request.url).searchParams.get('path');
   if (!path) return NextResponse.json({ error: 'Missing path' }, { status: 400 });
   // Pending profile edits contain personal data; only staff may read them.
-  if (path.replace(/^\/+/, '').startsWith('profile-edits/')) {
+  const normalizedPath = path.replace(/^\/+/, '');
+  if (normalizedPath.startsWith('profile-edits/')) {
     const admin = await requireAdmin(['users']);
+    if (admin instanceof Response) return admin;
+  }
+  if (normalizedPath.startsWith('payment-slips/')) {
+    const admin = await requireAdmin(['payments'], 'view');
     if (admin instanceof Response) return admin;
   }
   const result = await downloadFromR2(path);

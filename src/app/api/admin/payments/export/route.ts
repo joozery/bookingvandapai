@@ -9,8 +9,10 @@ export async function GET(request: Request) {
   try {
     if (!await adminWith(['payments'], 'view')) return forbidden('ไม่มีสิทธิ์ส่งออกข้อมูลการชำระเงิน');
     const { searchParams } = new URL(request.url);
-    const rows = filterPayments(await loadAdminPayments(), {
-      q: searchParams.get('q') || '', tripId: searchParams.get('tripId') || '', state: searchParams.get('state') || '',
+    const rows = filterPayments(await loadAdminPayments(Date.now(), {
+      tripStatus: (searchParams.get('tripStatus') || 'active') as 'active' | 'completed' | 'all',
+    }), {
+      q: searchParams.get('q') || '', tripId: searchParams.get('tripId') || '', state: searchParams.get('state') || 'received',
     });
     const file = await buildPaymentWorkbook(rows);
     const date = new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10);

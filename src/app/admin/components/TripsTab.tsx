@@ -732,7 +732,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onUpdateVan,
   const creditRevenueSatang = expenseTrip ? tripPayments.reduce((sum, payment) => sum + payment.creditUsedSatang, 0) : 0;
   const cashRevenueSatang = expenseTrip ? tripPayments.reduce((sum, payment) => sum + payment.cashPaidSatang, 0) : 0;
   const outstandingRevenueSatang = expenseTrip ? tripPayments.reduce((sum, payment) => sum + Math.max(0, payment.balanceSatang), 0) : 0;
-  const customerSeatTotal = expenseTrip ? vans.filter(van => van.tripId === expenseTrip.id).reduce((sum, van) => sum + van.seats.filter(seat => seat.type === 'customer').length, 0) : 0;
+  const customerSeatTotal = expenseTrip ? vans.filter(van => van.tripId === expenseTrip.id).reduce((sum, van) => sum + van.seats.filter(seat => seat.type === 'customer' && seat.status !== 'blocked').length, 0) : 0;
   const soldSeatCount = expenseTrip ? vans.filter(van => van.tripId === expenseTrip.id).reduce((sum, van) => sum + van.seats.filter(seat => seat.type === 'customer' && ['booked', 'pending'].includes(seat.status)).length, 0) : 0;
   const availableSeatCount = Math.max(0, customerSeatTotal - soldSeatCount);
   const currentProfitSatang = paidRevenueSatang - expenseTotalSatang;
@@ -964,7 +964,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onUpdateVan,
             </div>
             <div className="order-3 mb-0 mt-5 rounded-3xl border border-fuchsia-200 bg-gradient-to-br from-fuchsia-50 via-white to-violet-50 p-5 shadow-sm xl:col-span-4">
               <div className="flex items-center justify-between gap-3">
-              <p className="mt-3 text-xs font-bold text-violet-700">ควรขายอย่างน้อย ฿{Math.ceil(tripExpenses.reduce((sum, entry) => sum + entry.amountSatang, 0) / 100 / Math.max(1, vans.filter(van => van.tripId === expenseTrip.id).reduce((sum, van) => sum + van.seats.filter(seat => seat.type === 'customer').length, 0) - 1) / 0.93).toLocaleString('th-TH')} / ที่ <span className="font-normal text-slate-500">(คำนวณจากยอดขายหลังหัก 7%) (คิดจาก 9 ที่นั่ง)</span></p>
+              <p className="mt-3 text-xs font-bold text-violet-700">ควรขายอย่างน้อย ฿{Math.ceil(tripExpenses.reduce((sum, entry) => sum + entry.amountSatang, 0) / 100 / Math.max(1, customerSeatTotal) / 0.93).toLocaleString('th-TH')} / ที่ <span className="font-normal text-slate-500">(คำนวณจากยอดขายหลังหัก 7%) (คิดจาก {customerSeatTotal} เบาะที่เปิดอยู่)</span></p>
                 <span className="text-lg font-black text-fuchsia-900">ค่าใช้จ่ายรอบทริปนี้</span>
                 <strong className="rounded-2xl bg-gradient-to-r from-fuchsia-600 to-rose-500 px-5 py-2 text-2xl font-black tabular-nums text-white shadow-sm">รวม {money(tripExpenses.reduce((sum, entry) => sum + entry.amountSatang, 0))}</strong>
               </div>

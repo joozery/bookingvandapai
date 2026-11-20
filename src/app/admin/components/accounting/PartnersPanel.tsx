@@ -102,6 +102,7 @@ function PartnerTripTable({ data, onChanged }: { data: AccountingData; onChanged
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [payout, setPayout] = useState<{ tripId: string; partnerId: string; remainingSatang: number } | null>(null);
+  const [shareEditing, setShareEditing] = useState<AccountingData['trips'][number] | null>(null);
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const currentPage = Math.min(page, pageCount);
   useEffect(() => { setQueryPage(currentPage); }, [currentPage]);
@@ -128,13 +129,30 @@ function PartnerTripTable({ data, onChanged }: { data: AccountingData; onChanged
           <td className={cn('whitespace-nowrap px-3 py-4 text-right font-black', profitTone(trip.profitSatang))}>{money(trip.profitSatang)}</td>
           <td className="whitespace-nowrap px-3 py-4 text-right text-amber-600">{money(trip.centralReserveSatang)}</td>
           <td className="whitespace-nowrap px-3 py-4 text-right font-black text-violet-700">{money(trip.distributableProfitSatang)}</td>
-          <td className="px-4 py-3"><div className="space-y-2">{shares.length ? shares.map(share => <div key={share.partnerId} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2"><div><p className="font-semibold text-slate-700">{partnerName(share.partnerId)} {share.attending ? <span className="ml-1 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700">ไปทริป</span> : <span className="ml-1 rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-500">ไม่ไป</span>}</p><p className="mt-1 text-[10px] text-slate-500">สิทธิ์ {money(share.amountSatang)} · เบิกแล้ว {money(share.paidSatang)} · เหลือ {money(share.remainingSatang)}</p></div>{data.canEdit !== false && <button type="button" disabled={share.remainingSatang <= 0} className={smallButton} onClick={() => setPayout({ tripId: trip.tripId, partnerId: share.partnerId, remainingSatang: share.remainingSatang })}>{share.remainingSatang > 0 ? 'เบิก' : 'เบิกครบแล้ว'}</button>}</div>) : <span className="text-slate-400">ยังไม่มีข้อมูลส่วนแบ่ง</span>}</div></td>
+          <td className="px-4 py-3"><div className="space-y-2">{shares.length ? shares.map(share => <div key={share.partnerId} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2"><div><p className="font-semibold text-slate-700">{partnerName(share.partnerId)} <span className="ml-1 rounded-full bg-violet-50 px-1.5 py-0.5 text-[9px] font-bold text-violet-700">{share.percent.toFixed(2)}%</span>{share.attending ? <span className="ml-1 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700">ไปทริป</span> : <span className="ml-1 rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-500">ไม่ไป</span>}</p><p className="mt-1 text-[10px] text-slate-500">สิทธิ์ {money(share.amountSatang)} · เบิกแล้ว {money(share.paidSatang)} · เหลือ {money(share.remainingSatang)}</p></div>{data.canEdit !== false && <button type="button" disabled={share.remainingSatang <= 0} className={smallButton} onClick={() => setPayout({ tripId: trip.tripId, partnerId: share.partnerId, remainingSatang: share.remainingSatang })}>{share.remainingSatang > 0 ? 'เบิก' : 'เบิกครบแล้ว'}</button>}</div>) : <span className="text-slate-400">ยังไม่มีข้อมูลส่วนแบ่ง</span>}{data.canEdit !== false && <button type="button" className={smallButton} onClick={() => setShareEditing(trip)}>ตั้งเปอร์เซ็นต์ทริปนี้</button>}</div></td>
         </tr>; })}</tbody>
       </table>
       {pageCount > 1 && <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3"><span className="text-[11px] text-slate-400">หน้า {currentPage} จาก {pageCount} · แสดง {((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, total)} จาก {total} ทริป</span><div className="flex items-center gap-2"><button type="button" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)} className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:bg-violet-50 disabled:opacity-30" aria-label="หน้าก่อนหน้า"><ChevronLeft className="h-4 w-4" /></button><button type="button" disabled={currentPage === pageCount} onClick={() => setPage(currentPage + 1)} className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:bg-violet-50 disabled:opacity-30" aria-label="หน้าถัดไป"><ChevronRight className="h-4 w-4" /></button></div></div>}
     </div>}
+    {shareEditing && <TripShareForm trip={shareEditing} partners={data.partners} onClose={() => setShareEditing(null)} onSaved={async () => { setShareEditing(null); await onChanged(); }} />}
     {payout && <PayoutForm tripId={payout.tripId} partnerId={payout.partnerId} remainingSatang={payout.remainingSatang} partnerName={partnerName(payout.partnerId)} onClose={() => setPayout(null)} onSaved={async () => { setPayout(null); await onChanged(); }} />}
   </div>;
+}
+
+function TripShareForm({ trip, partners, onClose, onSaved }: { trip: AccountingData['trips'][number]; partners: AccountingData['partners']; onClose: () => void; onSaved: () => Promise<void> }) {
+  const current = new globalThis.Map((trip.partnerShares || []).map(share => [share.partnerId, share.percent]));
+  const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(partners.map(partner => [partner.id, String(current.get(partner.id) ?? 0)])));
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const total = Object.values(values).reduce((sum, value) => sum + (Number(value) || 0), 0);
+  return <Modal title="กำหนดเปอร์เซ็นต์แบ่งกำไรเฉพาะทริป" subtitle={`${trip.name} · รวม ${total.toFixed(2)}%`} onClose={onClose}>
+    <form className="space-y-3" onSubmit={async event => { event.preventDefault(); if (total > 100.0001) { setError('เปอร์เซ็นต์รวมต้องไม่เกิน 100%'); return; } setBusy(true); setError(''); try { await accountingApi('partner-trip-shares', 'POST', { tripId: trip.tripId, shares: partners.map(partner => ({ partnerId: partner.id, percent: Number(values[partner.id] || 0) })) }); await onSaved(); } catch (e) { setError(e instanceof Error ? e.message : 'บันทึกไม่สำเร็จ'); } finally { setBusy(false); } }}>
+      {partners.map(partner => <label key={partner.id} className={labelClass}>{partner.name}<div className="mt-1.5 flex items-center gap-2"><input type="number" min="0" max="100" step="0.01" value={values[partner.id] || ''} onChange={event => setValues(previous => ({ ...previous, [partner.id]: event.target.value }))} className={cn(fieldClass, 'mt-0')} /><span className="text-sm font-bold text-slate-500">%</span></div></label>)}
+      <p className="text-[11px] text-slate-500">เปอร์เซ็นต์นี้ใช้กับ 80% ของกำไรหลังกันส่วนกลาง 20% และใช้เฉพาะทริปนี้</p>
+      {error && <p className="rounded-xl bg-rose-50 p-3 text-xs font-bold text-rose-700">{error}</p>}
+      <button type="submit" disabled={busy || total > 100.0001} className={primaryButton}>{busy ? 'กำลังบันทึก...' : 'บันทึกเปอร์เซ็นต์ทริปนี้'}</button>
+    </form>
+  </Modal>;
 }
 
 function PayoutForm({ tripId, partnerId, remainingSatang, partnerName, onClose, onSaved }: { tripId: string; partnerId: string; remainingSatang: number; partnerName: string; onClose: () => void; onSaved: () => Promise<void> }) {

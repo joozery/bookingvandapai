@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { paymentUser, paymentError, checkPaymentOrigin } from '@/lib/paymentAuth';
 import { creditPayment, paymentDb, publicOrder, recoverPaymentOrder, type PaymentOrder } from '@/lib/paymentStore';
 import { verifyPaymentSlip, paymentConfig } from '@/lib/slip2go';
+import { uploadToR2 } from '@/lib/r2';
 
 export const dynamic = 'force-dynamic';
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
@@ -33,10 +34,19 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     stage = 'provider';
     const verified = await verifyPaymentSlip(imageBase64, order.amountSatang, order.checkoutCreatedAt, order.verificationReceivers);
     stage = 'credit';
+    let slipKey: string | undefined;
+    try {
+      slipKey = `payment-slips/verified/${order.id}/${token}.${file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg'}`;
+      await uploadToR2(slipKey, Buffer.from(await file.arrayBuffer()), file.type);
+    } catch (storageError) {
+      slipKey = undefined;
+      console.error('[payment-verify:slip-storage]', storageError instanceof Error ? storageError.message : storageError);
+    }
     // Record who registered, which trip and (for balance payments) which seat.
     const booking = order.bookingId ? await (await paymentDb()).collection('bookings').findOne({ id: order.bookingId }, { projection: { fullName: 1, seatLabel: 1 } }) : null;
     const receipt = {
       ...verified,
+      ...(slipKey ? { slipKey, slipContentType: file.type } : {}),
       registrantName: String(booking?.fullName || user.name || order.userName || '').slice(0, 120),
       tripName: order.tripName,
       ...(booking?.seatLabel || order.seat?.seatLabel ? { seatLabel: String(booking?.seatLabel || order.seat?.seatLabel) } : {}),

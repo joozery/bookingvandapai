@@ -10,7 +10,7 @@ export async function GET(request: Request) {
     const admin = await adminWith(['payments', 'accounting'], 'view');
     if (!admin) return forbidden('ไม่มีสิทธิ์ดูข้อมูลการชำระเงิน');
     const { searchParams } = new URL(request.url);
-    const options = { q: searchParams.get('q') || '', tripId: searchParams.get('tripId') || '', state: searchParams.get('state') || '', page: Number(searchParams.get('page') || 0), pageSize: 20 };
+    const options = { q: searchParams.get('q') || '', tripId: searchParams.get('tripId') || '', state: searchParams.get('state') || 'received', tripStatus: (searchParams.get('tripStatus') || 'active') as 'active' | 'completed' | 'all', page: Number(searchParams.get('page') || 0), pageSize: 20 };
     const paged = options.page > 0;
     const rows = filterPayments(await loadAdminPayments(Date.now(), paged ? options : {}), paged ? {} : options);
     const total = paged ? await countAdminPayments(Date.now(), options) : rows.length;

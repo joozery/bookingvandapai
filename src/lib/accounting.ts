@@ -16,6 +16,7 @@ export type AccountEntry = {
 };
 export type Partner = { id: string; name: string; phone: string; sharePercent: number; lineUserId?: string | null; adminId?: string | null; note: string; createdAt: number };
 export type PartnerTransaction = { id: string; partnerId: string; kind: 'reimbursement' | 'profit_payout'; tripId?: string | null; amountSatang: number; date: string; description: string; createdAt: number; createdBy: string };
+export type PartnerTripOverride = { tripId: string; partnerId: string; percent: number; updatedAt?: number; updatedBy?: string };
 
 type TripRow = { id: string; name: string; departureDate?: string; durationDays?: number; status?: string; cost?: number };
 type OrderRow = { id: string; tripId: string; totalSatang: number; paidSatang: number; amountSatang?: number; creditUsedSatang?: number; status: string; reviewRequired?: boolean };
@@ -63,7 +64,7 @@ const received = (order: OrderRow) => Math.max(0, order.paidSatang || 0);
 /** Still owed on an order that has started paying (abandoned checkouts are not debts). */
 const outstanding = (order: OrderRow) => (order.status === 'deposit_paid' || (order.status === 'paid' && order.totalSatang > order.paidSatang)) ? Math.max(0, order.totalSatang - order.paidSatang) : 0;
 
-export function summarizeAccounts(input: { trips: TripRow[]; orders: OrderRow[]; bookings: BookingRow[]; entries: AccountEntry[]; partners: Partner[]; partnerTransactions: PartnerTransaction[] }): AccountingSummary {
+export function summarizeAccounts(input: { trips: TripRow[]; orders: OrderRow[]; bookings: BookingRow[]; entries: AccountEntry[]; partners: Partner[]; partnerTransactions: PartnerTransaction[]; partnerTripOverrides?: PartnerTripOverride[] }): AccountingSummary {
   const tripMap = new Map<string, TripAccount>();
   const blank = (trip: TripRow): TripAccount => ({
     tripId: trip.id, name: trip.name, departureDate: trip.departureDate || '', status: trip.status || 'active', passengers: 0,
@@ -119,9 +120,11 @@ export function summarizeAccounts(input: { trips: TripRow[]; orders: OrderRow[];
     const allAttend = input.partners.length > 0 && attending.length === input.partners.length;
     const canUseFortyRule = attending.length > 0 && attending.length * 40 < 100 && attending.length < input.partners.length;
     const nonAttending = input.partners.filter(p => !attending.some(a => a.id === p.id));
+    const overrides = new Map((input.partnerTripOverrides || []).filter(item => item.tripId === trip.tripId).map(item => [item.partnerId, item.percent]));
+    const hasOverrides = overrides.size > 0;
     const partnerShares = input.partners.map(partner => {
       const isAttending = attending.some(a => a.id === partner.id);
-      const percent = allAttend ? 100 / input.partners.length
+      const percent = hasOverrides ? (overrides.get(partner.id) || 0) : allAttend ? 100 / input.partners.length
         : canUseFortyRule ? (isAttending ? 40 : (100 - attending.length * 40) / Math.max(1, nonAttending.length))
         : 100 / Math.max(1, input.partners.length);
       const amountSatang = Math.round(distributableProfitSatang * percent / 100);
@@ -276,6 +279,21 @@ export async function savePartner(input: Record<string, unknown>, id?: string) {
   return partner;
 }
 
+export async function savePartnerTripShares(input: Record<string, unknown>, by: string) {
+  const tripId = text(input.tripId, 120);
+  const shares = Array.isArray(input.shares) ? input.shares : [];
+  if (!tripId || !shares.length) throw new Error('ต้องระบุทริปและสัดส่วนหุ้นส่วน');
+  const normalized = shares.map(item => { const row = item as { partnerId?: unknown; percent?: unknown }; return { partnerId: text(row.partnerId, 120), percent: Number(row.percent) }; }).filter(item => item.partnerId);
+  if (normalized.some(item => !Number.isFinite(item.percent) || item.percent < 0 || item.percent > 100)) throw new Error('เปอร์เซ็นต์ต้องอยู่ระหว่าง 0–100%');
+  const total = normalized.reduce((sum, item) => sum + item.percent, 0);
+  if (total > 100.0001) throw new Error('เปอร์เซ็นต์รวมต้องไม่เกิน 100%');
+  const collection = await col<PartnerTripOverride>('partnerTripOverrides');
+  await collection.deleteMany({ tripId });
+  const now = Date.now();
+  await collection.insertMany(normalized.map(item => ({ tripId, partnerId: item.partnerId, percent: Math.round(item.percent * 100) / 100, updatedAt: now, updatedBy: by })));
+  return { tripId, shares: normalized };
+}
+
 export async function deletePartner(id: string) {
   const [entries, transactions, partners] = await Promise.all([col<AccountEntry>('accountEntries'), col<PartnerTransaction>('partnerTransactions'), col<Partner>('partners')]);
   if (await entries.findOne({ $or: [{ paidByPartnerId: id }, { payeePartnerId: id }] }) || await transactions.findOne({ partnerId: id })) {
@@ -380,14 +398,15 @@ export async function loadPartnerTripsPage(page = 1, pageSize = 15) {
     tripsCollection.find({ status: 'completed' }, { projection: { _id: 0, id: 1, name: 1, departureDate: 1, durationDays: 1, status: 1, cost: 1 } }).sort({ departureDate: -1 }).skip((safePage - 1) * safeSize).limit(safeSize).toArray(),
   ]);
   const ids = trips.map(t => t.id);
-  const [orders, bookings, entries, partners, partnerTransactions] = await Promise.all([
+  const [orders, bookings, entries, partners, partnerTransactions, partnerTripOverrides] = await Promise.all([
     db.collection<OrderRow>('paymentOrders').find({ tripId: { $in: ids } }, { projection: { _id: 0, id: 1, tripId: 1, totalSatang: 1, paidSatang: 1, creditUsedSatang: 1, status: 1, reviewRequired: 1 } }).toArray(),
     db.collection<BookingRow>('bookings').find({ tripId: { $in: ids }, status: 'approved' }, { projection: { _id: 0, tripId: 1, status: 1, lineUserId: 1, adminPartnerId: 1 } }).toArray(),
     db.collection<AccountEntry>('accountEntries').find({ tripId: { $in: ids } }, { projection: { _id: 0 } }).toArray(),
     db.collection<Partner>('partners').find({}, { projection: { _id: 0 } }).sort({ createdAt: 1 }).toArray(),
     db.collection<PartnerTransaction>('partnerTransactions').find({}, { projection: { _id: 0 } }).toArray(),
+    db.collection<PartnerTripOverride>('partnerTripOverrides').find({ tripId: { $in: ids } }, { projection: { _id: 0 } }).toArray(),
   ]);
-  const summary = summarizeAccounts({ trips, orders, bookings, entries, partners, partnerTransactions });
+  const summary = summarizeAccounts({ trips, orders, bookings, entries, partners, partnerTransactions, partnerTripOverrides });
   return { trips: summary.trips, total, page: safePage, pageSize: safeSize };
 }
 

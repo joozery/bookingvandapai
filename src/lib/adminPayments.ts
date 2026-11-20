@@ -1,5 +1,6 @@
 import { paymentDb, type PaymentOrder, type PaymentReceipt } from './paymentStore';
 import { paymentState, PAYMENT_STATE_LABELS, toSatang, type PaymentState } from './paymentRules';
+import { loadLegacyPayments, type LegacyPayment } from './legacyPayments';
 
 /** One customer payment order as shown in the admin payment history. */
 export type AdminPaymentRow = {
@@ -9,13 +10,13 @@ export type AdminPaymentRow = {
   creditUsedSatang: number; cashPaidSatang: number;
   userId: string; userName: string;
   booking: { id: string; fullName: string; nickname: string; phone: string; seatLabel: string; vanNumber: number | null; status: string } | null;
-  receipts: { transRef: string; paidAt: number; recordedAt: number; amountSatang: number; payerName: string; payerBank: string; registrantName: string; seatLabel: string; reviewRequired: boolean }[];
+  receipts: { transRef: string; paidAt: number; recordedAt: number; amountSatang: number; payerName: string; payerBank: string; registrantName: string; seatLabel: string; reviewRequired: boolean; source: 'system' | 'manual'; slipKey?: string; method?: string; note?: string }[];
   adjustments: NonNullable<PaymentOrder['adjustments']>;
   seatHistory: NonNullable<PaymentOrder['seatHistory']>;
   lastVerification: { code: string; message: string; checkedAt: number } | null;
 };
 
-export type AdminPaymentPageOptions = { page?: number; pageSize?: number; q?: string; tripId?: string; state?: string };
+export type AdminPaymentPageOptions = { page?: number; pageSize?: number; q?: string; tripId?: string; state?: string; tripStatus?: 'active' | 'completed' | 'all' };
 
 function paymentOrderFilter(options: AdminPaymentPageOptions, now: number): Record<string, unknown> {
   const filter: Record<string, unknown> = {};
@@ -30,6 +31,7 @@ function paymentOrderFilter(options: AdminPaymentPageOptions, now: number): Reco
     else if (options.state === 'lapsed') and.push({ $or: [{ status: 'expired' }, { status: 'pending', expiresAt: { $lte: now } }] });
     else if (options.state === 'unpaid') filter.status = 'pending';
     else if (options.state === 'active') filter.status = { $ne: 'expired' };
+    else if (options.state === 'received') and.push({ $or: [{ status: 'paid' }, { status: 'deposit_paid' }, { reviewRequired: true }] });
   }
   if (and.length) filter.$and = and;
   return filter;
@@ -39,7 +41,12 @@ export async function loadAdminPayments(now = Date.now(), options: AdminPaymentP
   const db = await paymentDb();
   const page = Math.max(1, Math.floor(options.page || 1));
   const pageSize = Math.min(20, Math.max(1, Math.floor(options.pageSize || 20)));
-  const cursor = db.collection<PaymentOrder>('paymentOrders').find(paymentOrderFilter(options, now), {
+  const tripIds = options.tripStatus && options.tripStatus !== 'all'
+    ? (await db.collection('trips').find({ status: options.tripStatus }, { projection: { _id: 0, id: 1 } }).toArray()).map(trip => String(trip.id))
+    : null;
+  const filter = paymentOrderFilter(options, now);
+  if (tripIds) filter.tripId = { $in: tripIds.length ? tripIds : ['__no_matching_trip__'] };
+  const cursor = db.collection<PaymentOrder>('paymentOrders').find(filter, {
     // Never expose QR payloads, verification tokens/receivers or claim copies.
     projection: { _id: 0, qrCode: 0, verifyToken: 0, verificationReceivers: 0, bookingClaim: 0, appliedReceipts: 0 },
   }).sort({ createdAt: -1 });
@@ -57,11 +64,14 @@ export async function loadAdminPayments(now = Date.now(), options: AdminPaymentP
   ]);
   const vanIds = [...new Set(bookings.map(booking => booking.vanId).filter(Boolean))];
   const vans = vanIds.length ? await db.collection('vans').find({ id: { $in: vanIds } }, { projection: { _id: 0, id: 1, vanNumber: 1 } }).toArray() : [];
+  const legacyPayments = await loadLegacyPayments(bookings.map(booking => String(booking.id)));
   const vanNumber = new Map(vans.map(van => [van.id, typeof van.vanNumber === 'number' ? van.vanNumber : null]));
   const bookingById = new Map(bookings.map(booking => [booking.id, booking]));
   const bookingByOrder = new Map(bookings.filter(booking => booking.paymentOrderId).map(booking => [booking.paymentOrderId, booking]));
   const receiptsByOrder = new Map<string, PaymentReceipt[]>();
   for (const receipt of receipts) receiptsByOrder.set(receipt.orderId, [...(receiptsByOrder.get(receipt.orderId) || []), receipt]);
+  const legacyByBooking = new Map<string, LegacyPayment[]>();
+  for (const payment of legacyPayments) legacyByBooking.set(payment.bookingId, [...(legacyByBooking.get(payment.bookingId) || []), payment]);
 
   return orders.map(order => {
     const booking = (order.bookingId && bookingById.get(order.bookingId)) || bookingByOrder.get(order.id) || null;
@@ -79,11 +89,18 @@ export async function loadAdminPayments(now = Date.now(), options: AdminPaymentP
         id: String(booking.id), fullName: String(booking.fullName || ''), nickname: String(booking.nickname || ''), phone: String(booking.phone || ''),
         seatLabel: String(booking.seatLabel || order.seat?.seatLabel || ''), vanNumber: vanNumber.get(booking.vanId) ?? order.seat?.vanNumber ?? null, status: String(booking.status || ''),
       } : null,
-      receipts: (receiptsByOrder.get(order.id) || []).map(receipt => ({
+      receipts: [
+        ...(receiptsByOrder.get(order.id) || []).map(receipt => ({
         transRef: receipt.transRef, paidAt: receipt.paidAt, recordedAt: receipt.recordedAt, amountSatang: receipt.amountSatang,
         payerName: receipt.payerName || '', payerBank: receipt.payerBank || '', registrantName: receipt.registrantName || '',
-        seatLabel: receipt.seatLabel || '', reviewRequired: !!receipt.reviewRequired,
-      })),
+        seatLabel: receipt.seatLabel || '', reviewRequired: !!receipt.reviewRequired, source: 'system' as const, slipKey: receipt.slipKey,
+        })),
+        ...(booking ? (legacyByBooking.get(String(booking.id)) || []).map(payment => ({
+          transRef: `manual-${payment.id}`, paidAt: payment.paidAt, recordedAt: payment.createdAt, amountSatang: payment.amountSatang,
+          payerName: '', payerBank: payment.method, registrantName: booking.fullName || '', seatLabel: booking.seatLabel || '', reviewRequired: false,
+          source: 'manual' as const, slipKey: payment.receiptKey, method: payment.method, note: payment.note,
+        })) : []),
+      ],
       adjustments: order.adjustments || [],
       seatHistory: order.seatHistory || [],
       lastVerification: order.lastVerification ? { code: order.lastVerification.code, message: order.lastVerification.message, checkedAt: order.lastVerification.checkedAt } : null,
@@ -92,7 +109,13 @@ export async function loadAdminPayments(now = Date.now(), options: AdminPaymentP
 }
 
 export async function countAdminPayments(now = Date.now(), options: AdminPaymentPageOptions = {}) {
-  return (await paymentDb()).collection<PaymentOrder>('paymentOrders').countDocuments(paymentOrderFilter(options, now));
+  const db = await paymentDb();
+  const tripIds = options.tripStatus && options.tripStatus !== 'all'
+    ? (await db.collection('trips').find({ status: options.tripStatus }, { projection: { _id: 0, id: 1 } }).toArray()).map(trip => String(trip.id))
+    : null;
+  const filter = paymentOrderFilter(options, now);
+  if (tripIds) filter.tripId = { $in: tripIds.length ? tripIds : ['__no_matching_trip__'] };
+  return db.collection<PaymentOrder>('paymentOrders').countDocuments(filter);
 }
 
 export type PaymentFilter = { q?: string; tripId?: string; state?: string };

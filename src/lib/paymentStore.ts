@@ -25,6 +25,7 @@ export type PaymentOrder = {
   verificationReceivers?: PaymentReceiver[];
   verifyToken?: string; verifyUntil?: number; nextAttemptAt?: number; attempts?: number;
   autoCancelledAt?: number; autoCancelReason?: string;
+  legacyPayment?: boolean;
   appliedReceipts?: string[]; bookingClaim?: BookingClaim; reviewRequired?: boolean; bookingError?: string;
   lastVerification?: { code: string; message: string; checkedAt: number; stage: string; providerReference?: string };
 };
@@ -32,6 +33,7 @@ type CapacityHold = { orderId: string; userId: string; expiresAt: number; paid: 
 type Capacity = { _id: string; revision: number; holds: CapacityHold[] };
 type VerifiedReceipt = {
   transactionKey: string; transRef: string; paidAt: number; providerReference: string;
+  slipKey?: string; slipContentType?: string;
   /** Details recorded with the payment for the admin history and reports. */
   payerName?: string; payerBank?: string; registrantName?: string; tripName?: string; seatLabel?: string;
 };
@@ -249,7 +251,7 @@ export async function recoverPaymentOrder(userId: string, id: string) {
 /** Automatically releases seats for deposit orders that missed the 7-day balance deadline. */
 export async function expireOverdueDepositBookings(now = Date.now()) {
   const db = await paymentDb();
-  const candidates = await db.collection<PaymentOrder>('paymentOrders').find({ status: 'deposit_paid', balanceDueAt: { $lte: now }, autoCancelledAt: { $exists: false } }).toArray();
+  const candidates = await db.collection<PaymentOrder>('paymentOrders').find({ status: 'deposit_paid', legacyPayment: { $ne: true }, balanceDueAt: { $lte: now }, autoCancelledAt: { $exists: false } }).toArray();
   for (const candidate of candidates) {
     if (candidate.paidSatang >= candidate.totalSatang) continue;
     const order = await db.collection<PaymentOrder>('paymentOrders').findOneAndUpdate(

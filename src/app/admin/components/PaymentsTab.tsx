@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ChevronDown, ChevronLeft, ChevronRight, Download, Edit2, RefreshCw, Search, Wallet, X } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ChevronDown, ChevronLeft, ChevronRight, Download, Edit2, Plus, RefreshCw, Search, Upload, Wallet, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import type { AdminPaymentRow } from '@/lib/adminPayments';
@@ -11,6 +11,8 @@ const money = (satang: number) => `฿${(satang / 100).toLocaleString('th-TH', {
 const when = (ms?: number) => (ms ? new Date(ms).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', dateStyle: 'medium', timeStyle: 'short' }) : '-');
 
 const STATES = [
+  { id: 'bookings', label: 'รายการจองที่นั่ง' },
+  { id: 'received', label: 'มีการชำระเงิน' },
   { id: 'active', label: 'ทั้งหมด (ไม่รวมที่หมดเวลา)' },
   { id: 'all', label: 'ทั้งหมด' },
   { id: 'partial', label: 'ชำระบางส่วน' },
@@ -27,9 +29,27 @@ const STATE_STYLE: Record<string, string> = {
   lapsed: 'bg-slate-100 text-slate-500 border-slate-200',
 };
 
-async function fetchPayments(page: number, q: string, tripId: string, state: string): Promise<{ rows?: AdminPaymentRow[]; total?: number; canEdit?: boolean; error?: string }> {
+async function fetchPayments(page: number, q: string, tripId: string, state: string, tripStatus: string): Promise<{ rows?: AdminPaymentRow[]; total?: number; canEdit?: boolean; error?: string }> {
   try {
-    const params = new URLSearchParams({ page: String(page), q, tripId, state });
+    if (state === 'bookings' && tripStatus === 'active') {
+      const params = new URLSearchParams({ q, tripId, page: String(page) });
+      const res = await fetch(`/api/admin/payments/legacy?${params.toString()}`, { cache: 'no-store' });
+      const data = await res.json();
+      if (!data.success) return { error: data.error || 'โหลดรายการจองไม่สำเร็จ' };
+      const rows: AdminPaymentRow[] = (data.rows || []).map((candidate: { bookingId: string; tripId: string; tripName: string; departureDate: string; fullName: string; nickname: string; phone: string; lineUserName: string; seatLabel: string; vanNumber: number | null; totalSatang: number; manualPaidSatang: number; systemPaidSatang: number; balanceSatang: number; paymentExempt?: boolean }) => {
+        const paidSatang = candidate.manualPaidSatang + candidate.systemPaidSatang;
+        const stateValue = candidate.paymentExempt ? 'paid' : candidate.balanceSatang === 0 ? 'paid' : paidSatang > 0 ? 'partial' : 'unpaid';
+        return {
+          id: `booking:${candidate.bookingId}`, tripId: candidate.tripId, tripName: candidate.tripName, departureAt: Date.parse(`${candidate.departureDate}T00:00:00+07:00`), balanceDueAt: 0, createdAt: Date.now(),
+          plan: 'full', state: stateValue as AdminPaymentRow['state'], stateLabel: candidate.paymentExempt ? 'ยกเว้นค่าใช้จ่าย' : stateValue === 'paid' ? 'ชำระครบถ้วน' : stateValue === 'partial' ? 'ชำระบางส่วน' : 'รอชำระ',
+          totalSatang: candidate.totalSatang, paidSatang, balanceSatang: candidate.balanceSatang, openInvoiceSatang: 0, creditUsedSatang: 0, cashPaidSatang: paidSatang,
+          userId: '', userName: candidate.lineUserName, booking: { id: candidate.bookingId, fullName: candidate.fullName, nickname: candidate.nickname, phone: candidate.phone, seatLabel: candidate.seatLabel, vanNumber: candidate.vanNumber, status: 'approved' },
+          receipts: [], adjustments: [], seatHistory: [], lastVerification: null,
+        };
+      });
+      return { rows, total: data.total, canEdit: true };
+    }
+    const params = new URLSearchParams({ page: String(page), q, tripId, state, tripStatus });
     const res = await fetch(`/api/admin/payments?${params.toString()}`, { cache: 'no-store' });
     const data = await res.json();
     if (!data.success) return { error: data.error || 'โหลดข้อมูลไม่สำเร็จ' };
@@ -43,7 +63,10 @@ export default function PaymentsTab({ trips }: { trips: Trip[] }) {
   const [error, setError] = useState('');
   const [q, setQ] = useState('');
   const [tripId, setTripId] = useState('all');
-  const [state, setState] = useState('active');
+  const [state, setState] = useState('bookings');
+  const [tripStatus, setTripStatus] = useState<'active' | 'completed' | 'all'>('active');
+  const [legacyOpen, setLegacyOpen] = useState(false);
+  const [legacyBookingId, setLegacyBookingId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [editing, setEditing] = useState<AdminPaymentRow | null>(null);
   const [canEdit, setCanEdit] = useState(false);
@@ -59,13 +82,13 @@ export default function PaymentsTab({ trips }: { trips: Trip[] }) {
   }, []);
   const load = useCallback(async () => {
     setLoading(true);
-    apply(await fetchPayments(page, q, tripId, state));
-  }, [apply, page, q, tripId, state]);
+    apply(await fetchPayments(page, q, tripId, state, tripStatus));
+  }, [apply, page, q, tripId, state, tripStatus]);
   useEffect(() => {
     let cancelled = false;
-    void fetchPayments(page, q, tripId, state).then(result => { if (!cancelled) apply(result); });
+    void fetchPayments(page, q, tripId, state, tripStatus).then(result => { if (!cancelled) apply(result); });
     return () => { cancelled = true; };
-  }, [apply, page, q, tripId, state]);
+  }, [apply, page, q, tripId, state, tripStatus]);
 
   // Same rules as the server-side filter, so the export matches what is shown.
   const filtered = rows;
@@ -88,7 +111,7 @@ export default function PaymentsTab({ trips }: { trips: Trip[] }) {
     return known;
   }, [rows, trips]);
 
-  const exportHref = `/api/admin/payments/export?${new URLSearchParams({ q, tripId, state }).toString()}`;
+  const exportHref = `/api/admin/payments/export?${new URLSearchParams({ q, tripId, state, tripStatus }).toString()}`;
 
   return (
     <div className="space-y-4">
@@ -111,6 +134,11 @@ export default function PaymentsTab({ trips }: { trips: Trip[] }) {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <Input value={q} onChange={e => { setQ(e.target.value); setPage(1); }} placeholder="ค้นหาชื่อ, ชื่อผู้โอน, เบอร์, ที่นั่ง, เลขอ้างอิงการโอน, เลขรายการ" className="h-10 pl-9 text-sm" />
         </div>
+        <select value={tripStatus} onChange={e => { const value = e.target.value as 'active' | 'completed' | 'all'; setTripStatus(value); if (value !== 'active' && state === 'bookings') setState('received'); setPage(1); }} className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm">
+          <option value="active">ทริปที่เปิดอยู่</option>
+          <option value="completed">ประวัติทริปที่ปิดแล้ว</option>
+          <option value="all">ทุกทริป</option>
+        </select>
         <select value={tripId} onChange={e => { setTripId(e.target.value); setPage(1); }} className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm">
           <option value="all">ทุกทริป</option>
           {tripOptions.map(trip => <option key={trip.id} value={trip.id}>{trip.name}</option>)}
@@ -122,6 +150,7 @@ export default function PaymentsTab({ trips }: { trips: Trip[] }) {
           <button type="button" onClick={() => void load()} className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-sm font-bold text-slate-600 hover:bg-slate-50">
             <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} /> โหลดใหม่
           </button>
+          {canEdit && <button type="button" onClick={() => setLegacyOpen(true)} className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-violet-600 px-3 text-sm font-bold text-white hover:bg-violet-700"><Plus className="h-4 w-4" />บันทึกยอดเดิม</button>}
           <a href={exportHref} className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 text-sm font-bold text-white hover:bg-emerald-700">
             <Download className="h-4 w-4" /> ส่งออก Excel
           </a>
@@ -176,8 +205,15 @@ export default function PaymentsTab({ trips }: { trips: Trip[] }) {
                           {row.balanceSatang > 0 && row.paidSatang > 0 && <p className="mt-1 text-[11px] text-slate-400">ครบกำหนด {when(row.balanceDueAt)}</p>}
                         </td>
                         <td className="px-3 py-3 text-right" onClick={e => e.stopPropagation()}>
-                          {canEdit && ['partial', 'paid'].includes(row.state) && (
-                            <button type="button" onClick={() => setEditing(row)} className="inline-flex items-center gap-1 rounded-lg border border-violet-200 px-2.5 py-1.5 text-xs font-bold text-violet-700 hover:bg-violet-50">
+                          {canEdit && (
+                            <button type="button" onClick={() => {
+                              if (row.id.startsWith('booking:')) {
+                                setLegacyBookingId(row.id.slice('booking:'.length));
+                                setLegacyOpen(true);
+                              } else {
+                                setEditing(row);
+                              }
+                            }} className="inline-flex items-center gap-1 rounded-lg border border-violet-200 px-2.5 py-1.5 text-xs font-bold text-violet-700 hover:bg-violet-50">
                               <Edit2 className="h-3.5 w-3.5" /> แก้ยอด
                             </button>
                           )}
@@ -195,6 +231,7 @@ export default function PaymentsTab({ trips }: { trips: Trip[] }) {
       </div>
 
       {editing && <AdjustDialog row={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); void load(); }} />}
+      {legacyOpen && <LegacyPaymentDialog trips={trips} initialBookingId={legacyBookingId} onClose={() => { setLegacyOpen(false); setLegacyBookingId(null); }} onSaved={() => { setLegacyOpen(false); setLegacyBookingId(null); void load(); }} />}
     </div>
   );
 }
@@ -252,6 +289,7 @@ function PaymentDetail({ row }: { row: AdminPaymentRow }) {
 function AdjustDialog({ row, onClose, onSaved }: { row: AdminPaymentRow; onClose: () => void; onSaved: () => void }) {
   const [total, setTotal] = useState(String(row.totalSatang / 100));
   const [note, setNote] = useState('');
+  const [staffExempt, setStaffExempt] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const newSatang = Math.round(Number(total) * 100);
@@ -268,6 +306,19 @@ function AdjustDialog({ row, onClose, onSaved }: { row: AdminPaymentRow; onClose
     finally { setBusy(false); }
   };
 
+  const toggleStaff = async (checked: boolean) => {
+    if (!row.booking?.id) return;
+    setBusy(true); setError('');
+    try {
+      const res = await fetch(`/api/admin/payments/legacy/booking/${encodeURIComponent(row.booking.id)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paymentExempt: checked }) });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || 'บันทึกสถานะ Staff ไม่สำเร็จ');
+      setStaffExempt(checked);
+      setError('บันทึกสถานะ Staff แล้ว');
+    } catch (e) { setError(e instanceof Error ? e.message : 'บันทึกสถานะ Staff ไม่สำเร็จ'); }
+    finally { setBusy(false); }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" onClick={onClose}>
       <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl" onClick={e => e.stopPropagation()}>
@@ -279,6 +330,7 @@ function AdjustDialog({ row, onClose, onSaved }: { row: AdminPaymentRow; onClose
           <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="h-5 w-5" /></button>
         </div>
         <div className="space-y-3 text-sm">
+          {row.booking?.id && <label className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-bold text-amber-800"><input type="checkbox" checked={staffExempt} disabled={busy} onChange={e => void toggleStaff(e.target.checked)} />กำหนดรายการนี้เป็น Staff / ยกเว้นค่าใช้จ่าย</label>}
           <p className="rounded-xl bg-slate-50 p-3 text-xs text-slate-600">ยอดเดิม {money(row.totalSatang)} · ชำระแล้ว {money(row.paidSatang)}</p>
           <label className="block">
             <span className="text-xs font-bold text-slate-700">ยอดที่ต้องชำระใหม่ (บาท)</span>
@@ -299,4 +351,128 @@ function AdjustDialog({ row, onClose, onSaved }: { row: AdminPaymentRow; onClose
       </div>
     </div>
   );
+}
+
+type LegacyCandidate = {
+  bookingId: string; tripId: string; tripName: string; departureDate: string; fullName: string; nickname: string; phone: string;
+  lineUserName: string; seatLabel: string; seatType: string; vanNumber: number | null; totalSatang: number; manualPaidSatang: number; systemPaidSatang: number; balanceSatang: number; paymentExempt?: boolean;
+  payments: { id: string; amountSatang: number; paidAt: number; method: string; note?: string; receiptKey?: string }[];
+};
+
+function LegacyPaymentDialog({ trips, initialBookingId, onClose, onSaved }: { trips: Trip[]; initialBookingId?: string | null; onClose: () => void; onSaved: () => void }) {
+  const [q, setQ] = useState('');
+  const [tripId, setTripId] = useState('all');
+  const [candidates, setCandidates] = useState<LegacyCandidate[]>([]);
+  const [selected, setSelected] = useState<LegacyCandidate | null>(null);
+  const initialSelectionDone = useRef(false);
+  const [amount, setAmount] = useState('');
+  const [paidAt, setPaidAt] = useState(new Date().toISOString().slice(0, 10));
+  const [method, setMethod] = useState('bank_transfer');
+  const [note, setNote] = useState('');
+  const [slip, setSlip] = useState<File | null>(null);
+  const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
+  const [savingExempt, setSavingExempt] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true); setError('');
+    try {
+      const params = new URLSearchParams({ q, tripId, page: '1' });
+      const response = await fetch(`/api/admin/payments/legacy?${params.toString()}`, { cache: 'no-store' });
+      const data = await response.json();
+      if (!data.success) throw new Error(data.error || 'โหลดรายการไม่สำเร็จ');
+      setCandidates(data.rows || []);
+    } catch (e) { setError(e instanceof Error ? e.message : 'โหลดรายการไม่สำเร็จ'); }
+    finally { setLoading(false); }
+  }, [q, tripId]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void load(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
+
+  useEffect(() => {
+    if (!initialBookingId || initialSelectionDone.current || selected || !candidates.length) return;
+    const match = candidates.find(candidate => candidate.bookingId === initialBookingId);
+    if (!match) return;
+    const timer = window.setTimeout(() => {
+      initialSelectionDone.current = true;
+      setSelected(match);
+      setAmount(match.balanceSatang > 0 ? String(match.balanceSatang / 100) : '');
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [candidates, initialBookingId, selected]);
+
+  const save = async () => {
+    if (!selected) return;
+    setSaving(true); setError('');
+    try {
+      let response: Response;
+      if (editingPaymentId) {
+        response = await fetch(`/api/admin/payments/legacy/${encodeURIComponent(editingPaymentId)}`, {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amountBaht: Number(amount), paidAt, method, note }),
+        });
+      } else {
+        const form = new FormData();
+        form.set('bookingId', selected.bookingId); form.set('amountBaht', amount); form.set('paidAt', paidAt); form.set('method', method); form.set('note', note);
+        if (slip) form.set('receipt', slip);
+        response = await fetch('/api/admin/payments/legacy', { method: 'POST', body: form });
+      }
+      const data = await response.json();
+      if (!data.success) throw new Error(data.error || 'บันทึกไม่สำเร็จ');
+      onSaved();
+    } catch (e) { setError(e instanceof Error ? e.message : 'บันทึกไม่สำเร็จ'); }
+    finally { setSaving(false); }
+  };
+
+  const editPayment = (payment: LegacyCandidate['payments'][number]) => {
+    setEditingPaymentId(payment.id);
+    setAmount(String(payment.amountSatang / 100));
+    setPaidAt(new Date(payment.paidAt).toISOString().slice(0, 10));
+    setMethod(payment.method);
+    setNote(payment.note || '');
+    setSlip(null);
+    setError('');
+  };
+
+  const deletePayment = async (paymentId: string) => {
+    if (!window.confirm('ยืนยันลบรายการชำระเงินนี้หรือไม่?')) return;
+    setSaving(true); setError('');
+    try {
+      const response = await fetch(`/api/admin/payments/legacy/${encodeURIComponent(paymentId)}`, { method: 'DELETE' });
+      const data = await response.json();
+      if (!data.success) throw new Error(data.error || 'ลบรายการไม่สำเร็จ');
+      onSaved();
+    } catch (e) { setError(e instanceof Error ? e.message : 'ลบรายการไม่สำเร็จ'); }
+    finally { setSaving(false); }
+  };
+
+  const setStaffExempt = async (exempt: boolean) => {
+    if (!selected) return;
+    setSavingExempt(true); setError('');
+    try {
+      const response = await fetch(`/api/admin/payments/legacy/booking/${encodeURIComponent(selected.bookingId)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paymentExempt: exempt }) });
+      const data = await response.json();
+      if (!data.success) throw new Error(data.error || 'บันทึกประเภทที่นั่งไม่สำเร็จ');
+      setSelected(previous => previous ? { ...previous, paymentExempt: exempt, totalSatang: exempt ? 0 : previous.totalSatang, balanceSatang: exempt ? 0 : previous.balanceSatang } : previous);
+      setError('บันทึกสถานะ Staff แล้ว');
+    } catch (e) { setError(e instanceof Error ? e.message : 'บันทึกประเภทที่นั่งไม่สำเร็จ'); }
+    finally { setSavingExempt(false); }
+  };
+
+  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" onClick={onClose}>
+    <div className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-y-auto rounded-2xl bg-white p-5 shadow-xl" onClick={e => e.stopPropagation()}>
+      <div className="mb-4 flex items-start justify-between"><div><h3 className="font-black text-slate-900">บันทึกยอดที่ชำระก่อนมีระบบ</h3><p className="text-xs text-slate-500">เลือก Booking เดิม แล้วเพิ่มรายการชำระได้หลายครั้ง</p></div><button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="h-5 w-5" /></button></div>
+      {!selected ? <>
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row"><Input value={q} onChange={e => setQ(e.target.value)} placeholder="ค้นหาชื่อ, LINE Name, เบอร์โทร" className="h-10 flex-1" /><select value={tripId} onChange={e => setTripId(e.target.value)} className="h-10 rounded-lg border border-slate-200 px-3 text-sm"><option value="all">ทุกทริปที่เปิดอยู่</option>{trips.filter(trip => trip.status === 'active').map(trip => <option key={trip.id} value={trip.id}>{trip.name}</option>)}</select><button type="button" onClick={() => void load()} className="rounded-lg border px-3 text-sm font-bold">ค้นหา</button></div>
+        {error && <p className="mb-3 rounded-lg bg-rose-50 p-3 text-xs font-bold text-rose-700">{error}</p>}
+        <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-slate-100"><table className="w-full min-w-[760px] text-sm"><thead className="sticky top-0 bg-slate-50 text-left text-xs font-bold text-slate-500"><tr><th className="px-3 py-2">ลูกค้า / LINE</th><th className="px-3 py-2">ทริป / ที่นั่ง</th><th className="px-3 py-2 text-right">จ่ายแล้ว</th><th className="px-3 py-2 text-right">คงเหลือ</th><th /></tr></thead><tbody className="divide-y divide-slate-100">{loading ? <tr><td colSpan={5} className="p-8 text-center text-slate-400">กำลังโหลด...</td></tr> : candidates.map(candidate => { const hasHistory = candidate.payments.length > 0; const disabled = candidate.paymentExempt || (!candidate.balanceSatang && !hasHistory); return <tr key={candidate.bookingId}><td className="px-3 py-3"><p className="font-bold">{candidate.fullName || '-'}</p><p className="text-xs text-slate-500">{candidate.lineUserName || '-'} · {candidate.phone || '-'}</p></td><td className="px-3 py-3"><p className="font-semibold">{candidate.tripName}</p><p className="text-xs text-slate-500">รถ {candidate.vanNumber ?? '-'} · {candidate.seatLabel || '-'}</p></td><td className="px-3 py-3 text-right font-bold text-emerald-600">{candidate.paymentExempt ? 'ยกเว้น' : money(candidate.manualPaidSatang + candidate.systemPaidSatang)}</td><td className="px-3 py-3 text-right font-bold text-amber-600">{candidate.paymentExempt ? money(0) : money(candidate.balanceSatang)}</td><td className="px-3 py-3 text-right"><button type="button" disabled={disabled} onClick={() => { setSelected(candidate); setAmount(candidate.balanceSatang > 0 ? String(candidate.balanceSatang / 100) : ''); }} className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-40">{candidate.paymentExempt ? 'ยกเว้นค่าใช้จ่าย' : hasHistory ? 'แก้ไข' : 'เพิ่มยอด'}</button></td></tr>; })}</tbody></table></div>
+      </> : <div className="space-y-4"><button type="button" onClick={() => setSelected(null)} className="text-xs font-bold text-violet-600">← เลือกลูกค้าคนอื่น</button><div className="rounded-xl bg-slate-50 p-4 text-sm"><p className="font-black">{selected.fullName} <span className="font-normal text-slate-500">({selected.lineUserName || 'ไม่มี LINE Name'})</span></p><p className="mt-1 text-xs text-slate-500">{selected.tripName} · รถ {selected.vanNumber ?? '-'} · ที่นั่ง {selected.seatLabel || '-'}</p><p className="mt-2 text-xs">ราคาทริป {money(selected.totalSatang)} · จ่ายรวมแล้ว {money(selected.totalSatang - selected.balanceSatang)} · คงเหลือ {money(selected.balanceSatang)}</p></div><div className="grid gap-3 sm:grid-cols-2"><label className="text-xs font-bold">ยอดที่ชำระครั้งนี้<Input type="number" min="0.01" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} className="mt-1 h-10" /></label><label className="text-xs font-bold">วันที่ชำระ<Input type="date" value={paidAt} onChange={e => setPaidAt(e.target.value)} className="mt-1 h-10" /></label><label className="text-xs font-bold">วิธีชำระ<select value={method} onChange={e => setMethod(e.target.value)} className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3"><option value="bank_transfer">โอนธนาคาร</option><option value="cash">เงินสด</option><option value="other">อื่น ๆ</option></select></label><label className="text-xs font-bold">แนบสลิป (ถ้ามี)<span className="mt-1 flex h-10 items-center gap-2 rounded-lg border border-slate-200 px-3 font-normal"><Upload className="h-4 w-4" /><input type="file" accept="image/jpeg,image/png,image/webp" onChange={e => setSlip(e.target.files?.[0] || null)} className="min-w-0 text-xs" /></span></label></div><label className="block text-xs font-bold">หมายเหตุ<Input value={note} onChange={e => setNote(e.target.value)} placeholder="เช่น โอนก่อนเริ่มใช้ระบบ" className="mt-1 h-10" /></label>{error && <p className="rounded-lg bg-rose-50 p-3 text-xs font-bold text-rose-700">{error}</p>}<button type="button" disabled={saving || !amount || Number(amount) <= 0 || Number(amount) * 100 > selected.balanceSatang} onClick={() => void save()} className="h-10 w-full rounded-xl bg-violet-600 text-sm font-bold text-white disabled:opacity-40">{saving ? 'กำลังบันทึก...' : 'บันทึกยอดชำระเดิม'}</button></div>}
+      {selected && selected.payments.length > 0 && <div className="mt-3 space-y-2 rounded-xl border border-slate-100 p-3"><p className="text-xs font-black text-slate-700">รายการชำระเดิม</p>{selected.payments.map(payment => <div key={payment.id} className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs"><div><p className="font-bold">{money(payment.amountSatang)} · {new Date(payment.paidAt).toLocaleDateString('th-TH')}</p><p className="text-slate-500">{payment.note || payment.method}</p></div><div className="flex gap-1"><button type="button" onClick={() => editPayment(payment)} className="rounded-md border px-2 py-1 font-bold"><Edit2 className="mr-1 inline h-3 w-3" />แก้ไข</button><button type="button" onClick={() => void deletePayment(payment.id)} className="rounded-md border border-rose-200 px-2 py-1 font-bold text-rose-600">ลบ</button></div></div>)}</div>}
+      {selected && <label className="mt-3 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-bold text-amber-800"><input type="checkbox" disabled={savingExempt} checked={selected.paymentExempt === true} onChange={e => void setStaffExempt(e.target.checked)} />กำหนดที่นั่งนี้เป็น Staff / ยกเว้นค่าใช้จ่าย</label>}
+    </div>
+  </div>;
 }

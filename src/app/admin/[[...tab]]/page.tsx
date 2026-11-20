@@ -46,30 +46,35 @@ import type { Trip, Van, Booking } from '../components/types';
 
 // ── Nav structure ─────────────────────────────────────────────────────────────
  const NAV = [
-  { id: 'draft-trips', label: 'ทริปรอใส่ราคา', icon: FileText },
   { id: 'dashboard', label: 'แดชบอร์ด', icon: LayoutDashboard },
-  { id: 'calendar',  label: 'ปฏิทินการเดินทาง', icon: Calendar },
-  { id: 'trips',     label: 'จัดการทริป', icon: Compass },
-  { id: 'completed-trips', label: 'ทริปที่จบไปแล้ว', icon: Check },
-  { id: 'vans',      label: 'จัดการรถ', icon: Bus },
+  { id: 'calendar', label: 'ปฏิทินการเดินทาง', icon: Calendar },
   {
-    id: 'bookings', label: 'การจองและลูกทริป', icon: Users,
+    id: 'trips', label: 'จัดการทริป', icon: Compass,
     children: [
-      { id: 'bookings',  label: 'รายการจองทั้งหมด' },
-      { id: 'pending',   label: 'รออนุมัติเปลี่ยนที่นั่ง' },
+      { id: 'draft-trips', label: 'สร้างทริปใหม่ / ทริปรอใส่ราคา' },
+      { id: 'trips', label: 'ทริปที่เปิดอยู่' },
+      { id: 'completed-trips', label: 'ทริปที่ปิดไปแล้ว' },
     ]
   },
-  { id: 'payments', label: 'การชำระเงิน', icon: Wallet },
-  { id: 'accounting', label: 'บัญชีรายรับ–รายจ่าย', icon: Calculator },
-  { id: 'users',   label: 'จัดการลูกทริป', icon: UserCheck },
-  { id: 'checkin', label: 'Check-in QR', icon: QrCode },
-  { id: 'staff',   label: 'ทีมงาน / ผู้จัด', icon: Lock },
-  { id: 'insurance', label: 'ประกันการเดินทาง', icon: Shield },
+  { id: 'vans', label: 'จัดการรถ', icon: Bus },
+  {
+    id: 'bookings', label: 'การจองและลูกค้าทริป', icon: Users,
+    children: [
+      { id: 'bookings', label: 'รายการจองทั้งหมด' },
+      { id: 'pending', label: 'รออนุมัติเปลี่ยนที่นั่ง' },
+    ]
+  },
+  { id: 'users', label: 'จัดการลูกทริป', icon: UserCheck },
+  { id: 'checkin', label: 'Check-in', icon: QrCode },
   { id: 'reviews', label: 'รีวิวและความคิดเห็น', icon: FileText },
   { id: 'leaderboard', label: 'อันดับคนจองทริป', icon: TrendingUp },
-  { id: 'settings',  label: 'ตั้งค่าเว็บไซต์', icon: Settings },
-  { id: 'audit',     label: 'ประวัติการใช้งาน', icon: History },
-  { id: 'profile',   label: 'โปรไฟล์ของฉัน', icon: User },
+  { id: 'insurance', label: 'ประกันและการเดินทาง', icon: Shield },
+  { id: 'payments', label: 'การชำระเงิน', icon: Wallet },
+  { id: 'accounting', label: 'บัญชีรายรับ–รายจ่าย', icon: Calculator },
+  { id: 'staff', label: 'ทีมงาน / ผู้จัด', icon: Lock },
+  { id: 'settings', label: 'ตั้งค่าเว็บไซต์', icon: Settings },
+  { id: 'audit', label: 'ประวัติการใช้งาน', icon: History },
+  { id: 'profile', label: 'โปรไฟล์ของฉัน', icon: User },
 ] as const;
 
 type TabId = 'dashboard' | 'calendar' | 'bookings' | 'payments' | 'accounting' | 'audit' | 'trips' | 'draft-trips' | 'completed-trips' | 'vans' | 'checkin' | 'pending' | 'users' | 'staff' | 'insurance' | 'reviews' | 'profile' | 'settings' | 'leaderboard';
@@ -407,7 +412,7 @@ export default function AdminPage() {
           const isSuperAdmin = (session?.user as any)?.username === 'admin';
           const perms = (session?.user as any)?.permissions || [];
           if (item.id === 'audit' && !isSuperAdmin) return null; // audit log: main admin only
-           if (isAdmin && !isSuperAdmin && item.id !== 'audit' && !hasPermission(perms, item.id, 'view') && !(item.id === 'draft-trips' && perms.includes('trips')) && !(item.id === 'completed-trips' && perms.includes('trips')) && !(item.id === 'calendar' && (perms.includes('trips') || perms.includes('dashboard')))) return null;
+           if (isAdmin && !isSuperAdmin && item.id !== 'audit' && !hasPermission(perms, item.id, 'view') && !(item.id === 'calendar' && (perms.includes('trips') || perms.includes('dashboard')))) return null;
 
           const Icon    = item.icon;
           const hasChildren = 'children' in item && item.children;
