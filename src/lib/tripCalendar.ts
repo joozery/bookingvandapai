@@ -10,6 +10,7 @@ export interface CalendarTrip {
   departureTime?: string;
   guideName?: string | null;
   tripPeriod?: string;
+  image?: string;
 }
 const DAY = 86_400_000;
 

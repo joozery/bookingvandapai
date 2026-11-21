@@ -74,8 +74,7 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
   }, [trips]);
 
   const publicTrips = trips.filter(t => t.status === 'active' && Number(t.cost) > 0);
-  const destinations = publicTrips.length > 0
-    ? publicTrips.map(t => {
+  const destinations = trips.filter(t => (t.status === 'active' || t.status === 'completed') && Number(t.cost) > 0).map(t => {
         const parts = (t.tripPeriod || '').split('||');
         const nights = t.durationDays - 1;
         const durationText = parts.length > 1 ? parts[0] : (nights > 0 ? `${t.durationDays} วัน ${nights} คืน` : 'ไปเช้าเย็นกลับ (1 วัน)');
@@ -107,8 +106,7 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
           img: t.image || "/logo/scenic_van_trip.webp",
 
         };
-      })
-    : [];
+      });
 
   return (
     <div className="mobile-performance-root flex-1 w-full bg-canvas text-slate-800 flex flex-col font-sans" style={{
