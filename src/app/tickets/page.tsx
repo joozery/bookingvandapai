@@ -34,6 +34,7 @@ interface Trip {
   name: string;
   departureDate: string;
   durationDays: number;
+  status?: 'draft' | 'active' | 'completed';
   cost: number;
   pickupPoint: string;
   departureTime: string;
@@ -224,7 +225,7 @@ export default function TicketsPage() {
       if (!dep) { upcoming.push(item); return; }
       const endDate = new Date(dep);
       endDate.setDate(endDate.getDate() + (item.trip.durationDays || 1));
-      if (endDate < today) past.push(item);
+      if (item.trip.status === 'completed' || endDate < today) past.push(item);
       else upcoming.push(item);
     });
     // For past trips, sort descending so recent past trips appear first

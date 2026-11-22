@@ -7,7 +7,7 @@ import { isTripReviewOpen } from '@/lib/tripReview';
 import { formatThaiDateTime } from '@/lib/dateFormat';
 
 type PublicReviews = {
-  trip: { id: string; name: string; departureDate: string; durationDays: number };
+  trip: { id: string; name: string; departureDate: string; durationDays: number; status?: string | null };
   count: number;
   average: number | null;
   page: number;

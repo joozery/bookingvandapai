@@ -31,8 +31,8 @@ const STATE_STYLE: Record<string, string> = {
 
 async function fetchPayments(page: number, q: string, tripId: string, state: string, tripStatus: string): Promise<{ rows?: AdminPaymentRow[]; total?: number; canEdit?: boolean; error?: string }> {
   try {
-    if (state === 'bookings' && tripStatus === 'active') {
-      const params = new URLSearchParams({ q, tripId, page: String(page) });
+    if (state === 'bookings') {
+      const params = new URLSearchParams({ q, tripId, tripStatus, page: String(page) });
       const res = await fetch(`/api/admin/payments/legacy?${params.toString()}`, { cache: 'no-store' });
       const data = await res.json();
       if (!data.success) return { error: data.error || 'โหลดรายการจองไม่สำเร็จ' };
@@ -57,6 +57,14 @@ async function fetchPayments(page: number, q: string, tripId: string, state: str
   } catch { return { error: 'โหลดข้อมูลไม่สำเร็จ' }; }
 }
 
+async function fetchPaymentSummary(q: string, tripId: string, state: string, tripStatus: string) {
+  const params = new URLSearchParams({ q, tripId, state, tripStatus });
+  const response = await fetch(`/api/admin/payments/summary?${params.toString()}`, { cache: 'no-store' });
+  const data = await response.json();
+  if (!data.success) throw new Error(data.error || 'สรุปยอดไม่สำเร็จ');
+  return data.totals as { total: number; paid: number; balance: number };
+}
+
 export default function PaymentsTab({ trips }: { trips: Trip[] }) {
   const [rows, setRows] = useState<AdminPaymentRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,6 +79,7 @@ export default function PaymentsTab({ trips }: { trips: Trip[] }) {
   const [editing, setEditing] = useState<AdminPaymentRow | null>(null);
   const [canEdit, setCanEdit] = useState(false);
   const [remoteTotal, setRemoteTotal] = useState(0);
+  const [summary, setSummary] = useState<{ total: number; paid: number; balance: number } | null>(null);
   const [page, setPage] = useState(() => typeof window === 'undefined' ? 1 : Math.max(1, Number(new URLSearchParams(window.location.search).get('page')) || 1));
 
   const apply = useCallback((result: { rows?: AdminPaymentRow[]; total?: number; canEdit?: boolean; error?: string }) => {
@@ -90,12 +99,22 @@ export default function PaymentsTab({ trips }: { trips: Trip[] }) {
     return () => { cancelled = true; };
   }, [apply, page, q, tripId, state, tripStatus]);
 
+  useEffect(() => {
+    let cancelled = false;
+    setSummary(null);
+    void fetchPaymentSummary(q, tripId, state, tripStatus)
+      .then(result => { if (!cancelled) setSummary(result); })
+      .catch(() => { if (!cancelled) setSummary(null); });
+    return () => { cancelled = true; };
+  }, [q, tripId, state, tripStatus]);
+
   // Same rules as the server-side filter, so the export matches what is shown.
   const filtered = rows;
 
   const totals = useMemo(() => filtered.reduce((sum, row) => ({
     total: sum.total + row.totalSatang, paid: sum.paid + row.paidSatang, balance: sum.balance + row.balanceSatang,
   }), { total: 0, paid: 0, balance: 0 }), [filtered]);
+  const displayedTotals = summary || totals;
   const pages = Math.max(1, Math.ceil(remoteTotal / 20));
   const currentPage = Math.min(page, pages);
   const visibleRows = filtered;
@@ -106,10 +125,16 @@ export default function PaymentsTab({ trips }: { trips: Trip[] }) {
   }, [currentPage]);
 
   const tripOptions = useMemo(() => {
-    const known = trips.map(trip => ({ id: trip.id, name: trip.name }));
-    for (const row of rows) if (!known.some(t => t.id === row.tripId)) known.push({ id: row.tripId, name: row.tripName });
+    const known = trips
+      .filter(trip => tripStatus === 'all' || trip.status === tripStatus)
+      .map(trip => ({ id: trip.id, name: trip.name }));
+    // The page already loads the complete trip list. Do not add stale rows
+    // back into a status-specific dropdown while a new filter is loading.
+    if (tripStatus === 'all') {
+      for (const row of rows) if (!known.some(t => t.id === row.tripId)) known.push({ id: row.tripId, name: row.tripName });
+    }
     return known;
-  }, [rows, trips]);
+  }, [rows, trips, tripStatus]);
 
   const exportHref = `/api/admin/payments/export?${new URLSearchParams({ q, tripId, state, tripStatus }).toString()}`;
 
@@ -117,9 +142,9 @@ export default function PaymentsTab({ trips }: { trips: Trip[] }) {
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {[
-          { label: 'ยอดที่ต้องชำระรวม', value: totals.total, tone: 'text-slate-900' },
-          { label: 'ชำระแล้ว', value: totals.paid, tone: 'text-emerald-600' },
-          { label: 'ยอดคงเหลือ', value: totals.balance, tone: 'text-amber-600' },
+          { label: 'ยอดที่ต้องชำระรวม', value: displayedTotals.total, tone: 'text-slate-900' },
+          { label: 'ชำระแล้ว', value: displayedTotals.paid, tone: 'text-emerald-600' },
+          { label: 'ยอดคงเหลือ', value: displayedTotals.balance, tone: 'text-amber-600' },
         ].map(card => (
           <div key={card.label} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
             <p className="text-xs font-bold text-slate-500">{card.label}</p>
@@ -134,9 +159,9 @@ export default function PaymentsTab({ trips }: { trips: Trip[] }) {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <Input value={q} onChange={e => { setQ(e.target.value); setPage(1); }} placeholder="ค้นหาชื่อ, ชื่อผู้โอน, เบอร์, ที่นั่ง, เลขอ้างอิงการโอน, เลขรายการ" className="h-10 pl-9 text-sm" />
         </div>
-        <select value={tripStatus} onChange={e => { const value = e.target.value as 'active' | 'completed' | 'all'; setTripStatus(value); if (value !== 'active' && state === 'bookings') setState('received'); setPage(1); }} className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm">
+        <select value={tripStatus} onChange={e => { const value = e.target.value as 'active' | 'completed' | 'all'; setTripStatus(value); setTripId('all'); setPage(1); }} className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm">
           <option value="active">ทริปที่เปิดอยู่</option>
-          <option value="completed">ประวัติทริปที่ปิดแล้ว</option>
+          <option value="completed">ทริปที่ปิดไปแล้ว</option>
           <option value="all">ทุกทริป</option>
         </select>
         <select value={tripId} onChange={e => { setTripId(e.target.value); setPage(1); }} className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm">
@@ -169,6 +194,7 @@ export default function PaymentsTab({ trips }: { trips: Trip[] }) {
             <table className="w-full min-w-[900px] text-sm">
               <thead className="bg-slate-50 text-left text-xs font-bold text-slate-500">
                 <tr>
+                  <th className="w-14 px-3 py-3 text-center">ลำดับ</th>
                   <th className="w-8 px-3 py-3" />
                   <th className="px-3 py-3">ลูกทริป</th>
                   <th className="px-3 py-3">ทริป / ที่นั่ง</th>
@@ -180,11 +206,13 @@ export default function PaymentsTab({ trips }: { trips: Trip[] }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {visibleRows.map(row => {
+                {visibleRows.map((row, index) => {
                   const open = expanded === row.id;
+                  const rowNumber = (currentPage - 1) * 20 + index + 1;
                   return (
                     <React.Fragment key={row.id}>
                       <tr className={cn('cursor-pointer hover:bg-violet-50/40', open && 'bg-violet-50/40')} onClick={() => setExpanded(open ? null : row.id)}>
+                        <td className="px-3 py-3 text-center font-bold text-slate-400">{rowNumber}</td>
                         <td className="px-3 py-3 text-slate-400">{open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}</td>
                         <td className="px-3 py-3">
                           <p className="font-bold text-slate-800">{row.booking?.fullName || row.receipts.find(r => r.registrantName)?.registrantName || row.userName || '-'}</p>
@@ -219,7 +247,7 @@ export default function PaymentsTab({ trips }: { trips: Trip[] }) {
                           )}
                         </td>
                       </tr>
-                      {open && <tr><td colSpan={8} className="bg-slate-50/60 px-6 py-4"><PaymentDetail row={row} /></td></tr>}
+                      {open && <tr><td colSpan={9} className="bg-slate-50/60 px-6 py-4"><PaymentDetail row={row} /></td></tr>}
                     </React.Fragment>
                   );
                 })}

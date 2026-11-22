@@ -18,8 +18,8 @@ interface Props {
   onDeleteVan: (vanId: string) => Promise<void>;
   onUpdateVan: (vanId: string, data: { plateNumber: string; driverName: string; driverPhone: string; staffName?: string }) => Promise<void>;
   onUpdateStaff: (vanId: string, seatId: string, staffName: string) => Promise<void>;
-  onToggleSeat: (vanId: string, seatId: string, enabled: boolean) => Promise<void>;
-  onToggleExtraSeat: (vanId: string, enabled: boolean) => Promise<void>;
+  onToggleSeat: (vanId: string, seatId: string, enabled: boolean) => Promise<boolean>;
+  onToggleExtraSeat: (vanId: string, enabled: boolean) => Promise<boolean>;
   onMoveSeat: (bookingId: string, vanId: string, seatId: string) => Promise<void>;
 }
 
@@ -109,9 +109,9 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
         onClick={async () => {
           if (s.bookingId) { const tripId = remoteVans.find(van => van.id === vanId)?.tripId; if (tripId) setMoving({ bookingId: s.bookingId, passengerName: s.passengerName || s.label, tripId, fromLabel: s.label }); return; }
           setSavingSeat(s.id);
-          try { await onToggleSeat(vanId, s.id, s.status === 'blocked'); }
+          try { if (await onToggleSeat(vanId, s.id, s.status === 'blocked')) setVanRefresh(value => value + 1); }
           finally { setSavingSeat(null); }
-        }} title={s.status === 'blocked' ? 'ปิดรับจอง — กดเพื่อเปิด' : s.passengerName || 'กดเพื่อปิดรับจอง'} className={cn("h-10 rounded border flex items-center justify-center font-black select-none overflow-hidden", fitCell ? 'w-full min-w-0' : 'w-14', bg)}>
+        }} title={s.status === 'blocked' ? 'ปิดรับจอง — กดเพื่อเปิด' : s.passengerName || 'กดเพื่อปิดรับจอง'} className={cn("h-10 rounded border flex items-center justify-center font-black select-none overflow-hidden transition-transform duration-75 active:translate-y-0.5 active:scale-95 active:shadow-inner", fitCell ? 'w-full min-w-0' : 'w-14', bg)}>
         {s.status === 'blocked' ? <span className="text-[9px] leading-tight">{s.label}<br />ปิดรับจอง</span> : displayLabel}
       </button>
     );
@@ -399,7 +399,7 @@ export default function VansTab({ trips, vans, onAddVan, onDeleteVan, onUpdateVa
                         disabled={savingExtraSeat !== null || extraSeatOccupied}
                         onClick={async () => {
                           setSavingExtraSeat(van.id);
-                          try { await onToggleExtraSeat(van.id, !extraSeat); }
+                          try { if (await onToggleExtraSeat(van.id, !extraSeat)) setVanRefresh(value => value + 1); }
                           finally { setSavingExtraSeat(null); }
                         }}
                         className="group flex h-11 w-12 shrink-0 items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"

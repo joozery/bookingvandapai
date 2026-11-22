@@ -1,4 +1,4 @@
-type TripDates = { departureDate: string; durationDays: number };
+type TripDates = { departureDate: string; durationDays: number; status?: string | null };
 
 // The existing trip form stores the inclusive return date as durationDays.
 export function reviewOpensAt(trip: TripDates): number {
@@ -7,7 +7,10 @@ export function reviewOpensAt(trip: TripDates): number {
 }
 
 export function isTripReviewOpen(trip: TripDates, now = Date.now()): boolean {
-  return now >= reviewOpensAt(trip);
+  // Admins can mark a trip completed before the date calculation reaches the
+  // return date. The completed state is the authoritative signal that the
+  // journey has ended, while the date remains the fallback for old records.
+  return trip.status === 'completed' || now >= reviewOpensAt(trip);
 }
 
 export interface TripReview {

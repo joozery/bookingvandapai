@@ -11,7 +11,7 @@ import { depositSatang, paymentQuote } from '@/lib/paymentRules';
 import type { PaymentOrder } from '@/lib/paymentStore';
 
 type Order = Omit<PaymentOrder, 'userId'>;
-type Trip = { id: string; name: string; image?: string | null; displayCost?: number; cost: number; flashSalePrice?: number | null; flashSaleActive?: boolean; depositAmount?: number | null; departureDate: string; departureTime: string; durationDays?: number; tripPeriod?: string; pickupPoint?: string; availableSeats: number };
+type Trip = { id: string; name: string; image?: string | null; displayCost?: number; cost: number; flashSalePrice?: number | null; flashSaleActive?: boolean; depositAmount?: number | null; departureDate: string; departureTime: string; durationDays?: number; tripPeriod?: string; pickupPoint?: string; availableSeats: number; status?: string };
 const needsSeatSelection = (order: Order) => !order.autoCancelledAt && !order.bookingId && order.paidSatang > 0 && ['deposit_paid', 'paid'].includes(order.status);
 const seatSelectionHref = (tripId: string) => `/?tripId=${encodeURIComponent(tripId)}&step=2&fromPayment=1`;
 const money = (satang: number) => (satang / 100).toLocaleString('th-TH', { minimumFractionDigits: 2 });
@@ -30,10 +30,13 @@ export default function PaymentPortal() {
   const tripId = search.get('tripId');
   const requestedOrderId = search.get('orderId');
   const requestedMode = search.get('pay');
+  const preview = search.get('preview') === '1' && process.env.NODE_ENV !== 'production';
   const [trip, setTrip] = useState<Trip | null>(null);
+  const [paymentTermsAcceptance, setPaymentTermsAcceptance] = useState('ข้าพเจ้ายืนยันข้อมูลการจองและยอมรับเงื่อนไขการจองและการชำระเงิน');
   const [orders, setOrders] = useState<Order[]>([]);
   const [current, setCurrent] = useState<Order | null>(null);
   const [plan, setPlan] = useState<'deposit' | 'full'>('full');
+  const [acceptedPaymentTerms, setAcceptedPaymentTerms] = useState(false);
   const [creditBalanceSatang, setCreditBalanceSatang] = useState(0);
   const [useCredit, setUseCredit] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -74,11 +77,24 @@ export default function PaymentPortal() {
       try {
         if (tripId) {
           const trips = await readResponse(await fetch('/api/trips', { cache: 'no-store' }));
-          const selected = trips.trips.find((value: Trip) => value.id === tripId);
+          const selected = trips.trips.find((value: Trip) => value.id === tripId)
+            || (preview && trips.trips.find((value: Trip) => value.status === 'active' && Number(value.cost) > 0));
           if (!selected) throw new Error('ไม่พบทริปนี้');
           if (!cancelled) setTrip(selected);
+        } else if (preview) {
+          const trips = await readResponse(await fetch('/api/trips', { cache: 'no-store' }));
+          const selected = trips.trips.find((value: Trip) => value.status === 'active' && Number(value.cost) > 0);
+          if (!selected) throw new Error('ยังไม่มีทริปที่เปิดรับจองสำหรับดูตัวอย่าง');
+          if (!cancelled) setTrip(selected);
         }
-        if (!session?.user) return;
+        try {
+          const settings = await readResponse(await fetch('/api/settings', { cache: 'no-store' }));
+          if (!cancelled && typeof settings.settings?.payment_terms_acceptance === 'string' && settings.settings.payment_terms_acceptance.trim()) setPaymentTermsAcceptance(settings.settings.payment_terms_acceptance.trim());
+        } catch { /* payment screen keeps its safe default */ }
+        if (!session?.user) {
+          if (!preview) return;
+          return;
+        }
         const data = await readResponse(await fetch('/api/payments', { cache: 'no-store' }));
         try { const credits = await readResponse(await fetch('/api/credits', { cache: 'no-store' })); if (!cancelled) setCreditBalanceSatang(Number(credits.balanceSatang || 0)); } catch { /* ignore credit history loading errors */ }
         if (!cancelled) {
@@ -102,7 +118,7 @@ export default function PaymentPortal() {
     }
     void load();
     return () => { cancelled = true; };
-  }, [status, session, tripId, requestedOrderId, requestedMode, presentSeatPrompt]);
+  }, [status, session, tripId, requestedOrderId, requestedMode, preview, presentSeatPrompt]);
   useEffect(() => { if (success && !dialogRef.current?.open) dialogRef.current?.showModal(); }, [success]);
 
   useEffect(() => {
@@ -150,6 +166,14 @@ export default function PaymentPortal() {
     setCurrent(data.order);
   }
   async function start(order?: Order) {
+    if (!acceptedPaymentTerms) {
+      setError('กรุณายอมรับเงื่อนไขการจองและการชำระเงินก่อนดำเนินการต่อ');
+      return;
+    }
+    if (preview) {
+      setError('นี่คือโหมดดูตัวอย่างสำหรับเครื่อง local ยังไม่สามารถสร้าง QR หรือชำระเงินจริงได้');
+      return;
+    }
     setBusy(true); setError('');
     try {
       if (order) await prepare(order);
@@ -192,7 +216,7 @@ export default function PaymentPortal() {
   const selectedCreditSatang = useCredit ? Math.min(creditBalanceSatang, selectedTotalSatang) : 0;
   const action = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-purple-700 px-4 py-3 text-sm font-bold text-white transition hover:bg-purple-800 disabled:cursor-wait disabled:opacity-50';
   const isAdminSession = (session?.user as { role?: string } | undefined)?.role === 'admin';
-  const isPaymentCustomer = !!session?.user && !isAdminSession;
+  const isPaymentCustomer = (!!session?.user && !isAdminSession) || preview;
   const loginCustomer = () => { void signOut({ redirect: false }).then(() => signIn('line', { callbackUrl: `/payments${search.toString() ? `?${search.toString()}` : ''}` })); };
 
   return <div className="min-h-screen bg-[#f8f6fd] text-slate-800">
@@ -207,7 +231,8 @@ export default function PaymentPortal() {
           {active ? <div className="mt-5 space-y-3"><p className="text-sm text-purple-700">คุณมีรายการชำระเงินสำหรับทริปนี้แล้ว</p><button disabled={busy} className={action} onClick={() => start(active)}>เปิดรายการเดิม</button></div> : trip.availableSeats <= 0 ? <a className={`${action} mt-5`} href={tripMessengerUrl(trip.id)} target="_blank" rel="noopener noreferrer"><MessageSquare className="h-4 w-4" />ทริปเต็มแล้ว ทักแชทแอดมิน</a> : <>
             <fieldset disabled={busy} className="mt-5 grid gap-3 sm:grid-cols-2"><legend className="mb-3 text-sm font-bold">เลือกรูปแบบชำระเงิน</legend>{(['deposit', 'full'] as const).map(option => <label key={option} className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 ${plan === option ? 'border-purple-500 bg-purple-50 ring-1 ring-purple-500' : 'border-slate-200'} ${option === 'deposit' && !depositAllowed ? 'opacity-50' : ''}`}><input className="mt-1 accent-purple-600" type="radio" name="plan" value={option} checked={plan === option} disabled={option === 'deposit' && !depositAllowed} onChange={() => setPlan(option)} /><span><span className="block text-sm font-bold">{option === 'deposit' ? 'ชำระมัดจำ' : 'ชำระเต็มจำนวน'}</span><span className="mt-2 block text-xl font-black text-purple-800">฿{money(option === 'deposit' ? depositSatang(trip) : Math.round(trip.cost * 100))}</span></span></label>)}</fieldset>
             {creditBalanceSatang > 0 && <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4"><input type="checkbox" className="mt-1 accent-emerald-600" checked={useCredit} onChange={event => setUseCredit(event.target.checked)} /><span className="text-sm"><span className="block font-bold text-emerald-800">ใช้เครดิตของฉัน</span><span className="mt-1 block text-xs text-emerald-700">มีเครดิต ฿{money(creditBalanceSatang)} · ใช้ครั้งนี้ ฿{money(selectedCreditSatang)} · เหลือชำระด้วยการโอน ฿{money(selectedTotalSatang - selectedCreditSatang)}</span><span className="mt-1 block text-[11px] text-emerald-700">เครดิตมีอายุ 1 ปีนับจากวันที่ได้รับ</span></span></label>}
-            <p className="my-4 text-xs leading-relaxed text-slate-500">ยอดคงเหลือต้องชำระก่อนออกเดินทางอย่างน้อย 7 วัน หากเหลือไม่ถึง 7 วันให้ชำระเต็มจำนวน ระบบกันจำนวนที่ว่างให้ 30 นาทีระหว่างชำระเงิน</p><button disabled={busy} className={action} onClick={() => start()}>{busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}สร้าง QR ชำระเงิน</button>
+            <label className="mt-4 flex cursor-pointer items-start gap-2 text-[11px] leading-relaxed text-slate-500"><input type="checkbox" className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-purple-600" checked={acceptedPaymentTerms} onChange={event => { setAcceptedPaymentTerms(event.target.checked); if (event.target.checked) setError(''); }} /><span>{paymentTermsAcceptance} <Link href="/terms-of-service" target="_blank" className="font-bold text-purple-700 underline">อ่านเงื่อนไข</Link></span></label>
+            <p className="my-4 text-xs leading-relaxed text-slate-500">ยอดคงเหลือต้องชำระก่อนออกเดินทางอย่างน้อย 7 วัน หากเหลือไม่ถึง 7 วันให้ชำระเต็มจำนวน ระบบกันจำนวนที่ว่างให้ 30 นาทีระหว่างชำระเงิน</p><button disabled={busy || !acceptedPaymentTerms} className={action} onClick={() => start()}>{busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}สร้าง QR ชำระเงิน</button>
           </>}
         </section>}
 

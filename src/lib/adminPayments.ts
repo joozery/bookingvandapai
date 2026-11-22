@@ -18,23 +18,56 @@ export type AdminPaymentRow = {
 
 export type AdminPaymentPageOptions = { page?: number; pageSize?: number; q?: string; tripId?: string; state?: string; tripStatus?: 'active' | 'completed' | 'all' };
 
-function paymentOrderFilter(options: AdminPaymentPageOptions, now: number): Record<string, unknown> {
+function escapeRegex(value: string) {
+  return value.slice(0, 100).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function paymentOrderFilter(options: AdminPaymentPageOptions, now: number, searchMatches?: { bookingIds: string[]; orderIds: string[] }): Record<string, unknown> {
   const filter: Record<string, unknown> = {};
   const and: Record<string, unknown>[] = [];
   if (options.tripId && options.tripId !== 'all') filter.tripId = options.tripId;
   const q = (options.q || '').trim();
-  if (q) and.push({ $or: ['id', 'tripName', 'userName', 'bookingId'].map(field => ({ [field]: { $regex: q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' } })) });
+  if (q) {
+    const pattern = { $regex: escapeRegex(q), $options: 'i' };
+    and.push({ $or: [
+      { id: pattern }, { tripName: pattern }, { userName: pattern }, { bookingId: pattern },
+      ...(searchMatches?.bookingIds.length ? [{ bookingId: { $in: searchMatches.bookingIds } }] : []),
+      ...(searchMatches?.orderIds.length ? [{ id: { $in: searchMatches.orderIds } }] : []),
+    ] });
+  }
   if (options.state && options.state !== 'all') {
     if (options.state === 'paid') filter.status = 'paid';
     else if (options.state === 'partial') filter.status = 'deposit_paid';
     else if (options.state === 'review') and.push({ $or: [{ status: 'expired' }, { reviewRequired: true }] });
     else if (options.state === 'lapsed') and.push({ $or: [{ status: 'expired' }, { status: 'pending', expiresAt: { $lte: now } }] });
     else if (options.state === 'unpaid') filter.status = 'pending';
-    else if (options.state === 'active') filter.status = { $ne: 'expired' };
+    else if (options.state === 'active') and.push({ $nor: [{ status: 'expired' }, { status: 'pending', expiresAt: { $lte: now } }] });
     else if (options.state === 'received') and.push({ $or: [{ status: 'paid' }, { status: 'deposit_paid' }, { reviewRequired: true }] });
   }
   if (and.length) filter.$and = and;
   return filter;
+}
+
+async function searchPaymentMatches(db: Awaited<ReturnType<typeof paymentDb>>, q: string) {
+  if (!q.trim()) return { bookingIds: [], orderIds: [] };
+  const pattern = { $regex: escapeRegex(q.trim()), $options: 'i' };
+  const [bookings, receipts] = await Promise.all([
+    db.collection('bookings').find(
+      { $or: [{ fullName: pattern }, { nickname: pattern }, { phone: pattern }, { lineUserName: pattern }, { seatLabel: pattern }] },
+      { projection: { _id: 0, id: 1, paymentOrderId: 1 } },
+    ).toArray(),
+    db.collection<PaymentReceipt>('paymentReceipts').find(
+      { $or: [{ transRef: pattern }, { payerName: pattern }, { registrantName: pattern }, { seatLabel: pattern }] },
+      { projection: { _id: 0, orderId: 1 } },
+    ).toArray(),
+  ]);
+  return {
+    bookingIds: bookings.map(booking => String(booking.id)),
+    orderIds: [...new Set([
+      ...bookings.map(booking => booking.paymentOrderId).filter(Boolean).map(String),
+      ...receipts.map(receipt => String(receipt.orderId)),
+    ])],
+  };
 }
 
 export async function loadAdminPayments(now = Date.now(), options: AdminPaymentPageOptions = {}): Promise<AdminPaymentRow[]> {
@@ -44,7 +77,8 @@ export async function loadAdminPayments(now = Date.now(), options: AdminPaymentP
   const tripIds = options.tripStatus && options.tripStatus !== 'all'
     ? (await db.collection('trips').find({ status: options.tripStatus }, { projection: { _id: 0, id: 1 } }).toArray()).map(trip => String(trip.id))
     : null;
-  const filter = paymentOrderFilter(options, now);
+  const searchMatches = await searchPaymentMatches(db, options.q || '');
+  const filter = paymentOrderFilter(options, now, searchMatches);
   if (tripIds) filter.tripId = { $in: tripIds.length ? tripIds : ['__no_matching_trip__'] };
   const cursor = db.collection<PaymentOrder>('paymentOrders').find(filter, {
     // Never expose QR payloads, verification tokens/receivers or claim copies.
@@ -113,9 +147,29 @@ export async function countAdminPayments(now = Date.now(), options: AdminPayment
   const tripIds = options.tripStatus && options.tripStatus !== 'all'
     ? (await db.collection('trips').find({ status: options.tripStatus }, { projection: { _id: 0, id: 1 } }).toArray()).map(trip => String(trip.id))
     : null;
-  const filter = paymentOrderFilter(options, now);
+  const searchMatches = await searchPaymentMatches(db, options.q || '');
+  const filter = paymentOrderFilter(options, now, searchMatches);
   if (tripIds) filter.tripId = { $in: tripIds.length ? tripIds : ['__no_matching_trip__'] };
   return db.collection<PaymentOrder>('paymentOrders').countDocuments(filter);
+}
+
+/** Aggregates totals for the active filters without loading every row into the browser. */
+export async function summarizeAdminPayments(now = Date.now(), options: AdminPaymentPageOptions = {}) {
+  const db = await paymentDb();
+  const tripIds = options.tripStatus && options.tripStatus !== 'all'
+    ? (await db.collection('trips').find({ status: options.tripStatus }, { projection: { _id: 0, id: 1 } }).toArray()).map(trip => String(trip.id))
+    : null;
+  const searchMatches = await searchPaymentMatches(db, options.q || '');
+  const filter = paymentOrderFilter(options, now, searchMatches);
+  if (tripIds) filter.tripId = { $in: tripIds.length ? tripIds : ['__no_matching_trip__'] };
+  const cursor = db.collection<PaymentOrder>('paymentOrders').find(filter, { projection: { _id: 0, totalSatang: 1, paidSatang: 1 } });
+  const totals = { total: 0, paid: 0, balance: 0 };
+  for await (const order of cursor) {
+    totals.total += order.totalSatang || 0;
+    totals.paid += order.paidSatang || 0;
+    totals.balance += Math.max(0, (order.totalSatang || 0) - (order.paidSatang || 0));
+  }
+  return totals;
 }
 
 export type PaymentFilter = { q?: string; tripId?: string; state?: string };

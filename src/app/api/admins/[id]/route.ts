@@ -31,7 +31,10 @@ export async function PUT(request: Request, { params }: Params) {
     if (target.username === 'admin' && body.isBlocked) return NextResponse.json({ success: false, error: 'ระงับแอดมินหลักไม่ได้' }, { status: 400 });
     const updates: Record<string, unknown> = {};
     if (typeof body.name === 'string' && body.name.trim()) updates.name = body.name.trim().slice(0, 100);
-    if (body.permissions !== undefined && target.username !== 'admin') updates.permissions = applyPermissionChange(body.permissions, target.permissions || [], admin.isMain);
+    // The main admin always bypasses permission checks, but keep the selected
+    // permission levels persisted so the staff editor does not appear to lose
+    // changes when the main account itself is edited.
+    if (body.permissions !== undefined) updates.permissions = applyPermissionChange(body.permissions, target.permissions || [], admin.isMain);
     if (body.isBlocked !== undefined) updates.isBlocked = !!body.isBlocked;
     if (body.avatar_url !== undefined) updates.avatar_url = body.avatar_url;
     if (body.password) updates.password = await bcrypt.hash(String(body.password), 10);

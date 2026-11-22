@@ -1,21 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import { loadShareMetadata } from "@/lib/shareMetadata";
-import { Noto_Sans_Thai } from "next/font/google";
 import "./globals.css";
-import { cn } from "@/lib/utils";
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
 };
-
-const notoSansThai = Noto_Sans_Thai({
-  weight: ["300", "400", "500", "600", "700", "800", "900"],
-  subsets: ["thai", "latin"],
-  display: "swap",
-  variable: "--font-noto-sans-thai",
-});
 
 import { Providers } from "@/components/Providers";
 
@@ -58,7 +49,7 @@ export default function RootLayout({
     <html
       lang="th"
       suppressHydrationWarning
-      className={cn("h-full antialiased", notoSansThai.variable)}
+      className="h-full antialiased"
     >
       <head>
         <script
@@ -82,7 +73,7 @@ export default function RootLayout({
       </head>
       <body
         suppressHydrationWarning
-        className={cn(notoSansThai.className, "min-h-full flex flex-col bg-slate-50 text-slate-800 selection:bg-purple-500 selection:text-white")}
+        className="min-h-full flex flex-col bg-slate-50 text-slate-800 selection:bg-purple-500 selection:text-white"
       >
         <Providers>
           {children}

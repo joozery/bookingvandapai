@@ -20,7 +20,7 @@ async function canManageReviews(user: ReviewUser) {
 }
 
 async function eligibility(tripId: string, userId: string) {
-  const { data: trip, error } = await dataStore.from('trips').select('id, departureDate, durationDays').eq('id', tripId).maybeSingle();
+  const { data: trip, error } = await dataStore.from('trips').select('id, departureDate, durationDays, status').eq('id', tripId).maybeSingle();
   if (error) throw error;
   if (!trip) return { error: 'ไม่พบทริป', status: 404 };
   if (!isTripReviewOpen(trip)) return { error: 'เปิดประเมินตั้งแต่วันกลับ เวลา 00:00 น. ตามเวลาไทย', status: 409 };

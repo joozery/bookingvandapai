@@ -19,7 +19,8 @@ export default function SettingsTab() {
     copyright_year: '',
     line_url: '',
     privacy_policy: '',
-    terms_of_service: ''
+    terms_of_service: '',
+    payment_terms_acceptance: ''
   });
   const [loading, setLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState('');
@@ -115,6 +116,13 @@ export default function SettingsTab() {
       </div>
 
       <PaymentSettingsPanel />
+      <div className="space-y-2 rounded-xl border border-purple-100 bg-purple-50/40 p-4">
+        <label htmlFor="payment-terms-acceptance" className="block text-sm font-bold text-slate-800">ข้อความยอมรับก่อนชำระเงิน</label>
+        <p className="text-xs text-slate-500">ข้อความที่จะแสดงข้าง checkbox ก่อนลูกค้ากดสร้าง QR ชำระเงิน</p>
+        <textarea id="payment-terms-acceptance" maxLength={500} rows={2} value={settings.payment_terms_acceptance || 'ข้าพเจ้ายืนยันข้อมูลการจองและยอมรับเงื่อนไขการจองและการชำระเงิน'}
+          onChange={e => setSettings(current => ({ ...current, payment_terms_acceptance: e.target.value }))}
+          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-violet-500 focus:outline-none" />
+      </div>
       <form ref={formRef} onSubmit={e => e.preventDefault()} className="bg-white border border-slate-200 rounded-xl shadow-sm p-6 space-y-6">
         <ShareSettingsFields value={settings} onChange={patch => setSettings(current => ({ ...current, ...patch }))} />
         <HomepageImageFields value={settings} onChange={patch => setSettings(current => ({ ...current, ...patch }))} />

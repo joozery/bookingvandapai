@@ -808,14 +808,14 @@ export default function AdminPage() {
                   onAddVan={handleAddVan} onDeleteVan={handleDelVan}
                   onUpdateVan={handleUpdateVan} onUpdateStaff={handleUpdateStaff}
                   onMoveSeat={handleMoveSeat}
-                  onToggleSeat={async (id, seatId, enabled) => { await api(() => fetch(`/api/vans/${id}`, {
+                  onToggleSeat={async (id, seatId, enabled) => api(() => fetch(`/api/vans/${id}`, {
                     method: 'PUT', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ seatId, seatEnabled: enabled }),
-                  }), enabled ? 'เปิดรับจองที่นั่งแล้ว' : 'ปิดรับจองที่นั่งแล้ว'); }}
-                  onToggleExtraSeat={async (id, enabled) => { await api(() => fetch(`/api/vans/${id}`, {
+                  }), enabled ? 'เปิดรับจองที่นั่งแล้ว' : 'ปิดรับจองที่นั่งแล้ว')}
+                  onToggleExtraSeat={async (id, enabled) => api(() => fetch(`/api/vans/${id}`, {
                     method: 'PUT', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ extraSeatEnabled: enabled }),
-                  }), enabled ? 'เปิดเบาะเสริมแล้ว' : 'ปิดเบาะเสริมแล้ว'); }}
+                  }), enabled ? 'เปิดเบาะเสริมแล้ว' : 'ปิดเบาะเสริมแล้ว')}
                 />
               )}
               {activeTab === 'payments'  && <PaymentsTab trips={trips} />}
