@@ -63,6 +63,31 @@ export interface Booking {
   checkedInAt: string | null;
   replacesBookingId?: string | null;
   note?: string;
+  transferHistory?: BookingTransferHistory[];
+  currentTraveler?: BookingTraveler | null;
+}
+
+export interface BookingTraveler {
+  titleName?: string;
+  fullName: string;
+  nickname: string;
+  phone: string;
+  nationalId: string;
+  birthDate: string;
+  emergencyName: string;
+  emergencyPhone: string;
+  allergies?: string;
+  medicalConditions?: string;
+  consentInsurance: boolean;
+  acceptedAt: string;
+}
+
+export interface BookingTransferHistory {
+  fromName: string;
+  toName: string;
+  toPhone: string;
+  changedAt: string;
+  method: 'secure_link';
 }
 
 export interface DatabaseSchema {

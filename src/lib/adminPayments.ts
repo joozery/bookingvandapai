@@ -9,7 +9,7 @@ export type AdminPaymentRow = {
   totalSatang: number; paidSatang: number; balanceSatang: number; openInvoiceSatang: number;
   creditUsedSatang: number; cashPaidSatang: number;
   userId: string; userName: string;
-  booking: { id: string; fullName: string; nickname: string; phone: string; seatLabel: string; vanNumber: number | null; status: string } | null;
+  booking: { id: string; fullName: string; nickname: string; phone: string; seatLabel: string; vanNumber: number | null; status: string; currentTraveler?: { fullName: string; phone: string } | null; transferHistory?: { fromName: string; toName: string; toPhone: string; changedAt: string }[] } | null;
   receipts: { transRef: string; paidAt: number; recordedAt: number; amountSatang: number; payerName: string; payerBank: string; registrantName: string; seatLabel: string; reviewRequired: boolean; source: 'system' | 'manual'; slipKey?: string; method?: string; note?: string }[];
   adjustments: NonNullable<PaymentOrder['adjustments']>;
   seatHistory: NonNullable<PaymentOrder['seatHistory']>;
@@ -93,7 +93,7 @@ export async function loadAdminPayments(now = Date.now(), options: AdminPaymentP
     db.collection<PaymentReceipt>('paymentReceipts').find({ orderId: { $in: orderIds } }, { projection: { _id: 0 } }).sort({ paidAt: 1 }).toArray(),
     db.collection('bookings').find(
       { $or: [{ id: { $in: bookingIds } }, { paymentOrderId: { $in: orderIds } }] },
-      { projection: { _id: 0, id: 1, paymentOrderId: 1, fullName: 1, nickname: 1, phone: 1, seatLabel: 1, vanId: 1, status: 1 } },
+      { projection: { _id: 0, id: 1, paymentOrderId: 1, fullName: 1, nickname: 1, phone: 1, seatLabel: 1, vanId: 1, status: 1, currentTraveler: 1, transferHistory: 1 } },
     ).toArray(),
   ]);
   const vanIds = [...new Set(bookings.map(booking => booking.vanId).filter(Boolean))];
@@ -122,6 +122,8 @@ export async function loadAdminPayments(now = Date.now(), options: AdminPaymentP
       booking: booking ? {
         id: String(booking.id), fullName: String(booking.fullName || ''), nickname: String(booking.nickname || ''), phone: String(booking.phone || ''),
         seatLabel: String(booking.seatLabel || order.seat?.seatLabel || ''), vanNumber: vanNumber.get(booking.vanId) ?? order.seat?.vanNumber ?? null, status: String(booking.status || ''),
+        currentTraveler: booking.currentTraveler ? { fullName: String(booking.currentTraveler.fullName || ''), phone: String(booking.currentTraveler.phone || '') } : null,
+        transferHistory: Array.isArray(booking.transferHistory) ? booking.transferHistory.map((item: any) => ({ fromName: String(item.fromName || ''), toName: String(item.toName || ''), toPhone: String(item.toPhone || ''), changedAt: String(item.changedAt || '') })) : [],
       } : null,
       receipts: [
         ...(receiptsByOrder.get(order.id) || []).map(receipt => ({

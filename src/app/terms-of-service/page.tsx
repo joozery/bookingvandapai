@@ -2,6 +2,7 @@ import React from 'react';
 import { dataStore } from '@/lib/dataStore';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { termsContentToPlainText } from '@/lib/termsContent';
 
 export const revalidate = 60; // revalidate every 60 seconds
 
@@ -14,7 +15,7 @@ export default async function TermsOfServicePage() {
       const text = await data.text();
       const settings = JSON.parse(text);
       if (settings.terms_of_service) {
-        content = settings.terms_of_service;
+        content = termsContentToPlainText(settings.terms_of_service);
       }
     }
   } catch (e) {
@@ -31,10 +32,7 @@ export default async function TermsOfServicePage() {
         </div>
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-12">
           <h1 className="text-3xl font-black text-slate-900 mb-8 border-b border-slate-100 pb-6">เงื่อนไขการให้บริการ (Terms of Service)</h1>
-          <div 
-            className="max-w-none whitespace-pre-wrap text-sm leading-loose text-slate-700"
-            dangerouslySetInnerHTML={{ __html: content }}
-          />
+          <div className="max-w-none whitespace-pre-wrap text-sm leading-loose text-slate-700">{content}</div>
         </div>
       </div>
     </div>

@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import type { AdminPaymentRow } from '@/lib/adminPayments';
 import type { Trip } from './types';
 
-const money = (satang: number) => `฿${(satang / 100).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+const money = (satang: number) => `฿ ${(satang / 100).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 const when = (ms?: number) => (ms ? new Date(ms).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', dateStyle: 'medium', timeStyle: 'short' }) : '-');
 
 const STATES = [
@@ -198,9 +198,9 @@ export default function PaymentsTab({ trips }: { trips: Trip[] }) {
                   <th className="w-8 px-3 py-3" />
                   <th className="px-3 py-3">ลูกทริป</th>
                   <th className="px-3 py-3">ทริป / ที่นั่ง</th>
-                  <th className="px-3 py-3 text-right">ต้องชำระ</th>
-                  <th className="px-3 py-3 text-right">ชำระแล้ว</th>
-                  <th className="px-3 py-3 text-right">คงเหลือ</th>
+                  <th className="whitespace-nowrap px-5 py-3 text-right">ต้องชำระ</th>
+                  <th className="whitespace-nowrap px-5 py-3 text-right">ชำระแล้ว</th>
+                  <th className="whitespace-nowrap px-5 py-3 text-right">คงเหลือ</th>
                   <th className="px-3 py-3">สถานะ</th>
                   <th className="px-3 py-3" />
                 </tr>
@@ -225,9 +225,9 @@ export default function PaymentsTab({ trips }: { trips: Trip[] }) {
                             {' · '}{row.plan === 'deposit' ? 'มัดจำ' : 'ชำระเต็ม'}
                           </p>
                         </td>
-                        <td className="px-3 py-3 text-right font-bold text-slate-800">{money(row.totalSatang)}</td>
-                        <td className="px-3 py-3 text-right font-bold text-emerald-600">{money(row.paidSatang)}{row.creditUsedSatang > 0 && <p className="text-[10px] font-normal text-violet-600">เครดิต ฿{money(row.creditUsedSatang)} · เงิน ฿{money(row.cashPaidSatang)}</p>}</td>
-                        <td className={cn('px-3 py-3 text-right font-bold', row.balanceSatang ? 'text-amber-600' : 'text-slate-400')}>{money(row.balanceSatang)}</td>
+                        <td className="whitespace-nowrap px-5 py-3 text-right font-bold tabular-nums text-slate-800">{money(row.totalSatang)}</td>
+                        <td className="whitespace-nowrap px-5 py-3 text-right font-bold tabular-nums text-emerald-600">{money(row.paidSatang)}{row.creditUsedSatang > 0 && <p className="text-[10px] font-normal tabular-nums text-violet-600">เครดิต {money(row.creditUsedSatang)} · เงิน {money(row.cashPaidSatang)}</p>}</td>
+                        <td className={cn('whitespace-nowrap px-5 py-3 text-right font-bold tabular-nums', row.balanceSatang ? 'text-amber-600' : 'text-slate-400')}>{money(row.balanceSatang)}</td>
                         <td className="px-3 py-3">
                           <span className={cn('inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-bold', STATE_STYLE[row.state])}>{row.stateLabel}</span>
                           {row.balanceSatang > 0 && row.paidSatang > 0 && <p className="mt-1 text-[11px] text-slate-400">ครบกำหนด {when(row.balanceDueAt)}</p>}
@@ -309,9 +309,32 @@ function PaymentDetail({ row }: { row: AdminPaymentRow }) {
             </ul>
           </div>
         )}
+        {row.booking?.currentTraveler && <div><h4 className="mb-1 text-xs font-black text-slate-700">ผู้เดินทางปัจจุบัน</h4><p className="text-slate-600">{row.booking.currentTraveler.fullName} · {row.booking.currentTraveler.phone}</p><p className="text-[11px] text-slate-400">ธุรกรรมเดิมยังผูกกับผู้จอง/ผู้โอนเดิม</p></div>}
+        {!!row.booking?.transferHistory?.length && <div><h4 className="mb-1 text-xs font-black text-slate-700">ประวัติเปลี่ยนผู้เดินทาง</h4><ul className="space-y-1 text-slate-600">{row.booking.transferHistory.map(item => <li key={`${item.changedAt}-${item.toPhone}`}>{when(Date.parse(item.changedAt))} · {item.fromName || '-'} → {item.toName} · {item.toPhone}</li>)}</ul></div>}
+        {row.booking?.id && row.booking.status === 'approved' && <TransferLinkButton bookingId={row.booking.id} />}
       </div>
     </div>
   );
+}
+
+function TransferLinkButton({ bookingId }: { bookingId: string }) {
+  const [link, setLink] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  async function createLink() {
+    setBusy(true); setMessage('');
+    try {
+      const response = await fetch(`/api/admin/bookings/${encodeURIComponent(bookingId)}/transfer`, { method: 'POST' });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.error || 'สร้างลิงก์ไม่สำเร็จ');
+      const value = `${window.location.origin}/transfer/${result.transfer.token}`;
+      setLink(value);
+      await navigator.clipboard?.writeText(value);
+      setMessage('สร้างลิงก์แล้ว และคัดลอกไว้ให้แล้ว');
+    } catch (error) { setMessage(error instanceof Error ? error.message : 'สร้างลิงก์ไม่สำเร็จ'); }
+    finally { setBusy(false); }
+  }
+  return <div className="rounded-xl border border-violet-200 bg-violet-50 p-3"><p className="font-black text-violet-900">เปลี่ยนผู้เดินทางแทน</p><p className="mt-1 text-[11px] text-violet-700">สร้างลิงก์เฉพาะ booking/ที่นั่งนี้ ผู้รับแทนจะกรอกข้อมูลประกันโดยไม่สร้างธุรกรรมใหม่</p><button type="button" disabled={busy} onClick={() => void createLink()} className="mt-2 rounded-lg bg-violet-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{busy ? 'กำลังสร้าง…' : link ? 'สร้างลิงก์ใหม่' : 'สร้างลิงก์ลงทะเบียน'}</button>{link && <input readOnly value={link} onFocus={event => event.currentTarget.select()} className="mt-2 w-full rounded-lg border border-violet-200 bg-white px-2 py-1.5 text-[10px] text-slate-600" />}{message && <p className="mt-1 text-[11px] font-bold text-violet-700">{message}</p>}</div>;
 }
 
 function AdjustDialog({ row, onClose, onSaved }: { row: AdminPaymentRow; onClose: () => void; onSaved: () => void }) {

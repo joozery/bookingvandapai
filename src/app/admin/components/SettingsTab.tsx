@@ -8,6 +8,7 @@ import ShareSettingsFields from '@/components/ShareSettingsFields';
 import HomepageImageFields from '@/components/HomepageImageFields';
 import TeamCardsManager from '@/components/TeamCardsManager';
 import PaymentSettingsPanel from './PaymentSettingsPanel';
+import { termsContentToPlainText } from '@/lib/termsContent';
 
 export default function SettingsTab() {
   const [settings, setSettings] = useState({
@@ -40,6 +41,7 @@ export default function SettingsTab() {
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error('Could not load settings');
       const loaded = { ...defaultHomepageSettings, ...data.settings };
+      loaded.terms_of_service = termsContentToPlainText(loaded.terms_of_service);
       savedSettings.current = JSON.stringify(loaded);
       setSettings(loaded);
     } catch (e) {
@@ -57,13 +59,18 @@ export default function SettingsTab() {
     setSaveStatus('รอบันทึกอัตโนมัติ…');
     const timer = setTimeout(() => {
       let savedTeamCards: unknown;
+      let savedSnapshot: Record<string, unknown> = {};
       try {
-        savedTeamCards = JSON.parse(savedSettings.current || '{}').team_cards;
+        const previous = JSON.parse(savedSettings.current || '{}');
+        savedTeamCards = previous.team_cards;
+        savedSnapshot = previous;
       } catch {
         savedTeamCards = undefined;
       }
       const teamCardsChanged = JSON.stringify(settings.team_cards) !== JSON.stringify(savedTeamCards);
-      if (!formRef.current?.checkValidity() && !teamCardsChanged) {
+      const changedKeys = Object.keys(settings).filter(key => JSON.stringify(settings[key as keyof typeof settings]) !== JSON.stringify(savedSnapshot[key]));
+      const onlyShareSettingsChanged = changedKeys.length > 0 && changedKeys.every(key => ['share_title', 'share_description', 'share_image'].includes(key));
+      if (!formRef.current?.checkValidity() && !teamCardsChanged && !onlyShareSettingsChanged) {
         setSaveStatus('กรุณากรอกข้อมูลให้ครบและตรวจรูปแบบอีเมล / ลิงก์');
         return;
       }
@@ -122,6 +129,13 @@ export default function SettingsTab() {
         <textarea id="payment-terms-acceptance" maxLength={500} rows={2} value={settings.payment_terms_acceptance || 'ข้าพเจ้ายืนยันข้อมูลการจองและยอมรับเงื่อนไขการจองและการชำระเงิน'}
           onChange={e => setSettings(current => ({ ...current, payment_terms_acceptance: e.target.value }))}
           className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-violet-500 focus:outline-none" />
+      </div>
+      <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-4">
+        <label htmlFor="terms-of-service" className="block text-sm font-bold text-slate-800">เนื้อหาเงื่อนไขการให้บริการ</label>
+        <p className="text-xs text-slate-500">เนื้อหาที่ลูกค้าจะเห็นเมื่อกด “อ่านเงื่อนไข” ก่อนสร้าง QR ชำระเงิน พิมพ์เป็นข้อความธรรมดาได้เลย ระบบจะแสดงตามการขึ้นบรรทัด</p>
+        <textarea id="terms-of-service" maxLength={20000} rows={14} value={settings.terms_of_service}
+          onChange={e => setSettings(current => ({ ...current, terms_of_service: e.target.value }))}
+          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm leading-relaxed focus:border-violet-500 focus:outline-none" />
       </div>
       <form ref={formRef} onSubmit={e => e.preventDefault()} className="bg-white border border-slate-200 rounded-xl shadow-sm p-6 space-y-6">
         <ShareSettingsFields value={settings} onChange={patch => setSettings(current => ({ ...current, ...patch }))} />

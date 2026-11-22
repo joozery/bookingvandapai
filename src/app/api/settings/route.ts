@@ -78,7 +78,7 @@ export async function PUT(request: Request) {
   if (admin instanceof Response) return admin;
   try {
     const body = await request.json();
-    for (const [key, limit] of [['leaderboard_title', 150], ['share_title', 150], ['share_description', 500], ['payment_terms_acceptance', 500], ['share_image', 2048], ['logo_image', 2048], ['banner_image', 2048], ['background_image', 2048]] as const) {
+    for (const [key, limit] of [['leaderboard_title', 150], ['share_title', 150], ['share_description', 500], ['payment_terms_acceptance', 500], ['terms_of_service', 20000], ['share_image', 2048], ['logo_image', 2048], ['banner_image', 2048], ['background_image', 2048]] as const) {
       if (body[key] !== undefined && (typeof body[key] !== 'string' || body[key].length > limit)) {
         return NextResponse.json({ success: false, error: `Invalid ${key}` }, { status: 400 });
       }
