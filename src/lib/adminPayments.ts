@@ -9,7 +9,7 @@ export type AdminPaymentRow = {
   totalSatang: number; paidSatang: number; balanceSatang: number; openInvoiceSatang: number;
   creditUsedSatang: number; cashPaidSatang: number;
   userId: string; userName: string;
-  booking: { id: string; fullName: string; nickname: string; phone: string; seatLabel: string; vanNumber: number | null; status: string; currentTraveler?: { fullName: string; phone: string } | null; transferHistory?: { fromName: string; toName: string; toPhone: string; changedAt: string }[] } | null;
+  booking: { id: string; fullName: string; nickname: string; phone: string; seatLabel: string; vanNumber: number | null; status: string; paymentOrderId?: string; currentTraveler?: { fullName: string; phone: string } | null; transferHistory?: { fromName: string; toName: string; toPhone: string; changedAt: string }[] } | null;
   receipts: { transRef: string; paidAt: number; recordedAt: number; amountSatang: number; payerName: string; payerBank: string; registrantName: string; seatLabel: string; reviewRequired: boolean; source: 'system' | 'manual'; slipKey?: string; method?: string; note?: string }[];
   adjustments: NonNullable<PaymentOrder['adjustments']>;
   seatHistory: NonNullable<PaymentOrder['seatHistory']>;
@@ -208,7 +208,7 @@ export async function adjustOrderTotal(orderId: string, totalBaht: unknown, note
   const orders = (await paymentDb()).collection<PaymentOrder>('paymentOrders');
   const order = await orders.findOne({ id: orderId });
   if (!order) throw new Error('ไม่พบรายการชำระเงิน');
-  if (!['deposit_paid', 'paid'].includes(order.status)) throw new Error('แก้ยอดได้หลังลูกค้าชำระงวดแรกและตรวจสลิปผ่านแล้วเท่านั้น');
+  if (!['pending', 'deposit_paid', 'paid'].includes(order.status)) throw new Error('รายการนี้อยู่ในสถานะที่ไม่สามารถแก้ไขยอดได้');
   if (totalSatang < order.paidSatang) throw new Error(`ยอดใหม่ต้องไม่น้อยกว่ายอดที่ชำระแล้ว ฿${(order.paidSatang / 100).toLocaleString('th-TH')}`);
   if (totalSatang === order.totalSatang) throw new Error('ยอดใหม่เท่ากับยอดเดิม');
   const now = Date.now();
@@ -218,7 +218,7 @@ export async function adjustOrderTotal(orderId: string, totalBaht: unknown, note
       $or: [{ verifyUntil: { $exists: false } }, { verifyUntil: { $lt: now } }],
     },
     {
-      $set: { totalSatang, status: totalSatang === order.paidSatang ? 'paid' : 'deposit_paid', amountSatang: 0 },
+      $set: { totalSatang, status: totalSatang === order.paidSatang ? 'paid' : order.paidSatang > 0 ? 'deposit_paid' : 'pending', amountSatang: 0 },
       $unset: { qrCode: '', verificationReceivers: '' },
       $push: { adjustments: { fromSatang: order.totalSatang, toSatang: totalSatang, note: reason, by, at: now } },
     },

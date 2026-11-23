@@ -14,6 +14,7 @@ const VIEWS = [
   { id: 'income', label: 'รายรับ', icon: ArrowDownLeft },
   { id: 'expense', label: 'รายจ่าย', icon: ArrowUpRight },
   { id: 'partners', label: 'หุ้นส่วน', icon: Users },
+  { id: 'central', label: 'เงินส่วนกลาง', icon: Wallet },
   { id: 'report', label: 'รายงาน', icon: FileSpreadsheet },
 ] as const;
 type View = typeof VIEWS[number]['id'];
@@ -39,9 +40,11 @@ export default function AccountingTab() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [tripId, setTripId] = useState('');
+  const [tripStatusFilter, setTripStatusFilter] = useState<'active' | 'completed' | 'all'>('active');
   const [quickEntry, setQuickEntry] = useState<'income' | 'expense' | null>(null);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const [detailsLoaded, setDetailsLoaded] = useState(false);
+  const [overviewStatus, setOverviewStatus] = useState<'all' | 'active' | 'completed'>('all');
 
   const apply = useCallback((result: { data?: AccountingData; error?: string }) => {
     if (result.data) { setData(result.data); setUpdatedAt(new Date()); }
@@ -52,11 +55,19 @@ export default function AccountingTab() {
   const reload = useCallback(async () => { if (detailsLoaded) await loadDetails(); else { setLoading(true); const result = await fetchAccountingSummary(); const overview = result.overview; if (overview) { setData(current => ({ ...(current || { trips: [], overhead: { incomeSatang: 0, expenseSatang: 0, expenseByCategory: {}, incomeByCategory: {} }, partners: [], categories: [], entries: [], partnerTransactions: [] }), overview, canEdit: result.canEdit })); setUpdatedAt(new Date()); } setError(result.error || ''); setLoading(false); } }, [detailsLoaded, loadDetails]);
   const changeView = (next: View) => { setView(next); if (next !== 'overview' && !detailsLoaded) void loadDetails(); if (typeof window !== 'undefined') window.history.replaceState(null, '', `/admin/accounting?view=${next}&page=1`); };
   const openQuickEntry = async (type: 'income' | 'expense') => { if (!detailsLoaded) await loadDetails(); setQuickEntry(type); };
+  const changeOverviewStatus = async (next: 'all' | 'active' | 'completed') => {
+    if (!detailsLoaded) await loadDetails();
+    setOverviewStatus(next);
+  };
   useEffect(() => {
     let cancelled = false;
     void fetchAccountingSummary().then(result => { if (!cancelled) { if (result.overview) { setData({ overview: result.overview, trips: [], overhead: { incomeSatang: 0, expenseSatang: 0, expenseByCategory: {}, incomeByCategory: {} }, partners: [], categories: [], entries: [], partnerTransactions: [], canEdit: result.canEdit }); setUpdatedAt(new Date()); } setError(result.error || ''); setLoading(false); } });
     return () => { cancelled = true; };
   }, [apply]);
+
+  useEffect(() => {
+    if (view !== 'overview' && !detailsLoaded) void loadDetails();
+  }, [view, detailsLoaded, loadDetails]);
 
   useEffect(() => {
     if (!data || typeof window === 'undefined') return;
@@ -68,7 +79,12 @@ export default function AccountingTab() {
     window.history.replaceState(null, '', '/admin/accounting');
   }, [data]);
 
-  const openTrip = (id: string) => { setTripId(id); changeView('trip'); };
+  const openTrip = (id: string) => {
+    setTripId(id);
+    setTripStatusFilter(data?.trips.find(trip => trip.tripId === id)?.status === 'completed' ? 'completed' : 'active');
+    changeView('trip');
+  };
+  const effectiveTripId = tripId || data?.trips[0]?.tripId || '';
 
   return (
     <div className="min-w-0 space-y-6">
@@ -103,29 +119,82 @@ export default function AccountingTab() {
       {data && data.canEdit === false && <div className="rounded-xl border border-sky-200 bg-sky-50 p-3 text-xs font-bold text-sky-800">คุณมีสิทธิ์ดูข้อมูลบัญชีอย่างเดียว ไม่สามารถเพิ่ม แก้ไข หรือลบรายการได้</div>}
       {!data || (view !== 'overview' && !detailsLoaded) ? (
         loading && <div className="flex items-center justify-center gap-2 py-16 text-sm text-slate-400"><RefreshCw className="h-5 w-5 animate-spin text-violet-600" /> กำลังโหลดข้อมูลบัญชี...</div>
-      ) : view === 'overview' ? <Overview data={data} onOpenTrip={openTrip} onView={changeView} />
-        : view === 'trip' ? <TripLedger data={data} tripId={tripId || data.trips[0]?.tripId || ''} onTripChange={setTripId} />
+      ) : view === 'overview' ? <Overview data={data} status={overviewStatus} onStatusChange={changeOverviewStatus} onOpenTrip={openTrip} onView={changeView} />
+        : view === 'trip' ? <TripLedger data={data} tripId={effectiveTripId} tripStatus={tripStatusFilter} onTripChange={setTripId} onTripStatusChange={setTripStatusFilter} />
         : view === 'income' ? <IncomeView data={data} onChanged={reload} onOpenTrip={openTrip} />
         : view === 'expense' ? <EntriesPanel type="expense" data={data} onChanged={reload} />
         : view === 'partners' ? <PartnersPanel data={data} onChanged={reload} />
+        : view === 'central' ? <CentralView data={data} onChanged={reload} />
         : <Report data={data} onOpenTrip={openTrip} />}
-      {data && quickEntry && <EntryForm type={quickEntry} data={data} entry={null} defaultTripId={tripId} onClose={() => setQuickEntry(null)} onSaved={async () => { setQuickEntry(null); await reload(); }} />}
+      {data && quickEntry && <EntryForm type={quickEntry} data={data} entry={null} defaultTripId={effectiveTripId} defaultTripStatus={view === 'trip' ? tripStatusFilter : undefined} onClose={() => setQuickEntry(null)} onSaved={async () => { setQuickEntry(null); await reload(); }} />}
     </div>
   );
 }
 
-function Overview({ data, onOpenTrip, onView }: { data: AccountingData; onOpenTrip: (id: string) => void; onView: (view: View) => void }) {
-  const o = data.overview;
-  const activeTrips = data.trips.filter(t => t.incomeSatang || t.expenseSatang || t.status !== 'completed');
+function CentralView({ data, onChanged }: { data: AccountingData; onChanged: () => Promise<void> }) {
+  const completedTrips = data.trips.filter(trip => trip.status === 'completed' && trip.centralReserveSatang > 0);
+  return <div className="space-y-5">
+    <div className="rounded-3xl border border-violet-100 bg-gradient-to-r from-violet-50 to-white p-5 sm:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-[10px] font-bold text-violet-500">FINANCE · CENTRAL FUND</p><h2 className="mt-1 text-xl font-black text-slate-900">เงินส่วนกลาง</h2><p className="mt-1 text-xs text-slate-500">รวมเงินกันจากทริปปิดแล้ว รายรับส่วนกลาง และรายจ่ายส่วนกลาง</p></div><p className={cn('text-3xl font-black tabular-nums', profitTone(data.overview.centralFundSatang))}>{money(data.overview.centralFundSatang)}</p></div>
+      <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4"><Stat label="กันจากทริปปิดแล้ว" value={money(data.overview.centralReserveSatang)} tone="text-violet-600" icon={MapIcon} /><Stat label="รายรับส่วนกลาง" value={money(data.overhead.incomeSatang)} tone="text-emerald-600" icon={ArrowDownLeft} /><Stat label="รายจ่ายส่วนกลาง" value={money(data.overhead.expenseSatang)} tone="text-rose-600" icon={ArrowUpRight} /><Stat label="คงเหลือ" value={money(data.overview.centralFundSatang)} tone={profitTone(data.overview.centralFundSatang)} icon={Wallet} /></div>
+    </div>
+    <section className="rounded-3xl border border-slate-200/70 bg-white p-5 shadow-sm sm:p-6"><div className="mb-4 flex items-center justify-between gap-3"><div><h3 className="text-sm font-black text-slate-800">เงินส่วนกลางที่มาจากแต่ละทริป</h3><p className="mt-1 text-[11px] text-slate-400">กัน 20% จากกำไรของทริปที่ปิดแล้ว</p></div></div>{completedTrips.length ? <div className="overflow-x-auto"><table className="w-full min-w-[620px] text-sm"><thead className="bg-slate-50 text-left text-[11px] font-bold text-slate-500"><tr><th className="px-3 py-2">ทริป</th><th className="px-3 py-2">วันเดินทาง</th><th className="px-3 py-2 text-right">เงินส่วนกลาง</th></tr></thead><tbody className="divide-y divide-slate-100">{completedTrips.map(trip => <tr key={trip.tripId}><td className="px-3 py-3 font-bold text-slate-700">{trip.name}</td><td className="px-3 py-3 text-slate-500">{thaiDate(trip.departureDate)}</td><td className="px-3 py-3 text-right font-black text-violet-700">{money(trip.centralReserveSatang)}</td></tr>)}</tbody></table></div> : <p className="py-6 text-center text-sm text-slate-400">ยังไม่มีเงินกันจากทริปที่ปิดแล้ว</p>}</section>
+    <EntriesPanel type="income" data={data} onChanged={onChanged} initialTripId="none" />
+    <EntriesPanel type="expense" data={data} onChanged={onChanged} initialTripId="none" />
+  </div>;
+}
+
+function Overview({ data, status, onStatusChange, onOpenTrip, onView }: { data: AccountingData; status: 'all' | 'active' | 'completed'; onStatusChange: (status: 'all' | 'active' | 'completed') => Promise<void>; onOpenTrip: (id: string) => void; onView: (view: View) => void }) {
+  const allOverview = data.overview;
+  const selectedTrips = data.trips.filter(trip => status === 'all' || (status === 'completed' ? trip.status === 'completed' : trip.status !== 'completed'));
+  const tripTotals = selectedTrips.reduce((sum, trip) => ({
+    paymentIncomeSatang: sum.paymentIncomeSatang + trip.paymentIncomeSatang,
+    otherIncomeSatang: sum.otherIncomeSatang + trip.otherIncomeSatang,
+    tripExpenseSatang: sum.tripExpenseSatang + trip.expenseSatang,
+    outstandingSatang: sum.outstandingSatang + trip.outstandingSatang,
+    centralReserveSatang: sum.centralReserveSatang + (trip.status === 'completed' ? trip.centralReserveSatang : 0),
+  }), { paymentIncomeSatang: 0, otherIncomeSatang: 0, tripExpenseSatang: 0, outstandingSatang: 0, centralReserveSatang: 0 });
+  const o = data.trips.length === 0 ? allOverview : {
+    ...allOverview,
+    paymentIncomeSatang: tripTotals.paymentIncomeSatang,
+    otherIncomeSatang: tripTotals.otherIncomeSatang + data.overhead.incomeSatang,
+    incomeSatang: tripTotals.paymentIncomeSatang + tripTotals.otherIncomeSatang + data.overhead.incomeSatang,
+    tripExpenseSatang: tripTotals.tripExpenseSatang,
+    expenseSatang: tripTotals.tripExpenseSatang + data.overhead.expenseSatang,
+    outstandingSatang: tripTotals.outstandingSatang,
+    centralReserveSatang: tripTotals.centralReserveSatang,
+    centralFundSatang: tripTotals.centralReserveSatang + data.overhead.incomeSatang - data.overhead.expenseSatang,
+    openTrips: selectedTrips.filter(trip => trip.status !== 'completed').length,
+    closedTrips: selectedTrips.filter(trip => trip.status === 'completed').length,
+    profitSatang: tripTotals.paymentIncomeSatang + tripTotals.otherIncomeSatang + data.overhead.incomeSatang - tripTotals.tripExpenseSatang - data.overhead.expenseSatang,
+  };
+  const filteredTrips = status === 'all' ? data.trips : selectedTrips;
   const paidShare = o.incomeSatang > 0 ? Math.max(0, Math.min(100, o.paymentIncomeSatang / o.incomeSatang * 100)) : 0;
   const maximum = Math.max(o.incomeSatang, o.expenseSatang, 1);
   return <div className="space-y-6">
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm">
+      <div><p className="text-sm font-black text-slate-800">ตัวกรองภาพรวมตามสถานะทริป</p><p className="mt-1 text-[11px] text-slate-400">ยอดรายรับ รายจ่าย และกำไรจะคำนวณตามทริปที่เลือก</p></div>
+      <select aria-label="กรองภาพรวมตามสถานะทริป" value={status} onChange={event => { void onStatusChange(event.target.value as 'all' | 'active' | 'completed'); }} className={cn(fieldClass, 'mt-0 w-full sm:w-52')}>
+        <option value="all">ทุกทริป</option>
+        <option value="active">ทริปที่เปิดอยู่</option>
+        <option value="completed">ทริปที่ปิดแล้ว</option>
+      </select>
+    </div>
     <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
       <Stat label="รายรับรวม" value={money(o.incomeSatang)} tone="text-emerald-600" icon={ArrowDownLeft} hint={`ลูกทริป ${money(o.paymentIncomeSatang)} · อื่น ๆ ${money(o.otherIncomeSatang)}`} />
       <Stat label="รายจ่ายรวม" value={money(o.expenseSatang)} tone="text-rose-600" icon={ArrowUpRight} hint={`รายทริป ${money(o.tripExpenseSatang)} · ส่วนกลาง ${money(o.overheadExpenseSatang)}`} />
       <Stat label={o.profitSatang >= 0 ? 'กำไรสุทธิ' : 'ขาดทุนสุทธิ'} value={money(o.profitSatang)} tone={profitTone(o.profitSatang)} icon={ChartNoAxesCombined} hint="รายรับทั้งหมด หักรายจ่ายทั้งหมด" />
       <Stat label="เงินส่วนกลางคงเหลือ" value={money(o.centralFundSatang)} tone={profitTone(o.centralFundSatang)} icon={Wallet} hint={`กันไว้จากทริปจบแล้ว ${money(o.centralReserveSatang)} · หักรายจ่ายไม่ผูกทริป`} />
       <Stat label="ลูกทริปค้างชำระ" value={money(o.outstandingSatang)} tone="text-amber-600" icon={Clock3} hint="ยอดคงเหลือจากรายการที่มัดจำแล้ว" />
+    </div>
+
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {[
+        { id: 'trip' as const, label: 'บัญชีรายทริป', icon: MapIcon, tone: 'text-violet-600', bg: 'bg-violet-50' },
+        { id: 'income' as const, label: 'รายรับ', icon: ArrowDownLeft, tone: 'text-emerald-600', bg: 'bg-emerald-50' },
+        { id: 'expense' as const, label: 'รายจ่าย', icon: ArrowUpRight, tone: 'text-rose-600', bg: 'bg-rose-50' },
+        { id: 'partners' as const, label: 'หุ้นส่วน', icon: Users, tone: 'text-sky-600', bg: 'bg-sky-50' },
+      ].map(item => <button key={item.id} type="button" onClick={() => onView(item.id)} className="flex items-center gap-3 rounded-2xl border border-slate-200/70 bg-white p-4 text-left shadow-sm transition hover:border-violet-200 hover:bg-violet-50/30"><span className={cn('rounded-xl p-2.5', item.bg, item.tone)}><item.icon className="h-5 w-5" /></span><span className="text-sm font-black text-slate-700">{item.label}</span><ArrowRight className="ml-auto h-4 w-4 text-slate-300" /></button>)}
     </div>
 
     <div className="grid items-stretch gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
@@ -157,7 +226,7 @@ function Overview({ data, onOpenTrip, onView }: { data: AccountingData; onOpenTr
     <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-1 text-[11px] text-slate-500">
       <span><b className="text-violet-700">{o.openTrips}</b> ทริปที่เปิดอยู่</span><span><b className="text-slate-700">{o.closedTrips}</b> ทริปที่ปิดแล้ว</span><span>กำไร <b className="text-emerald-600">{data.trips.filter(t => t.profitSatang > 0).length}</b> ทริป</span><span>ขาดทุน <b className="text-rose-600">{data.trips.filter(t => t.profitSatang < 0).length}</b> ทริป</span>
     </div>
-    <TripTable title="ผลประกอบการรายทริป" trips={activeTrips} onOpenTrip={onOpenTrip} serverStatus="active" />
+    <TripTable title="ผลประกอบการรายทริป" trips={filteredTrips} onOpenTrip={onOpenTrip} serverStatus={status} />
     <p className="flex items-start gap-2 rounded-2xl border border-slate-100 bg-white/60 p-4 text-[11px] leading-relaxed text-slate-500"><CircleHelp className="mt-0.5 h-4 w-4 shrink-0 text-violet-400" />รายรับจากลูกทริปดึงจากยอดที่ตรวจสลิปผ่านแล้ว เงินที่รับนอกระบบให้บันทึกในหมวด “ค่าทริป (รับนอกระบบ)”</p>
   </div>;
 }
@@ -219,17 +288,28 @@ function Breakdown({ title, rows, tone }: { title: string; rows: [string, number
 
 const categoryLabel = (data: AccountingData, id: string) => id === PAYMENT_CATEGORY_ID ? PAYMENT_CATEGORY_NAME : data.categories.find(c => c.id === id)?.name || 'ไม่ระบุหมวด';
 
-function TripLedger({ data, tripId, onTripChange }: { data: AccountingData; tripId: string; onTripChange: (id: string) => void }) {
+function TripLedger({ data, tripId, tripStatus, onTripChange, onTripStatusChange }: { data: AccountingData; tripId: string; tripStatus: 'active' | 'completed' | 'all'; onTripChange: (id: string) => void; onTripStatusChange: (status: 'active' | 'completed' | 'all') => void }) {
+  const visibleTrips = data.trips.filter(t => tripStatus === 'all' || t.status === tripStatus);
   const trip = data.trips.find(t => t.tripId === tripId);
   const entries = data.entries.filter(e => e.tripId === tripId);
   if (!trip) return <p className="py-12 text-center text-sm text-slate-400">ยังไม่มีทริป</p>;
   return (
     <div className="space-y-4">
+      <div className="hidden">
+        <label className="block text-[10px] font-bold text-slate-400 sm:w-48">กรองสถานะทริป<select value={tripStatus} onChange={event => { const next = event.target.value as 'active' | 'completed' | 'all'; onTripStatusChange(next); const nextTrips = data.trips.filter(t => next === 'all' || t.status === next); if (nextTrips.length && !nextTrips.some(t => t.tripId === tripId)) onTripChange(nextTrips[0].tripId); }} className={cn(fieldClass, 'bg-white font-semibold')}>
+          <option value="active">ทริปที่เปิดอยู่</option><option value="completed">ทริปที่ปิดไปแล้ว</option><option value="all">ทุกทริป</option>
+        </select></label>
+      </div>
       <div className="flex flex-col justify-between gap-4 rounded-3xl border border-violet-100 bg-gradient-to-r from-violet-50 to-white p-5 sm:flex-row sm:items-center sm:p-6">
         <div className="min-w-0"><p className="mb-2 text-[10px] font-bold text-violet-500">บัญชีรายทริป</p><h3 className="text-lg font-black text-slate-800">{trip.name}</h3><p className="mt-2 flex items-center gap-2 text-xs text-slate-500"><MapIcon className="h-3.5 w-3.5" />{thaiDate(trip.departureDate)}<span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-violet-600">{trip.status === 'completed' ? 'ปิดทริปแล้ว' : 'เปิดอยู่'}</span></p></div>
-        <label className="block text-[10px] font-bold text-slate-400 sm:w-72 sm:shrink-0">เปลี่ยนทริป<select aria-label="เลือกทริปสำหรับดูบัญชี" value={tripId} onChange={e => onTripChange(e.target.value)} className={cn(fieldClass, 'bg-white font-semibold')}>
-          {data.trips.map(t => <option key={t.tripId} value={t.tripId}>{t.name} ({thaiDate(t.departureDate)}){t.status === 'completed' ? ' · ปิดแล้ว' : ''}</option>)}
+        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-end sm:justify-end">
+        <label className="block text-[10px] font-bold text-slate-400 sm:w-48">กรองสถานะทริป<select value={tripStatus} onChange={event => { const next = event.target.value as 'active' | 'completed' | 'all'; onTripStatusChange(next); const nextTrips = data.trips.filter(t => next === 'all' || t.status === next); if (nextTrips.length && !nextTrips.some(t => t.tripId === tripId)) onTripChange(nextTrips[0].tripId); }} className={cn(fieldClass, 'bg-white font-semibold')}>
+          <option value="active">ทริปที่เปิดอยู่</option><option value="completed">ทริปที่ปิดไปแล้ว</option><option value="all">ทุกทริป</option>
         </select></label>
+        <label className="block text-[10px] font-bold text-slate-400 sm:w-72 sm:shrink-0">เปลี่ยนทริป<select aria-label="เลือกทริปสำหรับดูบัญชี" value={tripId} onChange={e => onTripChange(e.target.value)} className={cn(fieldClass, 'bg-white font-semibold')}>
+          {visibleTrips.map(t => <option key={t.tripId} value={t.tripId}>{t.name} ({thaiDate(t.departureDate)}){t.status === 'completed' ? ' · ปิดแล้ว' : ''}</option>)}
+        </select></label>
+        </div>
       </div>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <Stat label="ลูกทริป (อนุมัติแล้ว)" value={`${trip.passengers} คน`} />

@@ -58,7 +58,13 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
     if (search.trim()) params.set('q', search.trim());
     fetch(`/api/bookings?${params.toString()}`, { cache: 'no-store' })
       .then(res => res.json())
-      .then(result => { if (active && result.success) { setRemoteBookings(result.bookings || []); setRemoteTotal(result.total || 0); } })
+      .then(result => { if (active && result.success) {
+        const latestFirst = [...(result.bookings || [])].sort((a, b) => {
+          const timeDiff = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          return Number.isFinite(timeDiff) && timeDiff !== 0 ? timeDiff : String(b.id).localeCompare(String(a.id));
+        });
+        setRemoteBookings(latestFirst); setRemoteTotal(result.total || 0);
+      } })
       .finally(() => { if (active) setRemoteLoading(false); });
     return () => { active = false; };
   }, [page, tripStatusFilter, tripFilter, statusFilter, search, pendingOnly]);

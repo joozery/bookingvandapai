@@ -166,7 +166,7 @@ export default function AdminPage() {
           ? `/api/vans?page=1&pageSize=1&_t=${tstamp}`
           : `/api/vans?_t=${tstamp}`),
         fetch(activeTab === 'bookings' || (typeof window !== 'undefined' && window.location.pathname.endsWith('/bookings'))
-          ? `/api/bookings?page=1&pageSize=20&tripStatus=active&_t=${tstamp}`
+          ? `/api/bookings?page=1&pageSize=20&_t=${tstamp}`
           : `/api/bookings?_t=${tstamp}`),
         fetch(activeTab === 'users' || (typeof window !== 'undefined' && window.location.pathname.endsWith('/users'))
           ? `/api/users?page=1&pageSize=20&_t=${tstamp}`

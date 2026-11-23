@@ -11,6 +11,7 @@ export default function PartnersPanel({ data, onChanged }: { data: AccountingDat
   const [editing, setEditing] = useState<Partner | 'new' | null>(null);
   const [reimbursing, setReimbursing] = useState<Partner | null>(null);
   const [paying, setPaying] = useState<Partner | null>(null);
+  const [partnerTripStatus, setPartnerTripStatus] = useState<'all' | 'active' | 'completed'>('completed');
   const compensation = data.categories.find(c => c.system === 'partner_compensation');
   const linkedCount = data.partners.filter(p => p.lineUserId).length;
   const name = (id: string) => data.partners.find(p => p.id === id)?.name || '-';
@@ -27,7 +28,7 @@ export default function PartnersPanel({ data, onChanged }: { data: AccountingDat
         <Stat label="บัญชีหุ้นส่วนที่ผูกแล้ว" value={`${linkedCount}/${data.partners.length}`} hint="ใช้บัญชีนี้ตรวจจากการจองเพื่อคำนวณส่วนแบ่งรายทริป" />
       </div>
 
-      <PartnerTripTable data={data} onChanged={onChanged} />
+      <PartnerTripTable data={data} onChanged={onChanged} status={partnerTripStatus} onStatusChange={setPartnerTripStatus} />
 
       <div className="overflow-hidden rounded-3xl border border-slate-200/70 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
@@ -94,7 +95,7 @@ export default function PartnersPanel({ data, onChanged }: { data: AccountingDat
   );
 }
 
-function PartnerTripTable({ data, onChanged }: { data: AccountingData; onChanged: () => Promise<void> }) {
+function PartnerTripTable({ data, onChanged, status, onStatusChange }: { data: AccountingData; onChanged: () => Promise<void>; status: 'all' | 'active' | 'completed'; onStatusChange: (status: 'all' | 'active' | 'completed') => void }) {
   const partnerName = (id: string) => data.partners.find(p => p.id === id)?.name || '-';
   const [page, setPage] = useState(queryPage);
   const pageSize = 20;
@@ -109,16 +110,16 @@ function PartnerTripTable({ data, onChanged }: { data: AccountingData; onChanged
   useEffect(() => {
     let active = true;
     setLoading(true);
-    fetch(`/api/admin/accounting/partner-trips?page=${currentPage}`, { cache: 'no-store' })
+    fetch(`/api/admin/accounting/partner-trips?page=${currentPage}&status=${status}`, { cache: 'no-store' })
       .then(res => res.json())
       .then(result => { if (active && result.success) { setTrips(result.trips || []); setTotal(result.total || 0); } })
       .catch(() => { if (active) setTrips([]); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [currentPage]);
+  }, [currentPage, status]);
   return <div className="overflow-hidden rounded-3xl border border-violet-100 bg-white shadow-sm">
     <div className="border-b border-violet-100 bg-violet-50/60 px-4 py-3">
-      <div className="flex items-center gap-2"><Map className="h-4 w-4 text-violet-600" /><h3 className="text-sm font-black text-violet-900">ส่วนแบ่งหุ้นส่วนรายทริป</h3></div>
+      <div className="flex flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-2"><Map className="h-4 w-4 text-violet-600" /><h3 className="text-sm font-black text-violet-900">ส่วนแบ่งหุ้นส่วนรายทริป</h3></div><select aria-label="กรองทริปตามสถานะ" value={status} onChange={event => { onStatusChange(event.target.value as 'all' | 'active' | 'completed'); setPage(1); }} className={cn(fieldClass, 'mt-0 w-full bg-white sm:w-48')}><option value="all">ทุกทริป</option><option value="active">ทริปที่เปิดอยู่</option><option value="completed">ทริปที่ปิดไปแล้ว</option></select></div>
       <p className="mt-1 text-[11px] text-violet-700">ระบบตรวจจากบัญชีหุ้นส่วนที่มีการจองสถานะอนุมัติแล้ว · กันกำไร 20% เป็นเงินส่วนกลาง แล้วแบ่ง 80% ตามการไปทริป</p>
     </div>
     {loading ? <p className="py-10 text-center text-sm text-slate-400">กำลังโหลดข้อมูลทริป...</p> : total === 0 ? <p className="py-10 text-center text-sm text-slate-400">ยังไม่มีทริปที่จบแล้ว</p> : <div className="overflow-x-auto">

@@ -102,6 +102,8 @@ export async function PUT(request: Request, { params }: RouteParams) {
     }
 
     const finalStatus = updates.status ?? existingTrip.status;
+    if (finalStatus === 'completed' && existingTrip.status !== 'completed') updates.completedAt = Date.now();
+    if (finalStatus !== 'completed' && existingTrip.status === 'completed') updates.completedAt = null;
     const finalCost = Number(updates.cost ?? existingTrip.cost ?? 0);
     const finalFlashSale = updates.flashSalePrice !== undefined ? updates.flashSalePrice : existingTrip.flashSalePrice;
     if (finalFlashSale !== null && finalFlashSale !== undefined && finalFlashSale !== '' && (!Number.isFinite(Number(finalFlashSale)) || Number(finalFlashSale) <= 0 || Number(finalFlashSale) >= finalCost)) {

@@ -18,7 +18,7 @@ export type Partner = { id: string; name: string; phone: string; sharePercent: n
 export type PartnerTransaction = { id: string; partnerId: string; kind: 'reimbursement' | 'profit_payout'; tripId?: string | null; amountSatang: number; date: string; description: string; createdAt: number; createdBy: string };
 export type PartnerTripOverride = { tripId: string; partnerId: string; percent: number; updatedAt?: number; updatedBy?: string };
 
-type TripRow = { id: string; name: string; departureDate?: string; durationDays?: number; status?: string; cost?: number };
+type TripRow = { id: string; name: string; departureDate?: string; durationDays?: number; status?: string; cost?: number; completedAt?: number | null };
 type OrderRow = { id: string; tripId: string; totalSatang: number; paidSatang: number; amountSatang?: number; creditUsedSatang?: number; status: string; reviewRequired?: boolean };
 type BookingRow = { tripId: string; status: string; lineUserId?: string | null; adminPartnerId?: string | null };
 
@@ -161,7 +161,7 @@ export function summarizeAccounts(input: { trips: TripRow[]; orders: OrderRow[];
       incomeSatang, paymentIncomeSatang, otherIncomeSatang, expenseSatang, tripExpenseSatang, overheadExpenseSatang: overhead.expenseSatang,
       profitSatang, outstandingSatang: trips.reduce((s, t) => s + t.outstandingSatang, 0),
       owedToPartnersSatang: partners.reduce((s, p) => s + Math.max(0, p.owedSatang), 0),
-      centralReserveSatang, centralFundSatang: centralReserveSatang - overhead.expenseSatang,
+      centralReserveSatang, centralFundSatang: centralReserveSatang + overhead.incomeSatang - overhead.expenseSatang,
     },
     trips, overhead, partners,
   };
@@ -369,9 +369,9 @@ export async function loadAccountingOverview() {
   const orders = orderTotals[0] || {};
   let paymentIncomeSatang = Number(orders.paymentIncomeSatang || 0);
   let outstandingSatang = Number(orders.outstandingSatang || 0);
-  let otherIncomeSatang = 0, overheadExpenseSatang = 0, tripExpenseSatang = 0;
+  let otherIncomeSatang = 0, overheadIncomeSatang = 0, overheadExpenseSatang = 0, tripExpenseSatang = 0;
   for (const row of entryTotals) {
-    if (row._id.type === 'income') otherIncomeSatang += Number(row.amountSatang || 0);
+    if (row._id.type === 'income') { otherIncomeSatang += Number(row.amountSatang || 0); if (row._id.trip === 'overhead') overheadIncomeSatang += Number(row.amountSatang || 0); }
     else if (row._id.trip === 'trip') tripExpenseSatang += Number(row.amountSatang || 0);
     else overheadExpenseSatang += Number(row.amountSatang || 0);
   }
@@ -384,18 +384,19 @@ export async function loadAccountingOverview() {
   const incomeSatang = paymentIncomeSatang + otherIncomeSatang;
   const advanced = new Map(partnerAdvances.map(row => [String(row._id), Number(row.amountSatang || 0)]));
   for (const row of partnerReimbursements) advanced.set(String(row._id), (advanced.get(String(row._id)) || 0) - Number(row.amountSatang || 0));
-  return { openTrips: Math.max(0, tripCounts.reduce((sum, row) => sum + Number(row.count || 0), 0) - count('completed')), closedTrips: count('completed'), incomeSatang, paymentIncomeSatang, otherIncomeSatang, expenseSatang, tripExpenseSatang, overheadExpenseSatang, profitSatang: incomeSatang - expenseSatang, outstandingSatang, owedToPartnersSatang: [...advanced.values()].reduce((sum, value) => sum + Math.max(0, value), 0), centralReserveSatang, centralFundSatang: centralReserveSatang - overheadExpenseSatang };
+  return { openTrips: Math.max(0, tripCounts.reduce((sum, row) => sum + Number(row.count || 0), 0) - count('completed')), closedTrips: count('completed'), incomeSatang, paymentIncomeSatang, otherIncomeSatang, expenseSatang, tripExpenseSatang, overheadExpenseSatang, profitSatang: incomeSatang - expenseSatang, outstandingSatang, owedToPartnersSatang: [...advanced.values()].reduce((sum, value) => sum + Math.max(0, value), 0), centralReserveSatang, centralFundSatang: centralReserveSatang + overheadIncomeSatang - overheadExpenseSatang };
 }
 
 /** Load only one page of completed trips for the partner distribution screen. */
-export async function loadPartnerTripsPage(page = 1, pageSize = 15) {
+export async function loadPartnerTripsPage(page = 1, pageSize = 15, status: 'all' | 'active' | 'completed' = 'completed') {
   const db = await getMongoDb();
   const safePage = Math.max(1, Math.floor(page));
   const safeSize = Math.min(20, Math.max(1, Math.floor(pageSize)));
   const tripsCollection = db.collection<TripRow>('trips');
+  const tripFilter = status === 'completed' ? { status: 'completed' } : status === 'active' ? { status: 'active' } : {};
   const [total, trips] = await Promise.all([
-    tripsCollection.countDocuments({ status: 'completed' }),
-    tripsCollection.find({ status: 'completed' }, { projection: { _id: 0, id: 1, name: 1, departureDate: 1, durationDays: 1, status: 1, cost: 1 } }).sort({ departureDate: -1 }).skip((safePage - 1) * safeSize).limit(safeSize).toArray(),
+    tripsCollection.countDocuments(tripFilter),
+    tripsCollection.find(tripFilter, { projection: { _id: 0, id: 1, name: 1, departureDate: 1, durationDays: 1, status: 1, cost: 1, completedAt: 1 } }).sort({ completedAt: -1, departureDate: -1 }).skip((safePage - 1) * safeSize).limit(safeSize).toArray(),
   ]);
   const ids = trips.map(t => t.id);
   const [orders, bookings, entries, partners, partnerTransactions, partnerTripOverrides] = await Promise.all([
@@ -411,13 +412,18 @@ export async function loadPartnerTripsPage(page = 1, pageSize = 15) {
 }
 
 /** Paginated accounting entries; the legacy accounting payload remains unchanged. */
-export async function loadAccountingEntriesPage(input: { type: EntryType; page?: number; pageSize?: number; tripId?: string; categoryId?: string; q?: string }) {
+export async function loadAccountingEntriesPage(input: { type: EntryType; page?: number; pageSize?: number; tripId?: string; tripStatus?: 'all' | 'active' | 'completed'; categoryId?: string; q?: string }) {
   const db = await getMongoDb();
   const page = Math.max(1, Math.floor(input.page || 1));
   const pageSize = Math.min(100, Math.max(1, Math.floor(input.pageSize || 20)));
   const filter: Record<string, unknown> = { type: input.type };
   if (input.tripId === 'none') filter.tripId = null;
   else if (input.tripId && input.tripId !== 'all') filter.tripId = input.tripId;
+  if (input.tripStatus && input.tripStatus !== 'all') {
+    const trips = await db.collection<TripRow>('trips').find({ status: input.tripStatus }, { projection: { _id: 0, id: 1 } }).toArray();
+    const tripIds = trips.map(trip => trip.id);
+    filter.tripId = input.tripId === 'none' ? { $in: [] } : input.tripId && input.tripId !== 'all' ? (tripIds.includes(input.tripId) ? input.tripId : { $in: [] }) : { $in: tripIds };
+  }
   if (input.categoryId && input.categoryId !== 'all') filter.categoryId = input.categoryId;
   const entriesCollection = db.collection<AccountEntry>('accountEntries');
   const allEntries = await entriesCollection.find(filter, { projection: { _id: 0 } }).sort({ date: -1, createdAt: -1 }).toArray();

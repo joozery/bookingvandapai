@@ -11,8 +11,9 @@ import {
 type EntryType = 'income' | 'expense';
 
 /** Income or expense list with add / edit / delete and category management. */
-export default function EntriesPanel({ type, data, onChanged }: { type: EntryType; data: AccountingData; onChanged: () => Promise<void> }) {
-  const [tripId, setTripId] = useState('all');
+export default function EntriesPanel({ type, data, onChanged, initialTripId = 'all' }: { type: EntryType; data: AccountingData; onChanged: () => Promise<void>; initialTripId?: 'all' | 'none' }) {
+  const [tripId, setTripId] = useState<string>(initialTripId);
+  const [tripStatus, setTripStatus] = useState<'all' | 'active' | 'completed'>('all');
   const [categoryId, setCategoryId] = useState('all');
   const [q, setQ] = useState('');
   const [editing, setEditing] = useState<AccountEntry | 'new' | null>(null);
@@ -29,13 +30,13 @@ export default function EntriesPanel({ type, data, onChanged }: { type: EntryTyp
   useEffect(() => {
     let active = true;
     setRemoteLoading(true);
-    const params = new URLSearchParams({ type, page: String(page), pageSize: '20', tripId, categoryId, q });
+    const params = new URLSearchParams({ type, page: String(page), pageSize: '20', tripId, tripStatus, categoryId, q });
     fetch(`/api/admin/accounting/entries?${params.toString()}`, { cache: 'no-store' })
       .then(res => res.json())
       .then(result => { if (active && result.success) { setRemoteEntries(result.entries || []); setRemoteTotal(result.total || 0); } })
       .finally(() => { if (active) setRemoteLoading(false); });
     return () => { active = false; };
-  }, [type, page, tripId, categoryId, q]);
+  }, [type, page, tripId, tripStatus, categoryId, q, data]);
 
   const rows = useMemo(() => remoteEntries.filter(e => e.type === type
     && (tripId === 'all' || (tripId === 'none' ? !e.tripId : e.tripId === tripId))
@@ -47,6 +48,7 @@ export default function EntriesPanel({ type, data, onChanged }: { type: EntryTyp
   const pages = Math.max(1, Math.ceil(remoteTotal / 20));
   const currentPage = Math.min(page, pages);
   const visibleRows = rows;
+  const filteredTrips = data.trips.filter(trip => tripStatus === 'all' || trip.status === tripStatus);
   useEffect(() => { setQueryPage(currentPage); }, [currentPage]);
 
   const remove = async (entry: AccountEntry) => {
@@ -66,10 +68,13 @@ export default function EntriesPanel({ type, data, onChanged }: { type: EntryTyp
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input value={q} onChange={e => { setQ(e.target.value); setPage(1); }} aria-label="ค้นหารายการบัญชี" placeholder="ค้นหารายละเอียด หมวด ทริป หรือหุ้นส่วน" className={cn(fieldClass, 'mt-0 pl-9')} />
         </div>
+        <select aria-label="กรองตามสถานะทริป" value={tripStatus} onChange={e => { const next = e.target.value as 'all' | 'active' | 'completed'; setTripStatus(next); setTripId(initialTripId === 'none' ? 'none' : 'all'); setPage(1); }} className={cn(fieldClass, 'mt-0 xl:w-48')}>
+          <option value="all">ทุกสถานะทริป</option><option value="active">ทริปที่เปิดอยู่</option><option value="completed">ทริปที่ปิดไปแล้ว</option>
+        </select>
         <select aria-label="กรองรายการตามทริป" value={tripId} onChange={e => { setTripId(e.target.value); setPage(1); }} className={cn(fieldClass, 'mt-0 xl:w-48')}>
           <option value="all">ทุกทริป</option>
           <option value="none">ส่วนกลาง (ไม่ผูกทริป)</option>
-          {data.trips.map(t => <option key={t.tripId} value={t.tripId}>{t.name}</option>)}
+          {filteredTrips.map(t => <option key={t.tripId} value={t.tripId}>{t.name}</option>)}
         </select>
         <select aria-label="กรองรายการตามหมวดหมู่" value={categoryId} onChange={e => { setCategoryId(e.target.value); setPage(1); }} className={cn(fieldClass, 'mt-0 xl:w-40')}>
           <option value="all">ทุกหมวด</option>
@@ -84,17 +89,18 @@ export default function EntriesPanel({ type, data, onChanged }: { type: EntryTyp
       </div>
 
       <div className="overflow-hidden rounded-3xl border border-slate-200/70 bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 text-sm">
-          <span className="font-bold text-slate-700">{rows.length} รายการ</span>
-          <span className={cn('font-black', type === 'income' ? 'text-emerald-600' : 'text-rose-600')}>รวม {money(total)}</span>
+        <div className="flex min-w-0 items-center justify-between border-b border-slate-100 px-4 py-3 text-sm">
+          <span className="min-w-0 truncate font-bold text-slate-700">{rows.length} รายการ</span>
+          <span className={cn('shrink-0 font-black', type === 'income' ? 'text-emerald-600' : 'text-rose-600')}>รวม {money(total)}</span>
         </div>
         {remoteLoading ? <div className="flex flex-col items-center gap-3 py-14"><ReceiptText className="h-7 w-7 text-violet-300" /><p className="text-sm font-bold text-slate-500">กำลังโหลดรายการ...</p></div> : rows.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-14"><span className="rounded-2xl bg-violet-50 p-4"><ReceiptText className="h-7 w-7 text-violet-300" /></span><p className="text-sm font-bold text-slate-500">ยังไม่มีรายการ{type === 'income' ? 'รายรับอื่น ๆ' : 'รายจ่าย'}</p><p className="text-[11px] text-slate-400">ลองเปลี่ยนตัวกรอง หรือเพิ่มรายการใหม่</p></div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[760px] text-sm">
               <thead className="bg-slate-50/80 text-left text-[10px] font-bold text-slate-400">
-                <tr><th className="px-4 py-3.5">วันที่</th><th className="px-4 py-3.5">หมวดหมู่</th><th className="px-4 py-3.5">ทริป</th><th className="px-4 py-3.5">รายละเอียด</th><th className="px-4 py-3.5 text-right">จำนวนเงิน</th><th className="px-4 py-3.5" /></tr>
+                <tr><th className="px-4 py-3.5">วันที่</th><th className="px-4 py-3.5">หมวดหมู่</th><th className="px-4 py-3.5">ทริป</th><th className="px-4 py-3.5">รายละเอียด</th><th className="px-4 py-3.5 text-right">จำนวนเงิน</th><th className="sticky right-0 z-10 bg-slate-50 px-4 py-3.5 shadow-[-6px_0_10px_-8px_rgb(15_23_42_/_0.25)]" /></tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {visibleRows.map(e => (
@@ -108,7 +114,7 @@ export default function EntriesPanel({ type, data, onChanged }: { type: EntryTyp
                       {e.payeePartnerId && <span className="ml-1.5 rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-bold text-violet-700">จ่ายให้ {partnerName(e.payeePartnerId)}</span>}
                     </td>
                     <td className={cn('whitespace-nowrap px-4 py-3.5 text-right font-bold tabular-nums', type === 'income' ? 'text-emerald-600' : 'text-rose-600')}>{money(e.amountSatang)}</td>
-                    <td className="whitespace-nowrap px-4 py-3.5 text-right">
+                    <td className="sticky right-0 z-10 whitespace-nowrap bg-white px-4 py-3.5 text-right shadow-[-6px_0_10px_-8px_rgb(15_23_42_/_0.25)]">
                       {data.canEdit !== false && <>
                       <button type="button" onClick={() => setEditing(e)} className="p-1.5 text-slate-400 hover:text-violet-600" title="แก้ไข"><Edit2 className="h-4 w-4" /></button>
                       <button type="button" onClick={() => void remove(e)} className="p-1.5 text-slate-400 hover:text-rose-600" title="ลบ"><Trash2 className="h-4 w-4" /></button>
@@ -119,6 +125,25 @@ export default function EntriesPanel({ type, data, onChanged }: { type: EntryTyp
               </tbody>
             </table>
           </div>
+          <div className="w-full min-w-0 divide-y divide-slate-100 md:hidden">
+            {visibleRows.map(e => (
+              <div key={e.id} className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_76px] items-center gap-2 px-3 py-3.5">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="truncate text-sm font-bold text-slate-700">{e.description || categoryName(e.categoryId)}</p>
+                    <p className={cn('shrink-0 text-sm font-black tabular-nums', type === 'income' ? 'text-emerald-600' : 'text-rose-600')}>{money(e.amountSatang)}</p>
+                  </div>
+                  <p className="mt-1 truncate text-[11px] text-slate-500">{thaiDate(e.date)} · {categoryName(e.categoryId)} · {tripName(e.tripId)}</p>
+                  {(e.paidByPartnerId || e.payeePartnerId) && <p className="mt-1 truncate text-[11px] text-slate-400">{e.paidByPartnerId ? `สำรองจ่ายโดย ${partnerName(e.paidByPartnerId)}` : `จ่ายให้ ${partnerName(e.payeePartnerId || '')}`}</p>}
+                </div>
+                {data.canEdit !== false && <div className="flex w-[76px] shrink-0 items-center justify-end gap-1 rounded-xl bg-slate-50 p-1">
+                  <button type="button" aria-label="แก้ไข" onClick={() => setEditing(e)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-white hover:text-violet-600"><Edit2 className="h-4 w-4" /></button>
+                  <button type="button" aria-label="ลบ" onClick={() => void remove(e)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-white hover:text-rose-600"><Trash2 className="h-4 w-4" /></button>
+                </div>}
+              </div>
+            ))}
+          </div>
+          </>
         )}
         {remoteTotal > 20 && <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3"><span className="text-[11px] text-slate-400">แสดง {(currentPage - 1) * 20 + 1}-{Math.min(currentPage * 20, remoteTotal)} จาก {remoteTotal} รายการ</span><div className="flex items-center gap-2"><button type="button" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)} className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:bg-violet-50 disabled:opacity-30"><ChevronLeft className="h-4 w-4" /></button><span className="text-[11px] font-bold text-slate-500">{currentPage} / {pages}</span><button type="button" disabled={currentPage === pages} onClick={() => setPage(currentPage + 1)} className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:bg-violet-50 disabled:opacity-30"><ChevronRight className="h-4 w-4" /></button></div></div>}
       </div>
@@ -130,8 +155,8 @@ export default function EntriesPanel({ type, data, onChanged }: { type: EntryTyp
   );
 }
 
-export function EntryForm({ type, data, entry, defaultTripId = '', presetCategory, presetPayee, onClose, onSaved }: {
-  type: EntryType; data: AccountingData; entry: AccountEntry | null; defaultTripId?: string;
+export function EntryForm({ type, data, entry, defaultTripId = '', defaultTripStatus, presetCategory, presetPayee, onClose, onSaved }: {
+  type: EntryType; data: AccountingData; entry: AccountEntry | null; defaultTripId?: string; defaultTripStatus?: 'active' | 'completed' | 'all';
   presetCategory?: string; presetPayee?: string; onClose: () => void; onSaved: () => Promise<void>;
 }) {
   const categories = data.categories.filter(c => c.type === type);
@@ -139,6 +164,11 @@ export function EntryForm({ type, data, entry, defaultTripId = '', presetCategor
     date: entry?.date || today(), categoryId: entry?.categoryId || presetCategory || categories[0]?.id || '', tripId: entry?.tripId ?? defaultTripId,
     amount: entry ? String(entry.amountSatang / 100) : '', description: entry?.description || '',
     paidByPartnerId: entry?.paidByPartnerId || '', payeePartnerId: entry?.payeePartnerId || presetPayee || '',
+  });
+  const [tripStatus, setTripStatus] = useState<'active' | 'completed' | 'all'>(() => {
+    if (defaultTripStatus) return defaultTripStatus;
+    const selectedTrip = data.trips.find(trip => trip.tripId === (entry?.tripId ?? defaultTripId));
+    return selectedTrip?.status === 'completed' ? 'completed' : 'active';
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -166,10 +196,17 @@ export function EntryForm({ type, data, entry, defaultTripId = '', presetCategor
             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </label>
+        <label className={labelClass}>สถานะทริป
+          <select value={tripStatus} onChange={event => { const next = event.target.value as 'active' | 'completed' | 'all'; setTripStatus(next); if (form.tripId && next !== 'all' && data.trips.find(trip => trip.tripId === form.tripId)?.status !== next) setForm(current => ({ ...current, tripId: '' })); }} className={fieldClass}>
+            <option value="active">ทริปที่เปิดอยู่</option>
+            <option value="completed">ทริปที่ปิดไปแล้ว</option>
+            <option value="all">ทุกทริป</option>
+          </select>
+        </label>
         <label className={labelClass}>ทริป
           <select value={form.tripId || ''} onChange={set('tripId')} className={fieldClass}>
             <option value="">ส่วนกลาง (ไม่ผูกกับทริป)</option>
-            {data.trips.map(t => <option key={t.tripId} value={t.tripId}>{t.name}{t.departureDate ? ` (${thaiDate(t.departureDate)})` : ''}</option>)}
+            {data.trips.filter(trip => tripStatus === 'all' || trip.status === tripStatus).map(t => <option key={t.tripId} value={t.tripId}>{t.name}{t.departureDate ? ` (${thaiDate(t.departureDate)})` : ''}</option>)}
           </select>
         </label>
         <label className={labelClass}>รายละเอียด<input value={form.description} onChange={set('description')} maxLength={300} placeholder="เช่น ค่ารถสองแถวขาไป" className={fieldClass} /></label>

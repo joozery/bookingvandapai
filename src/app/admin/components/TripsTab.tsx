@@ -90,9 +90,11 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onUpdateVan,
   const [selectedTripFilter, setSelectedTripFilter] = useState('');
 
   const uniqueTripNames = React.useMemo(() => {
-    const names = trips.map(t => t.name);
+    const names = trips
+      .filter(t => completed ? t.status === 'completed' : draft ? t.status === 'draft' : t.status !== 'completed' && t.status !== 'cancelled')
+      .map(t => t.name);
     return Array.from(new Set(names)).sort();
-  }, [trips]);
+  }, [trips, completed, draft]);
 
   // Edit States
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
@@ -811,7 +813,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onUpdateVan,
             const pct = total > 0 ? Math.round((occupied / total) * 100) : 0;
 
             return (
-              <Card key={trip.id} className={cn("border-slate-200 shadow-sm transition hover:shadow-md group overflow-hidden flex flex-col border-l-4", theme.borderLeft, theme.cardHover)}>
+              <Card key={trip.id} className={cn("min-w-0 border-slate-200 shadow-sm transition hover:shadow-md group overflow-hidden flex flex-col border-l-4", theme.borderLeft, theme.cardHover)}>
                 {trip.image && (
                   <div className="w-full h-32 relative shrink-0">
                     <img src={trip.image} alt={trip.name} className="w-full h-full object-cover" />
@@ -891,8 +893,9 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onUpdateVan,
 
                     {trip.status === 'active' && <button type="button" disabled={updatingStatusId !== null} onClick={() => void openCancelPreview(trip)} className="mt-2 w-full rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100 disabled:opacity-50">ยกเลิกทริปและสร้างเครดิตคืน</button>}
 
-                    <div className="flex items-end justify-between mt-auto pt-2">
-                      <div className="flex-1 max-w-[200px]">
+                    <div className="flex min-w-0 flex-wrap items-end gap-3 mt-auto pt-2">
+                      <div className="order-2 flex min-w-0 max-w-full flex-1 items-end justify-between gap-3">
+                      <div className="min-w-0 flex-1 max-w-[200px]">
                         <div className="flex items-center justify-between mb-1.5">
                           <Badge variant="secondary" className={cn("text-[9px] px-1.5 py-0 border", theme.badgeBg)}>มี {tripVans.length} รถตู้</Badge>
                           <span className="text-[10px] font-bold text-slate-600">
@@ -903,15 +906,33 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onUpdateVan,
                           <div className={cn("h-full rounded-full transition-all", pct >= 100 ? 'bg-rose-500' : 'bg-emerald-500')} style={{ width: `${pct}%` }} />
                         </div>
                       </div>
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        <button
+                          onClick={() => startEditing(trip)}
+                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 transition hover:bg-slate-100"
+                          title="แก้ไขทริป"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => onDelete(trip.id)}
+                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
+                          title="ลบทริป"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                      </div>
 
-                      <div className="flex gap-1.5 shrink-0 ml-4">
+                      <div className="order-1 basis-full flex w-full min-w-0 flex-col items-start gap-1.5">
+                        <div className="flex w-full min-w-0 flex-wrap justify-start gap-1.5">
                         <button
                           onClick={() => void openExpense(trip)}
                           className="flex h-8 items-center justify-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-2 text-[11px] font-bold text-rose-700 transition hover:bg-rose-100"
                           title="บันทึกค่าใช้จ่ายของทริป"
                         >
                           <ReceiptText className="h-3.5 w-3.5" />
-                          <span className="hidden 2xl:inline">บันทึกค่าใช้จ่าย</span>
+                          <span>บันทึกค่าใช้จ่าย</span>
                         </button>
                         <button
                           onClick={() => copyLink(trip.id)}
@@ -926,6 +947,8 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onUpdateVan,
                           {copiedId === `manual:${trip.id}` ? <Check className="w-3.5 h-3.5" /> : <Link2 className="w-3.5 h-3.5" />}
                           {copiedId === `manual:${trip.id}` ? 'ลิงก์ Manual แล้ว' : 'ลิงก์ Manual'}
                         </button>
+                        </div>
+                        <div className="hidden">
                         <button
                           onClick={() => startEditing(trip)}
                           className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-400 transition"
@@ -940,6 +963,7 @@ export default function TripsTab({ trips, vans, onCreate, onUpdate, onUpdateVan,
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
+                        </div>
                       </div>
                     </div>
                   </div>

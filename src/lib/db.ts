@@ -41,6 +41,7 @@ export interface Trip {
   pickupPoint: string;
   departureTime: string;
   status: 'draft' | 'active' | 'completed' | 'cancelled';
+  completedAt?: number | null;
   image?: string;
   tripPeriod?: string;
 }

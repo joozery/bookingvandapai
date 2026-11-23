@@ -512,3 +512,6 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .gradient-flow { animation: none; }
 }
+
+.manual-receipt > p:not(.manual-reason) { display: none !important; }
+.manual-receipt > .manual-reason { display: block !important; }

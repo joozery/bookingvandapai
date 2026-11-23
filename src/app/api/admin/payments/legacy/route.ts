@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     const admin = await adminWith(['payments'], 'view');
     if (!admin) return forbidden('ไม่มีสิทธิ์ดูข้อมูลการชำระเงิน');
     const params = new URL(request.url).searchParams;
-    const result = await listLegacyBookingCandidates({ q: params.get('q') || '', tripId: params.get('tripId') || '', tripStatus: (params.get('tripStatus') || 'active') as 'active' | 'completed' | 'all', page: Number(params.get('page') || 1), pageSize: 20 });
+    const result = await listLegacyBookingCandidates({ bookingId: params.get('bookingId') || '', q: params.get('q') || '', tripId: params.get('tripId') || '', tripStatus: (params.get('tripStatus') || 'active') as 'active' | 'completed' | 'all', page: Number(params.get('page') || 1), pageSize: 20 });
     return Response.json({ success: true, ...result }, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (error) {
     console.error('[legacy-payments:GET]', error instanceof Error ? error.message : error);

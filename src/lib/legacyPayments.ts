@@ -75,7 +75,7 @@ export async function setLegacyBookingPaymentExempt(bookingId: string, exempt: b
   if (error) throw new Error(error.message);
 }
 
-export async function listLegacyBookingCandidates(options: { q?: string; tripId?: string; tripStatus?: 'active' | 'completed' | 'all'; page?: number; pageSize?: number } = {}) {
+export async function listLegacyBookingCandidates(options: { q?: string; tripId?: string; bookingId?: string; tripStatus?: 'active' | 'completed' | 'all'; page?: number; pageSize?: number } = {}) {
   await ensureIndexes();
   const db = await paymentDb();
   const page = Math.max(1, Math.floor(options.page || 1));
@@ -87,8 +87,9 @@ export async function listLegacyBookingCandidates(options: { q?: string; tripId?
   const tripIds = availableTrips.map(trip => String(trip.id)).filter(id => !options.tripId || options.tripId === 'all' || id === options.tripId);
   if (!tripIds.length) return { rows: [] as LegacyBookingCandidate[], total: 0, page, pageSize, pageCount: 1 };
   const filter: Record<string, unknown> = { tripId: { $in: tripIds }, status: { $in: ['approved', 'pending', 'cancel_pending'] } };
+  if (options.bookingId?.trim()) filter.id = options.bookingId.trim();
   const q = options.q?.trim();
-  if (q) {
+  if (q && !filter.id) {
     const pattern = { $regex: q.slice(0, 100).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
     filter.$or = [{ fullName: pattern }, { nickname: pattern }, { phone: pattern }, { lineUserName: pattern }];
   }
@@ -101,12 +102,12 @@ export async function listLegacyBookingCandidates(options: { q?: string; tripId?
   const orderIds = bookings.map(booking => booking.paymentOrderId).filter(Boolean);
   const [legacy, orders, vans] = await Promise.all([
     loadLegacyPayments(bookingIds),
-    orderIds.length ? db.collection<PaymentOrder>('paymentOrders').find({ id: { $in: orderIds } }, { projection: { _id: 0, id: 1, paidSatang: 1 } }).toArray() : [],
+    orderIds.length ? db.collection<PaymentOrder>('paymentOrders').find({ id: { $in: orderIds } }, { projection: { _id: 0, id: 1, totalSatang: 1, paidSatang: 1 } }).toArray() : [],
     db.collection('vans').find({ id: { $in: bookings.map(booking => booking.vanId).filter(Boolean) } }, { projection: { _id: 0, id: 1, vanNumber: 1, seats: 1 } }).toArray(),
   ]);
   const legacyByBooking = new Map<string, LegacyPayment[]>();
   for (const payment of legacy) legacyByBooking.set(payment.bookingId, [...(legacyByBooking.get(payment.bookingId) || []), payment]);
-  const orderById = new Map<string, { id: string; paidSatang?: number }>(orders.map(order => [String(order.id), order] as [string, { id: string; paidSatang?: number }]));
+  const orderById = new Map<string, { id: string; totalSatang?: number; paidSatang?: number }>(orders.map(order => [String(order.id), order] as [string, { id: string; totalSatang?: number; paidSatang?: number }]));
   const vanById = new Map<string, { vanNumber?: number; seats?: { id?: string; type?: string }[] }>();
   for (const van of vans) vanById.set(String(van.id), van as { vanNumber?: number; seats?: { id?: string; type?: string }[] });
   const rows = bookings.map(booking => {
@@ -114,7 +115,7 @@ export async function listLegacyBookingCandidates(options: { q?: string; tripId?
     const van = vanById.get(String(booking.vanId));
     const seatType = (van?.seats?.find(seat => seat.id === booking.seatId)?.type || 'unknown') as LegacyBookingCandidate['seatType'];
     const paymentExempt = booking.paymentExempt === true || seatType === 'staff' || seatType === 'driver';
-    const totalSatang = paymentExempt ? 0 : toSatang(trip?.cost);
+    const totalSatang = paymentExempt ? 0 : safeNumber(orderById.get(String(booking.paymentOrderId || ''))?.totalSatang) || toSatang(trip?.cost);
     const manualPaidSatang = (legacyByBooking.get(String(booking.id)) || []).reduce((sum, payment) => sum + safeNumber(payment.amountSatang), 0);
     const systemPaidSatang = Math.max(0, safeNumber(orderById.get(String(booking.paymentOrderId || ''))?.paidSatang) - manualPaidSatang);
     return {
@@ -152,11 +153,11 @@ export async function summarizeLegacyBookingCandidates(options: { q?: string; tr
     db.collection('vans').find({ id: { $in: bookings.map(booking => booking.vanId).filter(Boolean) } }, { projection: { _id: 0, id: 1, seats: 1 } }).toArray(),
     loadLegacyPayments(bookingIds),
   ]);
-  const orders: Pick<PaymentOrder, 'id' | 'paidSatang'>[] = orderIds.length
-    ? await db.collection<PaymentOrder>('paymentOrders').find({ id: { $in: orderIds } }, { projection: { _id: 0, id: 1, paidSatang: 1 } }).toArray()
+  const orders: Pick<PaymentOrder, 'id' | 'totalSatang' | 'paidSatang'>[] = orderIds.length
+    ? await db.collection<PaymentOrder>('paymentOrders').find({ id: { $in: orderIds } }, { projection: { _id: 0, id: 1, totalSatang: 1, paidSatang: 1 } }).toArray()
     : [];
   const vanMap = new Map(vans.map(van => [String(van.id), van as { seats?: { id?: string; type?: string }[] }]));
-  const orderMap = new Map(orders.map(order => [String(order.id), order.paidSatang || 0]));
+  const orderMap = new Map(orders.map(order => [String(order.id), order]));
   const manualMap = new Map<string, number>();
   for (const payment of legacy) manualMap.set(payment.bookingId, (manualMap.get(payment.bookingId) || 0) + safeNumber(payment.amountSatang));
   const totals = { total: 0, paid: 0, balance: 0 };
@@ -164,9 +165,9 @@ export async function summarizeLegacyBookingCandidates(options: { q?: string; tr
     const van = vanMap.get(String(booking.vanId));
     const seat = van?.seats?.find(item => item.id === booking.seatId);
     const exempt = booking.paymentExempt === true || seat?.type === 'staff' || seat?.type === 'driver';
-    const total = exempt ? 0 : toSatang(tripMap.get(String(booking.tripId))?.cost);
+    const total = exempt ? 0 : safeNumber(orderMap.get(String(booking.paymentOrderId || ''))?.totalSatang) || toSatang(tripMap.get(String(booking.tripId))?.cost);
     const manual = manualMap.get(String(booking.id)) || 0;
-    const paid = Math.max(orderMap.get(String(booking.paymentOrderId || '')) || 0, manual);
+    const paid = Math.max(orderMap.get(String(booking.paymentOrderId || ''))?.paidSatang || 0, manual);
     totals.total += total;
     totals.paid += paid;
     totals.balance += Math.max(0, total - paid);
@@ -222,9 +223,9 @@ export async function updateLegacyPayment(id: string, input: { amountBaht: unkno
   const current = await payments.findOne({ id });
   if (!current) throw new Error('ไม่พบรายการชำระเดิม');
   const order = await db.collection<PaymentOrder>('paymentOrders').findOne({ bookingId: current.bookingId });
-  const trip = await db.collection('trips').findOne({ id: current.tripId, status: 'active' }, { projection: { _id: 0, cost: 1 } });
+  const trip = await db.collection('trips').findOne({ id: current.tripId }, { projection: { _id: 0, cost: 1 } });
   if (!trip) throw new Error('ทริปนี้ปิดแล้ว ไม่สามารถแก้ไขยอดได้');
-  const totalSatang = toSatang(trip.cost);
+  const totalSatang = safeNumber(order?.totalSatang) || toSatang(trip.cost);
   const others = await payments.find({ bookingId: current.bookingId, id: { $ne: id } }).toArray();
   const manualOthers = others.reduce((sum, payment) => sum + payment.amountSatang, 0);
   const systemPaid = Math.max(0, safeNumber(order?.paidSatang) - current.amountSatang - manualOthers);

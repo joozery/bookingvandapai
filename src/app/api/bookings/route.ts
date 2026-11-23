@@ -34,7 +34,7 @@ export async function GET(request: Request) {
       if (tripScopeError) throw tripScopeError;
       tripScope = (scopedTrips || []).map((trip: any) => String(trip.id));
     }
-    let query = dataStore.from('bookings').select('*', paged ? { count: 'exact' } : undefined).order('createdAt', { ascending: false });
+    let query = dataStore.from('bookings').select('*', paged ? { count: 'exact' } : undefined).order('createdAt', { ascending: false }).order('id', { ascending: false });
 
     if (tripId) query = query.eq('tripId', tripId);
     if (vanId) query = query.eq('vanId', vanId);
@@ -62,8 +62,6 @@ export async function GET(request: Request) {
         ].join(','));
       }
     }
-    if (paged) query = query.range((pageValue - 1) * pageSize, pageValue * pageSize - 1);
-
     // Only load the relevant profile for customer requests. Admin requests
     // without a lineUserId still receive the complete profile merge as before.
     // Profiles do not depend on the bookings result, so read both together.
@@ -71,6 +69,16 @@ export async function GET(request: Request) {
     if (lineUserId) profilesQuery = profilesQuery.eq('lineUserId', lineUserId);
     const [{ data: bookings, error, count }, { data: profiles }] = await Promise.all([query, profilesQuery]);
     if (error) throw error;
+    const sortedBookings = [...(bookings || [])].sort((a: any, b: any) => {
+      const getTime = (booking: any) => {
+        const value = booking.createdAt ?? booking.created_at ?? booking.updatedAt ?? booking.updated_at;
+        const parsed = typeof value === 'number' ? value : Date.parse(String(value || ''));
+        return Number.isFinite(parsed) ? parsed : 0;
+      };
+      const timeDiff = getTime(b) - getTime(a);
+      return timeDiff || String(b.id || '').localeCompare(String(a.id || ''));
+    });
+    const pageBookings = paged ? sortedBookings.slice((pageValue - 1) * pageSize, pageValue * pageSize) : sortedBookings;
     const profileMap = new Map();
     if (profiles) {
       profiles.forEach((p: any) => {
@@ -82,8 +90,8 @@ export async function GET(request: Request) {
 
     // Enrich all returned bookings in one query so the client does not need
     // one additional /api/bookings/:id request per booking.
-    const tripIds = [...new Set((bookings || []).map((booking: any) => booking.tripId).filter(Boolean))];
-    const vanIds = [...new Set((bookings || []).map((booking: any) => booking.vanId).filter(Boolean))];
+    const tripIds = [...new Set(pageBookings.map((booking: any) => booking.tripId).filter(Boolean))];
+    const vanIds = [...new Set(pageBookings.map((booking: any) => booking.vanId).filter(Boolean))];
     // Trips, vans and payments are independent reads; run them together.
     const [{ data: trips }, { data: vans }, payments] = await Promise.all([
       tripIds.length > 0
@@ -92,12 +100,12 @@ export async function GET(request: Request) {
       vanIds.length > 0
         ? dataStore.from('vans').select('id, vanNumber, plateNumber, driverName, driverPhone').in('id', vanIds)
         : Promise.resolve({ data: [] as any[] }),
-      bookingPayments(bookings || []),
+      bookingPayments(pageBookings),
     ]);
     const tripMap = new Map<string, any>((trips || []).map((trip: any) => [trip.id, trip] as [string, any]));
     const vanMap = new Map<string, any>((vans || []).map((van: any) => [van.id, van] as [string, any]));
 
-    const merged = (bookings || []).map((booking: any) => {
+    const merged = pageBookings.map((booking: any) => {
       const profile = profileMap.get(booking.lineUserId);
       const trip = tripMap.get(booking.tripId);
       const van = vanMap.get(booking.vanId);
