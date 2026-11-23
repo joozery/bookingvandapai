@@ -32,7 +32,9 @@ export default function BookingsTab({ trips, vans, bookings, onApprove, onReject
   const [showForm, setShowForm] = useState(false);
   const [moving, setMoving] = useState<Booking | null>(null);
   const canMove = (b: Booking) => !!onMoveSeat && (b.status === 'approved' || (b.status === 'pending' && !b.replacesBookingId));
-  const [tripStatusFilter, setTripStatusFilter] = useState<'all' | 'active' | 'completed'>('active');
+  // The page is labelled as all bookings/customers, so include completed
+  // trips by default. Admins can still narrow this to active/completed.
+  const [tripStatusFilter, setTripStatusFilter] = useState<'all' | 'active' | 'completed'>('all');
   const [tripFilter, setTripFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState(pendingOnly ? 'pending' : 'all');
   const [search, setSearch] = useState('');

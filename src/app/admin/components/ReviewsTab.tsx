@@ -6,7 +6,7 @@ import type { Trip } from './types';
 import type { TripReview } from '@/lib/tripReview';
 import { formatThaiDateTime, parseStoredDate } from '@/lib/dateFormat';
 
-const defaults = { trip: '', tripStatus: '', rating: '', comment: '', search: '', visibility: 'visible' };
+const defaults = { trip: '', tripStatus: '', rating: '', comment: '', search: '', visibility: '' };
 
 export default function ReviewsTab({ trips }: { trips: Trip[] }) {
   const [reviews, setReviews] = useState<TripReview[]>([]);
@@ -14,7 +14,7 @@ export default function ReviewsTab({ trips }: { trips: Trip[] }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => typeof window === 'undefined' ? 1 : Math.max(1, Number(new URLSearchParams(window.location.search).get('page')) || 1));
   const [total, setTotal] = useState(0);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState('');
