@@ -606,7 +606,7 @@ function LegacyPaymentDialog({ trips, initialBookingId, initialTripStatus, onClo
 
 function TotalDueEditor({ totalDue, setTotalDue, totalDueNote, setTotalDueNote, currentTotalSatang, paidSatang, saving, onSave }: { totalDue: string; setTotalDue: (value: string) => void; totalDueNote: string; setTotalDueNote: (value: string) => void; currentTotalSatang: number; paidSatang: number; saving: boolean; onSave: () => void }) {
   const nextSatang = Math.round(Number(totalDue) * 100);
-  const valid = Number.isFinite(nextSatang) && nextSatang >= paidSatang && nextSatang > 0 && nextSatang !== currentTotalSatang;
+  const valid = Number.isFinite(nextSatang) && nextSatang >= paidSatang && nextSatang > 0;
   return <div className="mt-4 rounded-xl border border-violet-200 bg-violet-50 p-3 text-xs">
     <p className="font-black text-violet-900">แก้ไขยอดที่ต้องชำระทั้งหมด</p>
     <p className="mt-1 text-violet-700">เดิม {money(currentTotalSatang)} · ชำระแล้ว {money(paidSatang)} · คงเหลือใหม่ {money(Math.max(0, nextSatang - paidSatang))}</p>

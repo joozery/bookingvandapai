@@ -210,7 +210,6 @@ export async function adjustOrderTotal(orderId: string, totalBaht: unknown, note
   if (!order) throw new Error('ไม่พบรายการชำระเงิน');
   if (!['pending', 'deposit_paid', 'paid'].includes(order.status)) throw new Error('รายการนี้อยู่ในสถานะที่ไม่สามารถแก้ไขยอดได้');
   if (totalSatang < order.paidSatang) throw new Error(`ยอดใหม่ต้องไม่น้อยกว่ายอดที่ชำระแล้ว ฿${(order.paidSatang / 100).toLocaleString('th-TH')}`);
-  if (totalSatang === order.totalSatang) throw new Error('ยอดใหม่เท่ากับยอดเดิม');
   const now = Date.now();
   const updated = await orders.findOneAndUpdate(
     {

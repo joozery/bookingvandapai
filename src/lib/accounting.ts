@@ -19,7 +19,7 @@ export type PartnerTransaction = { id: string; partnerId: string; kind: 'reimbur
 export type PartnerTripOverride = { tripId: string; partnerId: string; percent: number; updatedAt?: number; updatedBy?: string };
 
 type TripRow = { id: string; name: string; departureDate?: string; durationDays?: number; status?: string; cost?: number; completedAt?: number | null };
-type OrderRow = { id: string; tripId: string; totalSatang: number; paidSatang: number; amountSatang?: number; creditUsedSatang?: number; status: string; reviewRequired?: boolean };
+type OrderRow = { id: string; tripId: string; bookingId?: string; totalSatang: number; paidSatang: number; amountSatang?: number; creditUsedSatang?: number; status: string; reviewRequired?: boolean; autoCancelledAt?: number };
 type BookingRow = { tripId: string; status: string; lineUserId?: string | null; adminPartnerId?: string | null };
 
 export const PAYMENT_INCOME_CATEGORY = { id: 'customer-payments', name: 'ค่าทริปจากลูกทริป (ระบบชำระเงิน)' };
@@ -62,7 +62,22 @@ export type AccountingSummary = {
 /** Money actually received for an order (all verified slips, incl. ones awaiting review). */
 const received = (order: OrderRow) => Math.max(0, order.paidSatang || 0);
 /** Still owed on an order that has started paying (abandoned checkouts are not debts). */
-const outstanding = (order: OrderRow) => (order.status === 'deposit_paid' || (order.status === 'paid' && order.totalSatang > order.paidSatang)) ? Math.max(0, order.totalSatang - order.paidSatang) : 0;
+const outstanding = (order: OrderRow) => !order.autoCancelledAt && (order.status === 'deposit_paid' || (order.status === 'paid' && order.totalSatang > order.paidSatang)) ? Math.max(0, order.totalSatang - order.paidSatang) : 0;
+
+/** Reconcile manual payments with the payment-order snapshot for legacy bookings. */
+async function reconcileLegacyPayments(db: Awaited<ReturnType<typeof getMongoDb>>, orders: OrderRow[]) {
+  const bookingIds = orders.map(order => order.bookingId).filter((id): id is string => !!id);
+  if (!bookingIds.length) return orders;
+  const payments = await db.collection<{ bookingId: string; amountSatang?: number }>('legacyPayments')
+    .find({ bookingId: { $in: bookingIds } }, { projection: { _id: 0, bookingId: 1, amountSatang: 1 } }).toArray();
+  const manualByBooking = new Map<string, number>();
+  for (const payment of payments) manualByBooking.set(payment.bookingId, (manualByBooking.get(payment.bookingId) || 0) + Math.max(0, payment.amountSatang || 0));
+  return orders.map(order => {
+    const manualPaid = manualByBooking.get(order.bookingId || '') || 0;
+    if (manualPaid <= order.paidSatang || order.autoCancelledAt) return order;
+    return { ...order, paidSatang: manualPaid, status: manualPaid >= order.totalSatang ? 'paid' : 'deposit_paid' };
+  });
+}
 
 export function summarizeAccounts(input: { trips: TripRow[]; orders: OrderRow[]; bookings: BookingRow[]; entries: AccountEntry[]; partners: Partner[]; partnerTransactions: PartnerTransaction[]; partnerTripOverrides?: PartnerTripOverride[] }): AccountingSummary {
   const tripMap = new Map<string, TripAccount>();
@@ -336,13 +351,13 @@ export async function loadAccounting() {
   const [categories, trips, orders, bookings, entries, partners, partnerTransactions] = await Promise.all([
     listCategories(),
     db.collection<TripRow>('trips').find({}, { projection: { _id: 0, id: 1, name: 1, departureDate: 1, durationDays: 1, status: 1, cost: 1 } }).toArray(),
-    db.collection<OrderRow>('paymentOrders').find({}, { projection: { _id: 0, id: 1, tripId: 1, totalSatang: 1, paidSatang: 1, creditUsedSatang: 1, status: 1, reviewRequired: 1 } }).toArray(),
+    db.collection<OrderRow>('paymentOrders').find({}, { projection: { _id: 0, id: 1, bookingId: 1, tripId: 1, totalSatang: 1, paidSatang: 1, creditUsedSatang: 1, status: 1, reviewRequired: 1, autoCancelledAt: 1 } }).toArray(),
     db.collection<BookingRow>('bookings').find({ status: 'approved' }, { projection: { _id: 0, tripId: 1, status: 1, lineUserId: 1, adminPartnerId: 1 } }).toArray(),
     db.collection<AccountEntry>('accountEntries').find({}, { projection: { _id: 0 } }).sort({ date: -1, createdAt: -1 }).toArray(),
     db.collection<Partner>('partners').find({}, { projection: { _id: 0 } }).sort({ createdAt: 1 }).toArray(),
     db.collection<PartnerTransaction>('partnerTransactions').find({}, { projection: { _id: 0 } }).sort({ date: -1, createdAt: -1 }).toArray(),
   ]);
-  const summary = summarizeAccounts({ trips, orders, bookings, entries, partners, partnerTransactions });
+  const summary = summarizeAccounts({ trips, orders: await reconcileLegacyPayments(db, orders), bookings, entries, partners, partnerTransactions });
   const profiles = await db.collection<{ lineUserId?: string; lineUserName?: string; fullName?: string; nickname?: string }>('profiles')
     .find({ lineUserId: { $exists: true, $ne: '' } }, { projection: { _id: 0, lineUserId: 1, lineUserName: 1, fullName: 1, nickname: 1 } })
     .sort({ fullName: 1, nickname: 1 })
@@ -360,7 +375,7 @@ export async function loadAccountingOverview() {
   const tripsCollection = db.collection<TripRow>('trips');
   const [tripCounts, orderTotals, entryTotals, tripOrderTotals, tripEntryTotals, partnerAdvances, partnerReimbursements] = await Promise.all([
     tripsCollection.aggregate([{ $group: { _id: '$status', count: { $sum: 1 } } }]).toArray(),
-    db.collection<OrderRow>('paymentOrders').aggregate([{ $group: { _id: null, paymentIncomeSatang: { $sum: { $cond: [{ $gt: ['$paidSatang', 0] }, '$paidSatang', 0] } }, outstandingSatang: { $sum: { $cond: [{ $and: [{ $in: ['$status', ['deposit_paid', 'paid']] }, { $gt: ['$totalSatang', '$paidSatang'] }] }, { $subtract: ['$totalSatang', '$paidSatang'] }, 0] } } } }]).toArray(),
+    db.collection<OrderRow>('paymentOrders').aggregate([{ $group: { _id: null, paymentIncomeSatang: { $sum: { $cond: [{ $gt: ['$paidSatang', 0] }, '$paidSatang', 0] } }, outstandingSatang: { $sum: { $cond: [{ $and: [{ $not: ['$autoCancelledAt'] }, { $in: ['$status', ['deposit_paid', 'paid']] }, { $gt: ['$totalSatang', '$paidSatang'] }] }, { $subtract: ['$totalSatang', '$paidSatang'] }, 0] } } } }]).toArray(),
     db.collection<AccountEntry>('accountEntries').aggregate([{ $group: { _id: { type: '$type', trip: { $cond: [{ $ne: ['$tripId', null] }, 'trip', 'overhead'] } }, amountSatang: { $sum: '$amountSatang' } } }]).toArray(),
     db.collection<OrderRow>('paymentOrders').aggregate([{ $match: { paidSatang: { $gt: 0 } } }, { $group: { _id: '$tripId', incomeSatang: { $sum: '$paidSatang' } } }]).toArray(),
     db.collection<AccountEntry>('accountEntries').aggregate([{ $group: { _id: '$tripId', incomeSatang: { $sum: { $cond: [{ $eq: ['$type', 'income'] }, '$amountSatang', 0] } }, expenseSatang: { $sum: { $cond: [{ $eq: ['$type', 'expense'] }, '$amountSatang', 0] } } } }]).toArray(),
@@ -402,14 +417,14 @@ export async function loadPartnerTripsPage(page = 1, pageSize = 15, status: 'all
   ]);
   const ids = trips.map(t => t.id);
   const [orders, bookings, entries, partners, partnerTransactions, partnerTripOverrides] = await Promise.all([
-    db.collection<OrderRow>('paymentOrders').find({ tripId: { $in: ids } }, { projection: { _id: 0, id: 1, tripId: 1, totalSatang: 1, paidSatang: 1, creditUsedSatang: 1, status: 1, reviewRequired: 1 } }).toArray(),
+    db.collection<OrderRow>('paymentOrders').find({ tripId: { $in: ids } }, { projection: { _id: 0, id: 1, bookingId: 1, tripId: 1, totalSatang: 1, paidSatang: 1, creditUsedSatang: 1, status: 1, reviewRequired: 1, autoCancelledAt: 1 } }).toArray(),
     db.collection<BookingRow>('bookings').find({ tripId: { $in: ids }, status: 'approved' }, { projection: { _id: 0, tripId: 1, status: 1, lineUserId: 1, adminPartnerId: 1 } }).toArray(),
     db.collection<AccountEntry>('accountEntries').find({ tripId: { $in: ids } }, { projection: { _id: 0 } }).toArray(),
     db.collection<Partner>('partners').find({}, { projection: { _id: 0 } }).sort({ createdAt: 1 }).toArray(),
     db.collection<PartnerTransaction>('partnerTransactions').find({}, { projection: { _id: 0 } }).toArray(),
     db.collection<PartnerTripOverride>('partnerTripOverrides').find({ tripId: { $in: ids } }, { projection: { _id: 0 } }).toArray(),
   ]);
-  const summary = summarizeAccounts({ trips, orders, bookings, entries, partners, partnerTransactions, partnerTripOverrides });
+  const summary = summarizeAccounts({ trips, orders: await reconcileLegacyPayments(db, orders), bookings, entries, partners, partnerTransactions, partnerTripOverrides });
   return { trips: summary.trips, total, page: safePage, pageSize: safeSize };
 }
 
@@ -473,11 +488,11 @@ export async function loadTripAccountsPage(input: { page?: number; pageSize?: nu
   ]);
   const ids = trips.map(t => t.id);
   const [orders, bookings, entries, partnerTransactions] = await Promise.all([
-    db.collection<OrderRow>('paymentOrders').find({ tripId: { $in: ids } }, { projection: { _id: 0, id: 1, tripId: 1, totalSatang: 1, paidSatang: 1, creditUsedSatang: 1, status: 1, reviewRequired: 1 } }).toArray(),
+    db.collection<OrderRow>('paymentOrders').find({ tripId: { $in: ids } }, { projection: { _id: 0, id: 1, bookingId: 1, tripId: 1, totalSatang: 1, paidSatang: 1, creditUsedSatang: 1, status: 1, reviewRequired: 1, autoCancelledAt: 1 } }).toArray(),
     db.collection<BookingRow>('bookings').find({ tripId: { $in: ids }, status: 'approved' }, { projection: { _id: 0, tripId: 1, status: 1, lineUserId: 1, adminPartnerId: 1 } }).toArray(),
     db.collection<AccountEntry>('accountEntries').find({ tripId: { $in: ids } }, { projection: { _id: 0 } }).toArray(),
     db.collection<PartnerTransaction>('partnerTransactions').find({}, { projection: { _id: 0 } }).toArray(),
   ]);
-  const summary = summarizeAccounts({ trips, orders, bookings, entries, partners, partnerTransactions });
+  const summary = summarizeAccounts({ trips, orders: await reconcileLegacyPayments(db, orders), bookings, entries, partners, partnerTransactions });
   return { trips: summary.trips, total, page, pageSize };
 }

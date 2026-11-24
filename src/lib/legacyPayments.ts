@@ -193,13 +193,17 @@ export async function recordLegacyPayment(input: { bookingId: string; amountBaht
   const totalSatang = toSatang(trip.cost);
   const currentOrder = booking.paymentOrderId ? await db.collection<PaymentOrder>('paymentOrders').findOne({ id: booking.paymentOrderId }) : await db.collection<PaymentOrder>('paymentOrders').findOne({ bookingId: booking.id });
   const existingPaid = safeNumber(currentOrder?.paidSatang);
+  const previousManualPayments = await db.collection<LegacyPayment>('legacyPayments').find({ bookingId: booking.id }, { projection: { _id: 0, amountSatang: 1 } }).toArray();
+  const previousManualPaid = previousManualPayments.reduce((sum, payment) => sum + safeNumber(payment.amountSatang), 0);
   const paidAtNumber = input.paidAt ? Date.parse(String(input.paidAt)) : Date.now();
   if (!Number.isFinite(paidAtNumber)) throw new Error('วันที่ชำระเงินไม่ถูกต้อง');
   const method = input.method === 'cash' || input.method === 'other' ? input.method : 'bank_transfer';
   const now = Date.now();
   const payment: LegacyPayment = { id: randomUUID(), bookingId: String(booking.id), tripId: String(booking.tripId), userId: String(booking.lineUserId), amountSatang, paidAt: paidAtNumber, method, note: typeof input.note === 'string' ? input.note.trim().slice(0, 500) : '', ...(input.receiptKey ? { receiptKey: input.receiptKey, receiptContentType: input.receiptContentType } : {}), createdAt: now, createdBy };
   await db.collection<LegacyPayment>('legacyPayments').insertOne(payment);
-  const paidSatang = existingPaid + amountSatang;
+  // Keep the order snapshot derived from the manual-payment ledger. This also
+  // recovers safely if an older write left the snapshot behind the ledger.
+  const paidSatang = Math.max(0, existingPaid - previousManualPaid) + previousManualPaid + amountSatang;
   const departureAt = Date.parse(`${String(trip.departureDate).slice(0, 10)}T${String(trip.departureTime || '00:00')}:00+07:00`);
   const orderId = currentOrder?.id || `legacy-${randomUUID()}`;
   const order: PaymentOrder = currentOrder || {
@@ -208,7 +212,7 @@ export async function recordLegacyPayment(input: { bookingId: string; amountBaht
     createdAt: now, expiresAt: Number.isFinite(departureAt) ? departureAt : now, checkoutCreatedAt: now, status: 'pending', bookingId: String(booking.id), legacyPayment: true,
   };
   if (currentOrder) {
-    const updated = await db.collection<PaymentOrder>('paymentOrders').findOneAndUpdate({ id: currentOrder.id, paidSatang: existingPaid, totalSatang }, { $inc: { paidSatang: amountSatang }, $set: { status: statusFor(totalSatang, paidSatang), legacyPayment: true, amountSatang: 0 }, $unset: { qrCode: '', verificationReceivers: '' } }, { returnDocument: 'after', projection: { _id: 0 } });
+    const updated = await db.collection<PaymentOrder>('paymentOrders').findOneAndUpdate({ id: currentOrder.id, totalSatang }, { $set: { paidSatang, status: statusFor(totalSatang, paidSatang), legacyPayment: true, amountSatang: 0 }, $unset: { qrCode: '', verificationReceivers: '' } }, { returnDocument: 'after', projection: { _id: 0 } });
     if (!updated) throw new Error('รายการชำระเงินถูกแก้ไขพร้อมกัน กรุณาโหลดใหม่');
   } else {
     order.paidSatang = paidSatang; order.status = statusFor(totalSatang, paidSatang);
@@ -247,7 +251,7 @@ export async function updateLegacyPayment(id: string, input: { amountBaht: unkno
       await db.collection<PaymentOrder>('paymentOrders').deleteOne({ id: order.id });
       await db.collection('bookings').updateOne({ id: current.bookingId, paymentOrderId: order.id }, { $unset: { paymentOrderId: '' } });
     } else {
-      await db.collection<PaymentOrder>('paymentOrders').updateOne({ id: order.id, paidSatang: order.paidSatang }, { $set: { paidSatang: paidTotal, status: statusFor(totalSatang, paidTotal), amountSatang: 0 } });
+      await db.collection<PaymentOrder>('paymentOrders').updateOne({ id: order.id }, { $set: { paidSatang: paidTotal, status: statusFor(totalSatang, paidTotal), amountSatang: 0 } });
     }
   }
   return { bookingId: current.bookingId, paidSatang: paidTotal, balanceSatang: Math.max(0, totalSatang - paidTotal) };
