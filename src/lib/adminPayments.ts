@@ -6,7 +6,7 @@ import { loadLegacyPayments, type LegacyPayment } from './legacyPayments';
 export type AdminPaymentRow = {
   id: string; tripId: string; tripName: string; departureAt: number; balanceDueAt: number; createdAt: number;
   plan: 'deposit' | 'full'; state: PaymentState; stateLabel: string;
-  totalSatang: number; paidSatang: number; balanceSatang: number; openInvoiceSatang: number;
+  totalSatang: number; paidSatang: number; balanceSatang: number; overpaidSatang?: number; openInvoiceSatang: number;
   creditUsedSatang: number; cashPaidSatang: number;
   userId: string; userName: string;
   booking: { id: string; fullName: string; nickname: string; phone: string; seatLabel: string; vanNumber: number | null; status: string; paymentOrderId?: string; currentTraveler?: { fullName: string; phone: string } | null; transferHistory?: { fromName: string; toName: string; toPhone: string; changedAt: string }[] } | null;

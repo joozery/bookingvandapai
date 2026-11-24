@@ -15,6 +15,9 @@ export default function PartnersPanel({ data, onChanged }: { data: AccountingDat
   const compensation = data.categories.find(c => c.system === 'partner_compensation');
   const linkedCount = data.partners.filter(p => p.lineUserId).length;
   const name = (id: string) => data.partners.find(p => p.id === id)?.name || '-';
+  const completedProfitSatang = data.trips
+    .filter(trip => trip.status === 'completed')
+    .reduce((sum, trip) => sum + trip.profitSatang, 0);
 
   const run = async (action: () => Promise<unknown>) => {
     try { await action(); await onChanged(); } catch (e) { alert(e instanceof Error ? e.message : 'ไม่สำเร็จ'); }
@@ -24,7 +27,7 @@ export default function PartnersPanel({ data, onChanged }: { data: AccountingDat
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Stat label="ค้างเบิกคืนหุ้นส่วนทั้งหมด" value={money(data.overview.owedToPartnersSatang)} tone="text-amber-600" hint="เงินที่หุ้นส่วนสำรองจ่ายไปและยังไม่ได้รับคืน" />
-        <Stat label="กำไรสุทธิทั้งหมด" value={money(data.overview.profitSatang)} tone={profitTone(data.overview.profitSatang)} hint="ใช้คำนวณส่วนแบ่งตามสัดส่วนหุ้น" />
+        <Stat label="กำไรสุทธิทั้งหมด" value={money(completedProfitSatang)} tone={profitTone(completedProfitSatang)} hint="รวมเฉพาะกำไรสุทธิของทริปที่ปิดแล้ว" />
         <Stat label="บัญชีหุ้นส่วนที่ผูกแล้ว" value={`${linkedCount}/${data.partners.length}`} hint="ใช้บัญชีนี้ตรวจจากการจองเพื่อคำนวณส่วนแบ่งรายทริป" />
       </div>
 

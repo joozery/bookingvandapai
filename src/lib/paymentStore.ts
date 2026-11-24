@@ -25,6 +25,7 @@ export type PaymentOrder = {
   verificationReceivers?: PaymentReceiver[];
   verifyToken?: string; verifyUntil?: number; nextAttemptAt?: number; attempts?: number;
   autoCancelledAt?: number; autoCancelReason?: string;
+  cancellation?: { type: 'no_refund'; reason: string; by: string; at: number; retainedSatang: number };
   legacyPayment?: boolean;
   appliedReceipts?: string[]; bookingClaim?: BookingClaim; reviewRequired?: boolean; bookingError?: string;
   lastVerification?: { code: string; message: string; checkedAt: number; stage: string; providerReference?: string };

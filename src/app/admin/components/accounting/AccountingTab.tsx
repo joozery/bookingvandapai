@@ -44,7 +44,11 @@ export default function AccountingTab() {
   const [quickEntry, setQuickEntry] = useState<'income' | 'expense' | null>(null);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const [detailsLoaded, setDetailsLoaded] = useState(false);
-  const [overviewStatus, setOverviewStatus] = useState<'all' | 'active' | 'completed'>('all');
+  const [overviewStatus, setOverviewStatus] = useState<'all' | 'active' | 'completed'>(() => {
+    if (typeof window === 'undefined') return 'all';
+    const value = new URLSearchParams(window.location.search).get('status');
+    return value === 'active' || value === 'completed' ? value : 'all';
+  });
 
   const apply = useCallback((result: { data?: AccountingData; error?: string }) => {
     if (result.data) { setData(result.data); setUpdatedAt(new Date()); }
@@ -58,6 +62,13 @@ export default function AccountingTab() {
   const changeOverviewStatus = async (next: 'all' | 'active' | 'completed') => {
     if (!detailsLoaded) await loadDetails();
     setOverviewStatus(next);
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      params.set('view', 'overview');
+      params.set('page', '1');
+      if (next === 'all') params.delete('status'); else params.set('status', next);
+      window.history.replaceState(null, '', `/admin/accounting?${params.toString()}`);
+    }
   };
   useEffect(() => {
     let cancelled = false;
@@ -146,7 +157,7 @@ function CentralView({ data, onChanged }: { data: AccountingData; onChanged: () 
 
 function Overview({ data, status, onStatusChange, onOpenTrip, onView }: { data: AccountingData; status: 'all' | 'active' | 'completed'; onStatusChange: (status: 'all' | 'active' | 'completed') => Promise<void>; onOpenTrip: (id: string) => void; onView: (view: View) => void }) {
   const allOverview = data.overview;
-  const selectedTrips = data.trips.filter(trip => status === 'all' || (status === 'completed' ? trip.status === 'completed' : trip.status !== 'completed'));
+  const selectedTrips = data.trips.filter(trip => status === 'all' || trip.status === status);
   const tripTotals = selectedTrips.reduce((sum, trip) => ({
     paymentIncomeSatang: sum.paymentIncomeSatang + trip.paymentIncomeSatang,
     otherIncomeSatang: sum.otherIncomeSatang + trip.otherIncomeSatang,
@@ -154,19 +165,25 @@ function Overview({ data, status, onStatusChange, onOpenTrip, onView }: { data: 
     outstandingSatang: sum.outstandingSatang + trip.outstandingSatang,
     centralReserveSatang: sum.centralReserveSatang + (trip.status === 'completed' ? trip.centralReserveSatang : 0),
   }), { paymentIncomeSatang: 0, otherIncomeSatang: 0, tripExpenseSatang: 0, outstandingSatang: 0, centralReserveSatang: 0 });
-  const o = data.trips.length === 0 ? allOverview : {
+  const includeOverhead = status === 'all';
+  const overheadIncomeSatang = includeOverhead ? data.overhead.incomeSatang : 0;
+  const overheadExpenseSatang = includeOverhead ? data.overhead.expenseSatang : 0;
+  const o = data.trips.length === 0 && status === 'all' ? allOverview : {
     ...allOverview,
     paymentIncomeSatang: tripTotals.paymentIncomeSatang,
-    otherIncomeSatang: tripTotals.otherIncomeSatang + data.overhead.incomeSatang,
-    incomeSatang: tripTotals.paymentIncomeSatang + tripTotals.otherIncomeSatang + data.overhead.incomeSatang,
+    otherIncomeSatang: tripTotals.otherIncomeSatang + overheadIncomeSatang,
+    incomeSatang: tripTotals.paymentIncomeSatang + tripTotals.otherIncomeSatang + overheadIncomeSatang,
     tripExpenseSatang: tripTotals.tripExpenseSatang,
-    expenseSatang: tripTotals.tripExpenseSatang + data.overhead.expenseSatang,
+    overheadExpenseSatang,
+    expenseSatang: tripTotals.tripExpenseSatang + overheadExpenseSatang,
     outstandingSatang: tripTotals.outstandingSatang,
-    centralReserveSatang: tripTotals.centralReserveSatang,
-    centralFundSatang: tripTotals.centralReserveSatang + data.overhead.incomeSatang - data.overhead.expenseSatang,
+    // The central fund is a system-wide balance and must not change when the
+    // trip-status filter changes.
+    centralReserveSatang: allOverview.centralReserveSatang,
+    centralFundSatang: allOverview.centralFundSatang,
     openTrips: selectedTrips.filter(trip => trip.status !== 'completed').length,
     closedTrips: selectedTrips.filter(trip => trip.status === 'completed').length,
-    profitSatang: tripTotals.paymentIncomeSatang + tripTotals.otherIncomeSatang + data.overhead.incomeSatang - tripTotals.tripExpenseSatang - data.overhead.expenseSatang,
+    profitSatang: tripTotals.paymentIncomeSatang + tripTotals.otherIncomeSatang + overheadIncomeSatang - tripTotals.tripExpenseSatang - overheadExpenseSatang,
   };
   const filteredTrips = status === 'all' ? data.trips : selectedTrips;
   const paidShare = o.incomeSatang > 0 ? Math.max(0, Math.min(100, o.paymentIncomeSatang / o.incomeSatang * 100)) : 0;
@@ -248,7 +265,7 @@ function TripTable({ title, trips, onOpenTrip, totals, serverStatus }: { title: 
   }, [page, serverStatus, q]);
   useEffect(() => { if (serverStatus) setPage(1); }, [serverStatus]);
   const sourceTrips = serverStatus ? remoteTrips : trips;
-  const filtered = sourceTrips;
+  const filtered = serverStatus ? sourceTrips.filter(trip => serverStatus === 'all' || trip.status === serverStatus) : sourceTrips;
   const totalRows = serverStatus ? remoteTotal : filtered.length;
   const pages = Math.max(1, Math.ceil((serverStatus ? remoteTotal : filtered.length) / 20));
   const currentPage = Math.min(page, pages);

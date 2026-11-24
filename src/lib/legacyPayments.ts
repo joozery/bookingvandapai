@@ -37,6 +37,8 @@ export type LegacyBookingCandidate = {
   manualPaidSatang: number;
   systemPaidSatang: number;
   balanceSatang: number;
+  overpaidSatang: number;
+  adjustments: NonNullable<PaymentOrder['adjustments']>;
   paymentOrderId?: string;
   paymentExempt?: boolean;
   payments: Pick<LegacyPayment, 'id' | 'amountSatang' | 'paidAt' | 'method' | 'note' | 'receiptKey'>[];
@@ -102,12 +104,12 @@ export async function listLegacyBookingCandidates(options: { q?: string; tripId?
   const orderIds = bookings.map(booking => booking.paymentOrderId).filter(Boolean);
   const [legacy, orders, vans] = await Promise.all([
     loadLegacyPayments(bookingIds),
-    orderIds.length ? db.collection<PaymentOrder>('paymentOrders').find({ id: { $in: orderIds } }, { projection: { _id: 0, id: 1, totalSatang: 1, paidSatang: 1 } }).toArray() : [],
+    orderIds.length ? db.collection<PaymentOrder>('paymentOrders').find({ id: { $in: orderIds } }, { projection: { _id: 0, id: 1, totalSatang: 1, paidSatang: 1, adjustments: 1 } }).toArray() : [],
     db.collection('vans').find({ id: { $in: bookings.map(booking => booking.vanId).filter(Boolean) } }, { projection: { _id: 0, id: 1, vanNumber: 1, seats: 1 } }).toArray(),
   ]);
   const legacyByBooking = new Map<string, LegacyPayment[]>();
   for (const payment of legacy) legacyByBooking.set(payment.bookingId, [...(legacyByBooking.get(payment.bookingId) || []), payment]);
-  const orderById = new Map<string, { id: string; totalSatang?: number; paidSatang?: number }>(orders.map(order => [String(order.id), order] as [string, { id: string; totalSatang?: number; paidSatang?: number }]));
+  const orderById = new Map<string, { id: string; totalSatang?: number; paidSatang?: number; adjustments?: NonNullable<PaymentOrder['adjustments']> }>(orders.map(order => [String(order.id), order] as [string, { id: string; totalSatang?: number; paidSatang?: number; adjustments?: NonNullable<PaymentOrder['adjustments']> }]));
   const vanById = new Map<string, { vanNumber?: number; seats?: { id?: string; type?: string }[] }>();
   for (const van of vans) vanById.set(String(van.id), van as { vanNumber?: number; seats?: { id?: string; type?: string }[] });
   const rows = bookings.map(booking => {
@@ -118,11 +120,12 @@ export async function listLegacyBookingCandidates(options: { q?: string; tripId?
     const totalSatang = paymentExempt ? 0 : safeNumber(orderById.get(String(booking.paymentOrderId || ''))?.totalSatang) || toSatang(trip?.cost);
     const manualPaidSatang = (legacyByBooking.get(String(booking.id)) || []).reduce((sum, payment) => sum + safeNumber(payment.amountSatang), 0);
     const systemPaidSatang = Math.max(0, safeNumber(orderById.get(String(booking.paymentOrderId || ''))?.paidSatang) - manualPaidSatang);
+    const paidSatang = manualPaidSatang + systemPaidSatang;
     return {
       bookingId: String(booking.id), tripId: String(booking.tripId), tripName: String(trip?.name || ''), departureDate: String(trip?.departureDate || ''),
       fullName: String(booking.fullName || ''), nickname: String(booking.nickname || ''), phone: String(booking.phone || ''), lineUserId: String(booking.lineUserId || ''), lineUserName: String(booking.lineUserName || ''),
       seatLabel: String(booking.seatLabel || ''), seatType, vanNumber: van?.vanNumber ?? null, totalSatang, manualPaidSatang, systemPaidSatang,
-      balanceSatang: Math.max(0, totalSatang - manualPaidSatang - systemPaidSatang), paymentOrderId: booking.paymentOrderId ? String(booking.paymentOrderId) : undefined, paymentExempt,
+      balanceSatang: Math.max(0, totalSatang - paidSatang), overpaidSatang: Math.max(0, paidSatang - totalSatang), adjustments: orderById.get(String(booking.paymentOrderId || ''))?.adjustments || [], paymentOrderId: booking.paymentOrderId ? String(booking.paymentOrderId) : undefined, paymentExempt,
       payments: (legacyByBooking.get(String(booking.id)) || []).map(payment => ({ id: payment.id, amountSatang: payment.amountSatang, paidAt: payment.paidAt, method: payment.method, note: payment.note, receiptKey: payment.receiptKey })),
     };
   });
@@ -190,7 +193,6 @@ export async function recordLegacyPayment(input: { bookingId: string; amountBaht
   const totalSatang = toSatang(trip.cost);
   const currentOrder = booking.paymentOrderId ? await db.collection<PaymentOrder>('paymentOrders').findOne({ id: booking.paymentOrderId }) : await db.collection<PaymentOrder>('paymentOrders').findOne({ bookingId: booking.id });
   const existingPaid = safeNumber(currentOrder?.paidSatang);
-  if (existingPaid + amountSatang > totalSatang) throw new Error('ยอดชำระรวมจะเกินราคาทริป');
   const paidAtNumber = input.paidAt ? Date.parse(String(input.paidAt)) : Date.now();
   if (!Number.isFinite(paidAtNumber)) throw new Error('วันที่ชำระเงินไม่ถูกต้อง');
   const method = input.method === 'cash' || input.method === 'other' ? input.method : 'bank_transfer';
@@ -233,7 +235,6 @@ export async function updateLegacyPayment(id: string, input: { amountBaht: unkno
     await payments.deleteOne({ id });
   } else {
     const amountSatang = toSatang(input.amountBaht);
-    if (systemPaid + manualOthers + amountSatang > totalSatang) throw new Error('ยอดชำระรวมจะเกินราคาทริป');
     const paidAt = input.paidAt ? Date.parse(String(input.paidAt)) : current.paidAt;
     if (!Number.isFinite(paidAt)) throw new Error('วันที่ชำระเงินไม่ถูกต้อง');
     const method = input.method === 'cash' || input.method === 'other' ? input.method : 'bank_transfer';

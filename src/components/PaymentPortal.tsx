@@ -8,6 +8,7 @@ import { QRCodeCanvas } from 'qrcode.react';
 import { ArrowLeft, ArrowRight, CheckCircle2, CreditCard, Download, LoaderCircle, MessageSquare, ShieldCheck, Upload, X } from 'lucide-react';
 import { tripMessengerUrl } from '@/lib/contact';
 import { depositSatang, paymentQuote } from '@/lib/paymentRules';
+import { convertImageToWebp } from '@/lib/imageToWebp';
 import type { PaymentOrder } from '@/lib/paymentStore';
 
 type Order = Omit<PaymentOrder, 'userId'>;
@@ -191,7 +192,7 @@ export default function PaymentPortal() {
     if (!slip || !current) return;
     setBusy(true); setError('');
     try {
-      const form = new FormData(); form.set('slip', slip);
+      const form = new FormData(); form.set('slip', await convertImageToWebp(slip));
       const data = await readResponse(await fetch(`/api/payments/${encodeURIComponent(current.id)}/verify`, { method: 'POST', body: form }));
       setCurrent(data.order); setSlip(null);
       if (data.reviewRequired) setError(`ได้รับข้อมูลยอดโอนแล้ว แต่รายการนี้ต้องให้แอดมินตรวจสอบ กรุณาติดต่อแอดมินพร้อมเลขรายการ ${current.id}`);

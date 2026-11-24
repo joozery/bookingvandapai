@@ -75,7 +75,9 @@ export function summarizeAccounts(input: { trips: TripRow[]; orders: OrderRow[];
   for (const trip of input.trips) tripMap.set(trip.id, blank(trip));
   const tripFor = (id: string) => {
     let account = tripMap.get(id);
-    if (!account) { account = blank({ id, name: 'ทริปที่ถูกลบ', status: 'completed' }); tripMap.set(id, account); }
+    // Keep orphaned historical records visible in the unfiltered ledger, but
+    // do not classify them as completed trips for status-based reporting.
+    if (!account) { account = blank({ id, name: 'ทริปที่ถูกลบ', status: 'deleted' }); tripMap.set(id, account); }
     return account;
   };
   const add = (bucket: Record<string, number>, key: string, satang: number) => { bucket[key] = (bucket[key] || 0) + satang; };
@@ -456,7 +458,8 @@ export async function loadTripAccountsPage(input: { page?: number; pageSize?: nu
   const db = await getMongoDb();
   const page = Math.max(1, Math.floor(input.page || 1));
   const pageSize = Math.min(20, Math.max(1, Math.floor(input.pageSize || 20)));
-  const filter: Record<string, unknown> = input.status === 'completed' ? { status: 'completed' } : input.status === 'active' ? { status: { $ne: 'completed' } } : {};
+  const status = input.status === 'completed' || input.status === 'active' ? input.status : 'all';
+  const filter: Record<string, unknown> = status === 'completed' ? { status: 'completed' } : status === 'active' ? { status: 'active' } : {};
   if (input.onlyPaying) {
     const payingOrders = await db.collection<OrderRow>('paymentOrders').find({ $or: [{ paidSatang: { $gt: 0 } }, { amountSatang: { $gt: 0 } }] }, { projection: { _id: 0, tripId: 1 } }).toArray();
     filter.id = { $in: [...new Set(payingOrders.map(order => order.tripId))] };
