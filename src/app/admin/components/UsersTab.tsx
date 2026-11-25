@@ -266,8 +266,18 @@ export default function UsersTab({ users, onRefresh }: Props) {
   const [showFilter, setShowFilter] = useState(false);
   const [selected, setSelected] = useState<UserRecord | null>(null);
   const [remoteUsers, setRemoteUsers] = useState<UserRecord[]>(users);
+  const [birthdayUsers, setBirthdayUsers] = useState<UserRecord[]>(users);
   const [totalUsers, setTotalUsers] = useState(users.length);
   const [page, setPage] = useState(1);
+
+  React.useEffect(() => {
+    let active = true;
+    fetch('/api/users?page=1&calendar=1', { cache: 'no-store' })
+      .then(response => response.json())
+      .then(data => { if (active && data.success) setBirthdayUsers(data.users || []); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [onRefresh]);
 
   const [requests, setRequests] = useState<any[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(false);
@@ -394,7 +404,7 @@ export default function UsersTab({ users, onRefresh }: Props) {
       </div>
 
       {/* ── Toolbar ────────────────────────────────────────────────────────── */}
-      <BirthdayCalendar users={users} onSelectUser={setSelected} />
+      <BirthdayCalendar users={birthdayUsers} onSelectUser={setSelected} />
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
         
         {requests.length > 0 && (

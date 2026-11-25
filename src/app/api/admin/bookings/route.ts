@@ -42,11 +42,25 @@ export async function GET(request: Request) {
     const bookingTripIds = [...new Set((bookings || []).map((booking: any) => booking.tripId).filter(Boolean))];
     const bookingVanIds = [...new Set((bookings || []).map((booking: any) => booking.vanId).filter(Boolean))];
     const bookingUserIds = [...new Set((bookings || []).map((booking: any) => booking.lineUserId).filter(Boolean))];
+    // Insurance details belong to the LINE customer, not only to one booking.
+    // A newer booking can be missing fields that were already recorded before.
+    const insuranceHistory = bookingUserIds.length
+      ? await dataStore.from('bookings').select('lineUserId, nationalId, birthDate, createdAt').in('lineUserId', bookingUserIds).order('createdAt', { ascending: false })
+      : { data: [] as any[] };
     let profilesQuery = dataStore.from('profiles').select('*');
     if (bookingUserIds.length) profilesQuery = profilesQuery.in('lineUserId', bookingUserIds);
     else profilesQuery = profilesQuery.eq('lineUserId', '__no_matching_user__');
     const { data: profiles, error: profilesError } = await profilesQuery;
     if (profilesError) console.error('Admin profiles fetch error:', profilesError);
+
+    const insuranceMap = new Map<string, { nationalId?: string | null; birthDate?: string | null }>();
+    for (const record of insuranceHistory.data || []) {
+      if (!record.lineUserId) continue;
+      const current = insuranceMap.get(record.lineUserId) || {};
+      if (!current.nationalId && record.nationalId) current.nationalId = record.nationalId;
+      if (!current.birthDate && record.birthDate) current.birthDate = record.birthDate;
+      insuranceMap.set(record.lineUserId, current);
+    }
     const [{ data: trips }, { data: vans }] = await Promise.all([
       bookingTripIds.length ? dataStore.from('trips').select('id, name').in('id', bookingTripIds) : Promise.resolve({ data: [] as any[] }),
       bookingVanIds.length ? dataStore.from('vans').select('id, vanNumber').in('id', bookingVanIds) : Promise.resolve({ data: [] as any[] })
@@ -71,8 +85,8 @@ export async function GET(request: Request) {
         fullName: profile?.fullName || booking.fullName,
         tripName: tripMap.get(booking.tripId) || 'Unknown Trip',
         vanNumber: vanMap.get(booking.vanId) || 1,
-        nationalId: booking.nationalId || profile?.nationalId || null,
-        birthDate: booking.birthDate || profile?.birthDate || null,
+        nationalId: booking.nationalId || profile?.nationalId || insuranceMap.get(booking.lineUserId)?.nationalId || null,
+        birthDate: booking.birthDate || profile?.birthDate || insuranceMap.get(booking.lineUserId)?.birthDate || null,
         emergencyName: booking.emergencyName || profile?.emergencyName || null,
         emergencyPhone: booking.emergencyPhone || profile?.emergencyPhone || null,
         allergies: booking.allergies || profile?.allergies || null,

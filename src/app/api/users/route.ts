@@ -35,6 +35,7 @@ export async function GET(request: Request) {
       const users = grouped.map((user: any) => ({ ...user, role: adminMap.get(user.lineUserId)?.role || 'customer', isBlocked: !!adminMap.get(user.lineUserId)?.isBlocked, adminNote: adminMap.get(user.lineUserId)?.note || '' }));
       const filtered = users.filter((user: any) => (!q || [user.nickname, user.fullName, user.phone, user.lineUserName, user.lineUserId].filter(Boolean).join(' ').toLowerCase().includes(q.toLowerCase())) && (role === 'blocked' ? user.isBlocked : role === 'all' || user.role === role));
       filtered.sort((a: any, b: any) => sort === 'totalBookings' ? b.totalBookings - a.totalBookings : sort === 'checkedIn' ? b.checkedIn - a.checkedIn : sort === 'nickname' ? String(b.nickname || '').localeCompare(String(a.nickname || '')) : new Date(b.lastSeen).getTime() - new Date(a.lastSeen).getTime());
+      if (params.get('calendar') === '1') return NextResponse.json({ success: true, users: filtered, total: filtered.length, page: 1, pageSize: filtered.length });
       return NextResponse.json({ success: true, users: filtered.slice((page - 1) * pageSize, page * pageSize), total: filtered.length, page, pageSize });
     }
     // Only the fields used below are read (not e.g. ID numbers or medical

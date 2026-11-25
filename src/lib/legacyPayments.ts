@@ -38,6 +38,7 @@ export type LegacyBookingCandidate = {
   systemPaidSatang: number;
   balanceSatang: number;
   overpaidSatang: number;
+  balanceDueAt?: number;
   adjustments: NonNullable<PaymentOrder['adjustments']>;
   paymentOrderId?: string;
   paymentExempt?: boolean;
@@ -104,12 +105,12 @@ export async function listLegacyBookingCandidates(options: { q?: string; tripId?
   const orderIds = bookings.map(booking => booking.paymentOrderId).filter(Boolean);
   const [legacy, orders, vans] = await Promise.all([
     loadLegacyPayments(bookingIds),
-    orderIds.length ? db.collection<PaymentOrder>('paymentOrders').find({ id: { $in: orderIds } }, { projection: { _id: 0, id: 1, totalSatang: 1, paidSatang: 1, adjustments: 1 } }).toArray() : [],
+    orderIds.length ? db.collection<PaymentOrder>('paymentOrders').find({ id: { $in: orderIds } }, { projection: { _id: 0, id: 1, totalSatang: 1, paidSatang: 1, balanceDueAt: 1, adjustments: 1 } }).toArray() : [],
     db.collection('vans').find({ id: { $in: bookings.map(booking => booking.vanId).filter(Boolean) } }, { projection: { _id: 0, id: 1, vanNumber: 1, seats: 1 } }).toArray(),
   ]);
   const legacyByBooking = new Map<string, LegacyPayment[]>();
   for (const payment of legacy) legacyByBooking.set(payment.bookingId, [...(legacyByBooking.get(payment.bookingId) || []), payment]);
-  const orderById = new Map<string, { id: string; totalSatang?: number; paidSatang?: number; adjustments?: NonNullable<PaymentOrder['adjustments']> }>(orders.map(order => [String(order.id), order] as [string, { id: string; totalSatang?: number; paidSatang?: number; adjustments?: NonNullable<PaymentOrder['adjustments']> }]));
+  const orderById = new Map<string, { id: string; totalSatang?: number; paidSatang?: number; balanceDueAt?: number; adjustments?: NonNullable<PaymentOrder['adjustments']> }>(orders.map(order => [String(order.id), order] as [string, { id: string; totalSatang?: number; paidSatang?: number; balanceDueAt?: number; adjustments?: NonNullable<PaymentOrder['adjustments']> }]));
   const vanById = new Map<string, { vanNumber?: number; seats?: { id?: string; type?: string }[] }>();
   for (const van of vans) vanById.set(String(van.id), van as { vanNumber?: number; seats?: { id?: string; type?: string }[] });
   const rows = bookings.map(booking => {
@@ -126,6 +127,7 @@ export async function listLegacyBookingCandidates(options: { q?: string; tripId?
       fullName: String(booking.fullName || ''), nickname: String(booking.nickname || ''), phone: String(booking.phone || ''), lineUserId: String(booking.lineUserId || ''), lineUserName: String(booking.lineUserName || ''),
       seatLabel: String(booking.seatLabel || ''), seatType, vanNumber: van?.vanNumber ?? null, totalSatang, manualPaidSatang, systemPaidSatang,
       balanceSatang: Math.max(0, totalSatang - paidSatang), overpaidSatang: Math.max(0, paidSatang - totalSatang), adjustments: orderById.get(String(booking.paymentOrderId || ''))?.adjustments || [], paymentOrderId: booking.paymentOrderId ? String(booking.paymentOrderId) : undefined, paymentExempt,
+      balanceDueAt: orderById.get(String(booking.paymentOrderId || ''))?.balanceDueAt,
       payments: (legacyByBooking.get(String(booking.id)) || []).map(payment => ({ id: payment.id, amountSatang: payment.amountSatang, paidAt: payment.paidAt, method: payment.method, note: payment.note, receiptKey: payment.receiptKey })),
     };
   });

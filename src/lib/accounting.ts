@@ -19,8 +19,9 @@ export type PartnerTransaction = { id: string; partnerId: string; kind: 'reimbur
 export type PartnerTripOverride = { tripId: string; partnerId: string; percent: number; updatedAt?: number; updatedBy?: string };
 
 type TripRow = { id: string; name: string; departureDate?: string; durationDays?: number; status?: string; cost?: number; completedAt?: number | null };
-type OrderRow = { id: string; tripId: string; bookingId?: string; totalSatang: number; paidSatang: number; amountSatang?: number; creditUsedSatang?: number; status: string; reviewRequired?: boolean; autoCancelledAt?: number };
-type BookingRow = { tripId: string; status: string; lineUserId?: string | null; adminPartnerId?: string | null };
+type OrderRow = { id: string; tripId: string; bookingId?: string; userName?: string; createdAt?: number; totalSatang: number; paidSatang: number; amountSatang?: number; creditUsedSatang?: number; status: string; reviewRequired?: boolean; autoCancelledAt?: number; autoCancelReason?: string };
+type BookingRow = { id?: string; tripId: string; status: string; fullName?: string; seatLabel?: string; vanId?: string; lineUserId?: string | null; adminPartnerId?: string | null };
+type PaymentLineRow = { orderId: string; amountSatang: number; paidAt: number; source: 'slip' | 'manual' };
 
 export const PAYMENT_INCOME_CATEGORY = { id: 'customer-payments', name: 'ค่าทริปจากลูกทริป (ระบบชำระเงิน)' };
 
@@ -43,7 +44,9 @@ export type TripAccount = {
   incomeByCategory: Record<string, number>; expenseByCategory: Record<string, number>;
   centralReserveSatang: number; distributableProfitSatang: number;
   partnerShares: PartnerTripShare[];
+  paymentDetails: TripPaymentDetail[];
 };
+export type TripPaymentDetail = { id: string; userName: string; fullName: string; vanNumber?: number | null; seatLabel: string; bookingId?: string; paidSatang: number; totalSatang: number; status: string; label: string; date: string; autoCancelledAt?: number; autoCancelReason?: string };
 export type PartnerTripShare = { partnerId: string; attending: boolean; percent: number; amountSatang: number; paidSatang: number; remainingSatang: number };
 export type PartnerAccount = Partner & {
   advancedSatang: number; reimbursedSatang: number; owedSatang: number; compensationSatang: number; profitShareSatang: number;
@@ -79,13 +82,14 @@ async function reconcileLegacyPayments(db: Awaited<ReturnType<typeof getMongoDb>
   });
 }
 
-export function summarizeAccounts(input: { trips: TripRow[]; orders: OrderRow[]; bookings: BookingRow[]; entries: AccountEntry[]; partners: Partner[]; partnerTransactions: PartnerTransaction[]; partnerTripOverrides?: PartnerTripOverride[] }): AccountingSummary {
+export function summarizeAccounts(input: { trips: TripRow[]; orders: OrderRow[]; bookings: BookingRow[]; entries: AccountEntry[]; partners: Partner[]; partnerTransactions: PartnerTransaction[]; partnerTripOverrides?: PartnerTripOverride[]; paymentLines?: Map<string, PaymentLineRow[]>; bookingDetails?: Map<string, { fullName?: string; seatLabel?: string; vanNumber?: number | null }> }): AccountingSummary {
   const tripMap = new Map<string, TripAccount>();
   const blank = (trip: TripRow): TripAccount => ({
     tripId: trip.id, name: trip.name, departureDate: trip.departureDate || '', status: trip.status || 'active', passengers: 0,
     paymentIncomeSatang: 0, otherIncomeSatang: 0, incomeSatang: 0, expenseSatang: 0, profitSatang: 0, outstandingSatang: 0, reviewOrders: 0,
     creditPaymentSatang: 0, cashPaymentSatang: 0, centralReserveSatang: 0, distributableProfitSatang: 0, partnerShares: [],
     costPerPassengerSatang: null, incomeByCategory: {}, expenseByCategory: {},
+    paymentDetails: [],
   });
   for (const trip of input.trips) tripMap.set(trip.id, blank(trip));
   const tripFor = (id: string) => {
@@ -102,6 +106,19 @@ export function summarizeAccounts(input: { trips: TripRow[]; orders: OrderRow[];
     if (!received(order) && !outstanding(order)) continue;
     const trip = tripFor(order.tripId);
     trip.paymentIncomeSatang += received(order);
+    if (received(order)) {
+      const lines = [...(input.paymentLines?.get(order.id) || [])].sort((a, b) => a.paidAt - b.paidAt);
+      const totalLines = lines.reduce((sum, line) => sum + Math.max(0, line.amountSatang), 0);
+      if (totalLines < received(order)) lines.push({ orderId: order.id, amountSatang: received(order) - totalLines, paidAt: order.createdAt || Date.now(), source: 'slip' });
+      let cumulative = 0;
+      for (const line of lines) {
+        const amount = Math.max(0, Math.min(line.amountSatang, received(order) - cumulative));
+        if (!amount) continue;
+        cumulative += amount;
+        const booking = order.bookingId ? input.bookingDetails?.get(order.bookingId) : undefined;
+        trip.paymentDetails.push({ id: `${order.id}:${line.source}:${line.paidAt}:${cumulative}`, userName: order.userName || 'ไม่ระบุชื่อ', fullName: booking?.fullName || '-', vanNumber: booking?.vanNumber, seatLabel: booking?.seatLabel || '-', bookingId: order.bookingId, paidSatang: amount, totalSatang: order.totalSatang, status: order.autoCancelledAt ? 'cancelled-retained' : order.status, label: cumulative >= order.totalSatang ? (cumulative === amount ? 'ชำระครบ' : 'ชำระส่วนที่เหลือ') : cumulative === amount ? 'มัดจำ' : 'ชำระเพิ่มเติม', date: line.paidAt ? new Date(line.paidAt).toISOString().slice(0, 10) : '', autoCancelledAt: order.autoCancelledAt, autoCancelReason: order.autoCancelReason });
+      }
+    }
     trip.creditPaymentSatang += Math.min(received(order), Math.max(0, order.creditUsedSatang || 0));
     trip.cashPaymentSatang += Math.max(0, received(order) - Math.max(0, order.creditUsedSatang || 0));
     if (received(order)) add(trip.incomeByCategory, PAYMENT_INCOME_CATEGORY.id, received(order));
@@ -351,13 +368,27 @@ export async function loadAccounting() {
   const [categories, trips, orders, bookings, entries, partners, partnerTransactions] = await Promise.all([
     listCategories(),
     db.collection<TripRow>('trips').find({}, { projection: { _id: 0, id: 1, name: 1, departureDate: 1, durationDays: 1, status: 1, cost: 1 } }).toArray(),
-    db.collection<OrderRow>('paymentOrders').find({}, { projection: { _id: 0, id: 1, bookingId: 1, tripId: 1, totalSatang: 1, paidSatang: 1, creditUsedSatang: 1, status: 1, reviewRequired: 1, autoCancelledAt: 1 } }).toArray(),
-    db.collection<BookingRow>('bookings').find({ status: 'approved' }, { projection: { _id: 0, tripId: 1, status: 1, lineUserId: 1, adminPartnerId: 1 } }).toArray(),
+    db.collection<OrderRow>('paymentOrders').find({}, { projection: { _id: 0, id: 1, bookingId: 1, userName: 1, createdAt: 1, tripId: 1, totalSatang: 1, paidSatang: 1, creditUsedSatang: 1, status: 1, reviewRequired: 1, autoCancelledAt: 1, autoCancelReason: 1 } }).toArray(),
+    db.collection<BookingRow>('bookings').find({}, { projection: { _id: 0, id: 1, tripId: 1, status: 1, fullName: 1, seatLabel: 1, vanId: 1, lineUserId: 1, adminPartnerId: 1 } }).toArray(),
     db.collection<AccountEntry>('accountEntries').find({}, { projection: { _id: 0 } }).sort({ date: -1, createdAt: -1 }).toArray(),
     db.collection<Partner>('partners').find({}, { projection: { _id: 0 } }).sort({ createdAt: 1 }).toArray(),
     db.collection<PartnerTransaction>('partnerTransactions').find({}, { projection: { _id: 0 } }).sort({ date: -1, createdAt: -1 }).toArray(),
   ]);
-  const summary = summarizeAccounts({ trips, orders: await reconcileLegacyPayments(db, orders), bookings, entries, partners, partnerTransactions });
+  const orderIds = orders.map(order => order.id);
+  const bookingIds = orders.map(order => order.bookingId).filter((id): id is string => !!id);
+  const vanIds = [...new Set(bookings.map(booking => booking.vanId).filter((id): id is string => !!id))];
+  const [receipts, manualPayments] = await Promise.all([
+    db.collection<PaymentLineRow>('paymentReceipts').find({ orderId: { $in: orderIds }, paidAt: { $exists: true } }, { projection: { _id: 0, orderId: 1, amountSatang: 1, paidAt: 1 } }).toArray(),
+    bookingIds.length ? db.collection<{ bookingId: string; amountSatang: number; paidAt: number }>('legacyPayments').find({ bookingId: { $in: bookingIds } }, { projection: { _id: 0, bookingId: 1, amountSatang: 1, paidAt: 1 } }).toArray() : [],
+  ]);
+  const paymentLines = new Map<string, PaymentLineRow[]>();
+  for (const receipt of receipts) paymentLines.set(receipt.orderId, [...(paymentLines.get(receipt.orderId) || []), { ...receipt, source: 'slip' }]);
+  const orderByBooking = new Map(orders.filter(order => order.bookingId).map(order => [order.bookingId!, order.id]));
+  for (const payment of manualPayments) { const orderId = orderByBooking.get(payment.bookingId); if (orderId) paymentLines.set(orderId, [...(paymentLines.get(orderId) || []), { orderId, amountSatang: payment.amountSatang, paidAt: payment.paidAt, source: 'manual' }]); }
+  const vans = vanIds.length ? await db.collection<{ id: string; vanNumber?: number }>('vans').find({ id: { $in: vanIds } }, { projection: { _id: 0, id: 1, vanNumber: 1 } }).toArray() : [];
+  const vanNumbers = new Map(vans.map(van => [van.id, van.vanNumber ?? null]));
+  const bookingDetails = new Map(bookings.filter(booking => booking.id).map(booking => [booking.id!, { fullName: booking.fullName, seatLabel: booking.seatLabel, vanNumber: booking.vanId ? vanNumbers.get(booking.vanId) : null }]));
+  const summary = summarizeAccounts({ trips, orders: await reconcileLegacyPayments(db, orders), bookings, entries, partners, partnerTransactions, paymentLines, bookingDetails });
   const profiles = await db.collection<{ lineUserId?: string; lineUserName?: string; fullName?: string; nickname?: string }>('profiles')
     .find({ lineUserId: { $exists: true, $ne: '' } }, { projection: { _id: 0, lineUserId: 1, lineUserName: 1, fullName: 1, nickname: 1 } })
     .sort({ fullName: 1, nickname: 1 })

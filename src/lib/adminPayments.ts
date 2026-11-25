@@ -226,3 +226,25 @@ export async function adjustOrderTotal(orderId: string, totalBaht: unknown, note
   if (!updated) throw new Error('ลูกค้ากำลังส่งสลิปหรือรายการเพิ่งเปลี่ยน กรุณาโหลดใหม่แล้วลองอีกครั้ง');
   return updated;
 }
+
+/** Changes the balance deadline for one payment order only. */
+export async function adjustOrderBalanceDue(orderId: string, dueDate: unknown, note: unknown, by: string) {
+  const date = typeof dueDate === 'string' ? dueDate.trim() : '';
+  const reason = typeof note === 'string' ? note.trim().slice(0, 300) : '';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('กรุณาระบุวันครบกำหนดให้ถูกต้อง');
+  if (!reason) throw new Error('กรุณาระบุเหตุผลในการแก้ไขวันครบกำหนด');
+  const dueAt = Date.parse(`${date}T23:59:59.999+07:00`);
+  if (!Number.isFinite(dueAt)) throw new Error('วันครบกำหนดไม่ถูกต้อง');
+  const orders = (await paymentDb()).collection<PaymentOrder>('paymentOrders');
+  const order = await orders.findOne({ id: orderId });
+  if (!order) throw new Error('ไม่พบรายการชำระเงิน');
+  if (!['pending', 'deposit_paid', 'paid'].includes(order.status)) throw new Error('รายการนี้อยู่ในสถานะที่ไม่สามารถแก้ไขวันครบกำหนดได้');
+  if (dueAt >= order.departureAt) throw new Error('วันครบกำหนดต้องอยู่ก่อนวันเดินทาง');
+  const updated = await orders.findOneAndUpdate(
+    { id: orderId, balanceDueAt: order.balanceDueAt, status: { $in: ['pending', 'deposit_paid', 'paid'] } },
+    { $set: { balanceDueAt: dueAt } },
+    { returnDocument: 'after', projection: { _id: 0 } },
+  );
+  if (!updated) throw new Error('รายการถูกแก้ไขระหว่างดำเนินการ กรุณาโหลดใหม่แล้วลองอีกครั้ง');
+  return updated;
+}

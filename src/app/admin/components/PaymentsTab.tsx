@@ -12,6 +12,7 @@ const money = (satang: number) => {
   return `฿ ${(satang / 100).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 };
 const when = (ms?: number) => (ms ? new Date(ms).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', dateStyle: 'medium', timeStyle: 'short' }) : '-');
+const dateOnlyBangkok = (ms?: number) => (ms ? new Date(ms + 7 * 60 * 60 * 1000).toISOString().slice(0, 10) : '');
 
 const STATES = [
   { id: 'bookings', label: 'รายการจองที่นั่ง' },
@@ -40,13 +41,13 @@ async function fetchPayments(page: number, q: string, tripId: string, state: str
       const res = await fetch(`/api/admin/payments/legacy?${params.toString()}`, { cache: 'no-store' });
       const data = await res.json();
       if (!data.success) return { error: data.error || 'โหลดรายการจองไม่สำเร็จ' };
-      const rows: AdminPaymentRow[] = (data.rows || []).map((candidate: { bookingId: string; tripId: string; tripName: string; departureDate: string; fullName: string; nickname: string; phone: string; lineUserName: string; seatLabel: string; vanNumber: number | null; totalSatang: number; manualPaidSatang: number; systemPaidSatang: number; balanceSatang: number; overpaidSatang: number; adjustments?: AdminPaymentRow['adjustments']; paymentOrderId?: string; paymentExempt?: boolean; payments?: { id: string; amountSatang: number; paidAt: number; method: string; note?: string }[] }) => {
+      const rows: AdminPaymentRow[] = (data.rows || []).map((candidate: { bookingId: string; tripId: string; tripName: string; departureDate: string; fullName: string; nickname: string; phone: string; lineUserName: string; seatLabel: string; vanNumber: number | null; totalSatang: number; manualPaidSatang: number; systemPaidSatang: number; balanceSatang: number; overpaidSatang: number; balanceDueAt?: number; adjustments?: AdminPaymentRow['adjustments']; paymentOrderId?: string; paymentExempt?: boolean; payments?: { id: string; amountSatang: number; paidAt: number; method: string; note?: string }[] }) => {
         // Keep the three displayed amounts internally consistent even if an older
         // legacy order has a stale paidSatang snapshot.
         const paidSatang = Math.max(0, candidate.totalSatang - candidate.balanceSatang);
         const stateValue = candidate.paymentExempt ? 'exempt' : candidate.balanceSatang === 0 ? 'paid' : paidSatang > 0 ? 'partial' : 'unpaid';
         return {
-          id: `booking:${candidate.bookingId}`, tripId: candidate.tripId, tripName: candidate.tripName, departureAt: Date.parse(`${candidate.departureDate}T00:00:00+07:00`), balanceDueAt: 0, createdAt: Date.now(),
+          id: `booking:${candidate.bookingId}`, tripId: candidate.tripId, tripName: candidate.tripName, departureAt: Date.parse(`${candidate.departureDate}T00:00:00+07:00`), balanceDueAt: candidate.balanceDueAt || 0, createdAt: Date.now(),
           plan: 'full', state: stateValue as AdminPaymentRow['state'], stateLabel: candidate.paymentExempt ? 'ยกเว้นค่าใช้จ่าย' : stateValue === 'paid' ? 'ชำระครบถ้วน' : stateValue === 'partial' ? 'ชำระบางส่วน' : 'รอชำระ',
           totalSatang: candidate.totalSatang, paidSatang, balanceSatang: candidate.balanceSatang, overpaidSatang: candidate.overpaidSatang, openInvoiceSatang: 0, creditUsedSatang: 0, cashPaidSatang: paidSatang,
           userId: '', userName: candidate.lineUserName, booking: { id: candidate.bookingId, fullName: candidate.fullName, nickname: candidate.nickname, phone: candidate.phone, seatLabel: candidate.seatLabel, vanNumber: candidate.vanNumber, status: 'approved', paymentOrderId: candidate.paymentOrderId },
@@ -382,6 +383,7 @@ function CancellationDialog({ row, onClose, onSaved }: { row: AdminPaymentRow; o
 function AdjustDialog({ row, onClose, onSaved }: { row: AdminPaymentRow; onClose: () => void; onSaved: () => void }) {
   const [total, setTotal] = useState(String(row.totalSatang / 100));
   const [note, setNote] = useState('');
+  const [dueDate, setDueDate] = useState(dateOnlyBangkok(row.balanceDueAt));
   const [staffExempt, setStaffExempt] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -391,7 +393,7 @@ function AdjustDialog({ row, onClose, onSaved }: { row: AdminPaymentRow; onClose
   const save = async () => {
     setBusy(true); setError('');
     try {
-      const res = await fetch(`/api/admin/payments/${encodeURIComponent(row.id)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ totalBaht: Number(total), note }) });
+      const res = await fetch(`/api/admin/payments/${encodeURIComponent(row.id)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ totalBaht: Number(total), dueDate, note }) });
       const data = await res.json();
       if (!data.success) throw new Error(data.error);
       onSaved();
@@ -431,6 +433,14 @@ function AdjustDialog({ row, onClose, onSaved }: { row: AdminPaymentRow; onClose
           </label>
           {valid && <p className="text-xs text-slate-600">ยอดคงเหลือใหม่: <b className="text-amber-600">{money(newSatang - row.paidSatang)}</b>{newSatang === row.paidSatang && ' (จะเป็น “ชำระครบถ้วน”)'}</p>}
           {!valid && total !== '' && <p className="text-xs font-bold text-rose-600">ยอดใหม่ต้องไม่น้อยกว่ายอดที่ชำระแล้ว</p>}
+          <div className="border-t border-slate-100 pt-3">
+            <p className="mb-2 text-xs font-black text-slate-800">กำหนดชำระยอดคงเหลือ</p>
+            <label className="block">
+              <span className="text-xs font-bold text-slate-700">วันสุดท้ายที่ต้องชำระ</span>
+              <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="mt-1 h-10" />
+            </label>
+            <p className="mt-1 text-[11px] text-slate-500">ระบบจะตรวจตัดรายการหลังสิ้นสุดวันดังกล่าวตามเวลาไทย และใช้เฉพาะรายการนี้</p>
+          </div>
           <label className="block">
             <span className="text-xs font-bold text-slate-700">เหตุผล <span className="text-rose-500">*</span></span>
             <Input value={note} onChange={e => setNote(e.target.value)} placeholder="เช่น ส่วนลดกลุ่ม, ค่าที่นั่งเพิ่ม" className="mt-1 h-10" />
@@ -449,6 +459,7 @@ function AdjustDialog({ row, onClose, onSaved }: { row: AdminPaymentRow; onClose
 type LegacyCandidate = {
   bookingId: string; tripId: string; tripName: string; departureDate: string; fullName: string; nickname: string; phone: string;
   lineUserName: string; seatLabel: string; seatType: string; vanNumber: number | null; totalSatang: number; manualPaidSatang: number; systemPaidSatang: number; balanceSatang: number; overpaidSatang: number; adjustments: AdminPaymentRow['adjustments']; paymentOrderId?: string; paymentExempt?: boolean;
+  balanceDueAt?: number;
   payments: { id: string; amountSatang: number; paidAt: number; method: string; note?: string; receiptKey?: string }[];
 };
 
@@ -459,6 +470,7 @@ function LegacyPaymentDialog({ trips, initialBookingId, initialTripStatus, onClo
   const [selected, setSelected] = useState<LegacyCandidate | null>(null);
   const [totalDue, setTotalDue] = useState('');
   const [totalDueNote, setTotalDueNote] = useState('');
+  const [dueDate, setDueDate] = useState('');
   const totalDueBookingId = useRef<string | null>(null);
   const [lookupBookingId, setLookupBookingId] = useState(initialBookingId || '');
   const initialSelectionDone = useRef(false);
@@ -500,6 +512,7 @@ function LegacyPaymentDialog({ trips, initialBookingId, initialTripStatus, onClo
       setSelected(match);
       setLookupBookingId('');
       setTotalDue(String(match.totalSatang / 100));
+      setDueDate(dateOnlyBangkok(match.balanceDueAt));
       setAmount(match.balanceSatang > 0 ? String(match.balanceSatang / 100) : '');
     }, 0);
     return () => window.clearTimeout(timer);
@@ -509,6 +522,7 @@ function LegacyPaymentDialog({ trips, initialBookingId, initialTripStatus, onClo
     if (!selected || totalDueBookingId.current === selected.bookingId) return;
     totalDueBookingId.current = selected.bookingId;
     setTotalDue(String(selected.totalSatang / 100));
+    setDueDate(dateOnlyBangkok(selected.balanceDueAt));
   }, [selected]);
 
   const saveTotalDue = async () => {
@@ -527,6 +541,19 @@ function LegacyPaymentDialog({ trips, initialBookingId, initialTripStatus, onClo
       setTotalDueNote('');
       onChanged();
     } catch (e) { setError(e instanceof Error ? e.message : 'บันทึกยอดที่ต้องชำระไม่สำเร็จ'); }
+    finally { setSaving(false); }
+  };
+
+  const saveDueDate = async () => {
+    if (!selected?.paymentOrderId || !dueDate) return;
+    setSaving(true); setError('');
+    try {
+      const response = await fetch(`/api/admin/payments/${encodeURIComponent(selected.paymentOrderId)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dueDate, note: totalDueNote.trim() || 'แก้ไขวันครบกำหนดจากหน้าแอดมิน' }) });
+      const data = await response.json();
+      if (!data.success) throw new Error(data.error || 'บันทึกวันครบกำหนดไม่สำเร็จ');
+      setSelected(previous => previous ? { ...previous, balanceDueAt: Number(data.balanceDueAt) } : previous);
+      onChanged();
+    } catch (e) { setError(e instanceof Error ? e.message : 'บันทึกวันครบกำหนดไม่สำเร็จ'); }
     finally { setSaving(false); }
   };
 
@@ -599,12 +626,12 @@ function LegacyPaymentDialog({ trips, initialBookingId, initialTripStatus, onClo
       </> : <div className="space-y-4"><button type="button" onClick={() => setSelected(null)} className="text-xs font-bold text-violet-600">← เลือกลูกค้าคนอื่น</button><div className="rounded-xl bg-slate-50 p-4 text-sm"><p className="font-black">{selected.fullName} <span className="font-normal text-slate-500">({selected.lineUserName || 'ไม่มี LINE Name'})</span></p><p className="mt-1 text-xs text-slate-500">{selected.tripName} · รถ {selected.vanNumber ?? '-'} · ที่นั่ง {selected.seatLabel || '-'}</p><p className="mt-2 text-xs">ราคาทริป {money(selected.totalSatang)} · จ่ายรวมแล้ว {money(Math.max(0, selected.totalSatang - selected.balanceSatang))} · คงเหลือ {money(selected.balanceSatang)}{selected.overpaidSatang > 0 && <span className="font-bold text-orange-600"> · ชำระเกิน {money(selected.overpaidSatang)}</span>}</p></div><div className="grid gap-3 sm:grid-cols-2"><label className="text-xs font-bold">ยอดที่ชำระครั้งนี้<Input type="number" min="0.01" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} className="mt-1 h-10" /></label><label className="text-xs font-bold">วันที่ชำระ<Input type="date" value={paidAt} onChange={e => setPaidAt(e.target.value)} className="mt-1 h-10" /></label><label className="text-xs font-bold">วิธีชำระ<select value={method} onChange={e => setMethod(e.target.value)} className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3"><option value="bank_transfer">โอนธนาคาร</option><option value="cash">เงินสด</option><option value="other">อื่น ๆ</option></select></label><label className="text-xs font-bold">แนบสลิป (ถ้ามี)<span className="mt-1 flex h-10 items-center gap-2 rounded-lg border border-slate-200 px-3 font-normal"><Upload className="h-4 w-4" /><input type="file" accept="image/jpeg,image/png,image/webp" onChange={e => setSlip(e.target.files?.[0] || null)} className="min-w-0 text-xs" /></span></label></div><label className="block text-xs font-bold">หมายเหตุ<Input value={note} onChange={e => setNote(e.target.value)} placeholder="เช่น โอนก่อนเริ่มใช้ระบบ" className="mt-1 h-10" /></label>{error && <p className="rounded-lg bg-rose-50 p-3 text-xs font-bold text-rose-700">{error}</p>}<button type="button" disabled={saving || !amount || Number(amount) <= 0} onClick={() => void save()} className="h-10 w-full rounded-xl bg-violet-600 text-sm font-bold text-white disabled:opacity-40">{saving ? 'กำลังบันทึก...' : 'บันทึกยอดชำระเดิม'}</button></div>}
       {selected && selected.payments.length > 0 && <div className="mt-3 space-y-2 rounded-xl border border-slate-100 p-3"><p className="text-xs font-black text-slate-700">รายการชำระเดิม</p>{selected.payments.map(payment => <div key={payment.id} className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs"><div><p className="font-bold">{money(payment.amountSatang)} · {new Date(payment.paidAt).toLocaleDateString('th-TH')}</p><p className="text-slate-500">{payment.note || payment.method}</p></div><div className="flex gap-1"><button type="button" onClick={() => editPayment(payment)} className="rounded-md border px-2 py-1 font-bold"><Edit2 className="mr-1 inline h-3 w-3" />แก้ไข</button><button type="button" onClick={() => void deletePayment(payment.id)} className="rounded-md border border-rose-200 px-2 py-1 font-bold text-rose-600">ลบ</button></div></div>)}</div>}
       {selected && <label className="mt-3 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-bold text-amber-800"><input type="checkbox" disabled={savingExempt} checked={selected.paymentExempt === true} onChange={e => void setStaffExempt(e.target.checked)} />กำหนดที่นั่งนี้เป็น Staff / ยกเว้นค่าใช้จ่าย</label>}
-    {selected?.paymentOrderId && <TotalDueEditor totalDue={totalDue} setTotalDue={setTotalDue} totalDueNote={totalDueNote} setTotalDueNote={setTotalDueNote} currentTotalSatang={selected.totalSatang} paidSatang={selected.totalSatang - selected.balanceSatang} saving={saving} onSave={() => void saveTotalDue()} />}
+    {selected?.paymentOrderId && <TotalDueEditor totalDue={totalDue} setTotalDue={setTotalDue} totalDueNote={totalDueNote} setTotalDueNote={setTotalDueNote} currentTotalSatang={selected.totalSatang} paidSatang={selected.totalSatang - selected.balanceSatang} saving={saving} onSave={() => void saveTotalDue()} dueDate={dueDate} setDueDate={setDueDate} onSaveDueDate={() => void saveDueDate()} />}
     </div>
   </div>;
 }
 
-function TotalDueEditor({ totalDue, setTotalDue, totalDueNote, setTotalDueNote, currentTotalSatang, paidSatang, saving, onSave }: { totalDue: string; setTotalDue: (value: string) => void; totalDueNote: string; setTotalDueNote: (value: string) => void; currentTotalSatang: number; paidSatang: number; saving: boolean; onSave: () => void }) {
+function TotalDueEditor({ totalDue, setTotalDue, totalDueNote, setTotalDueNote, currentTotalSatang, paidSatang, saving, onSave, dueDate, setDueDate, onSaveDueDate }: { totalDue: string; setTotalDue: (value: string) => void; totalDueNote: string; setTotalDueNote: (value: string) => void; currentTotalSatang: number; paidSatang: number; saving: boolean; onSave: () => void; dueDate: string; setDueDate: (value: string) => void; onSaveDueDate: () => void }) {
   const nextSatang = Math.round(Number(totalDue) * 100);
   const valid = Number.isFinite(nextSatang) && nextSatang >= paidSatang && nextSatang > 0;
   return <div className="mt-4 rounded-xl border border-violet-200 bg-violet-50 p-3 text-xs">
@@ -613,5 +640,11 @@ function TotalDueEditor({ totalDue, setTotalDue, totalDueNote, setTotalDueNote, 
     <Input type="number" min={paidSatang / 100} step="0.01" value={totalDue} onChange={event => setTotalDue(event.target.value)} className="mt-2 h-9 bg-white" />
     <Input value={totalDueNote} onChange={event => setTotalDueNote(event.target.value)} placeholder="เหตุผลการแก้ไขยอด" className="mt-2 h-9 bg-white" />
     <button type="button" disabled={!valid || saving} onClick={onSave} className="mt-2 rounded-lg bg-violet-600 px-3 py-2 font-bold text-white disabled:opacity-40">{saving ? 'กำลังบันทึก...' : 'บันทึกยอดที่ต้องชำระ'}</button>
+    <div className="mt-4 border-t border-violet-200 pt-3">
+      <p className="font-black text-violet-900">กำหนดชำระยอดคงเหลือ</p>
+      <Input type="date" value={dueDate} onChange={event => setDueDate(event.target.value)} className="mt-2 h-9 bg-white" />
+      <p className="mt-1 text-[11px] text-violet-700">วันสุดท้ายนี้ใช้เฉพาะลูกค้ารายนี้</p>
+      <button type="button" disabled={!dueDate || saving} onClick={onSaveDueDate} className="mt-2 rounded-lg border border-violet-300 bg-white px-3 py-2 font-bold text-violet-700 disabled:opacity-40">{saving ? 'กำลังบันทึก...' : 'บันทึกวันครบกำหนด'}</button>
+    </div>
   </div>;
 }
