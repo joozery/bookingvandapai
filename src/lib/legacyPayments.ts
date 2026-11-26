@@ -20,6 +20,17 @@ export type LegacyPayment = {
   createdBy: string;
 };
 
+export type PaymentHistoryItem = Pick<LegacyPayment, 'id' | 'amountSatang' | 'paidAt' | 'method' | 'note' | 'receiptKey'> & {
+  source?: 'manual' | 'system';
+  transRef?: string;
+  recordedAt?: number;
+  payerName?: string;
+  payerBank?: string;
+  registrantName?: string;
+  seatLabel?: string;
+  reviewRequired?: boolean;
+};
+
 export type LegacyBookingCandidate = {
   bookingId: string;
   tripId: string;
@@ -42,7 +53,7 @@ export type LegacyBookingCandidate = {
   adjustments: NonNullable<PaymentOrder['adjustments']>;
   paymentOrderId?: string;
   paymentExempt?: boolean;
-  payments: Pick<LegacyPayment, 'id' | 'amountSatang' | 'paidAt' | 'method' | 'note' | 'receiptKey'>[];
+  payments: PaymentHistoryItem[];
 };
 
 let indexes: Promise<unknown> | undefined;
@@ -108,8 +119,14 @@ export async function listLegacyBookingCandidates(options: { q?: string; tripId?
     orderIds.length ? db.collection<PaymentOrder>('paymentOrders').find({ id: { $in: orderIds } }, { projection: { _id: 0, id: 1, totalSatang: 1, paidSatang: 1, balanceDueAt: 1, adjustments: 1 } }).toArray() : [],
     db.collection('vans').find({ id: { $in: bookings.map(booking => booking.vanId).filter(Boolean) } }, { projection: { _id: 0, id: 1, vanNumber: 1, seats: 1 } }).toArray(),
   ]);
+  const receiptOrderIds = orders.map(order => String(order.id));
+  const receipts = receiptOrderIds.length
+    ? await db.collection('paymentReceipts').find({ orderId: { $in: receiptOrderIds } }, { projection: { _id: 0, id: 1, orderId: 1, transRef: 1, amountSatang: 1, paidAt: 1, recordedAt: 1, slipKey: 1, reviewRequired: 1, payerName: 1, payerBank: 1, registrantName: 1, seatLabel: 1 } }).sort({ paidAt: 1, recordedAt: 1 }).toArray()
+    : [];
   const legacyByBooking = new Map<string, LegacyPayment[]>();
   for (const payment of legacy) legacyByBooking.set(payment.bookingId, [...(legacyByBooking.get(payment.bookingId) || []), payment]);
+  const receiptsByOrder = new Map<string, typeof receipts>();
+  for (const receipt of receipts) receiptsByOrder.set(String(receipt.orderId), [...(receiptsByOrder.get(String(receipt.orderId)) || []), receipt]);
   const orderById = new Map<string, { id: string; totalSatang?: number; paidSatang?: number; balanceDueAt?: number; adjustments?: NonNullable<PaymentOrder['adjustments']> }>(orders.map(order => [String(order.id), order] as [string, { id: string; totalSatang?: number; paidSatang?: number; balanceDueAt?: number; adjustments?: NonNullable<PaymentOrder['adjustments']> }]));
   const vanById = new Map<string, { vanNumber?: number; seats?: { id?: string; type?: string }[] }>();
   for (const van of vans) vanById.set(String(van.id), van as { vanNumber?: number; seats?: { id?: string; type?: string }[] });
@@ -128,7 +145,10 @@ export async function listLegacyBookingCandidates(options: { q?: string; tripId?
       seatLabel: String(booking.seatLabel || ''), seatType, vanNumber: van?.vanNumber ?? null, totalSatang, manualPaidSatang, systemPaidSatang,
       balanceSatang: Math.max(0, totalSatang - paidSatang), overpaidSatang: Math.max(0, paidSatang - totalSatang), adjustments: orderById.get(String(booking.paymentOrderId || ''))?.adjustments || [], paymentOrderId: booking.paymentOrderId ? String(booking.paymentOrderId) : undefined, paymentExempt,
       balanceDueAt: orderById.get(String(booking.paymentOrderId || ''))?.balanceDueAt,
-      payments: (legacyByBooking.get(String(booking.id)) || []).map(payment => ({ id: payment.id, amountSatang: payment.amountSatang, paidAt: payment.paidAt, method: payment.method, note: payment.note, receiptKey: payment.receiptKey })),
+      payments: [
+        ...(legacyByBooking.get(String(booking.id)) || []).map(payment => ({ id: payment.id, amountSatang: payment.amountSatang, paidAt: payment.paidAt, method: payment.method, note: payment.note, receiptKey: payment.receiptKey, source: 'manual' as const })),
+        ...(receiptsByOrder.get(String(booking.paymentOrderId || '')) || []).map(receipt => ({ id: String(receipt.id), amountSatang: receipt.amountSatang, paidAt: receipt.paidAt, recordedAt: receipt.recordedAt, transRef: receipt.transRef, payerName: receipt.payerName, payerBank: receipt.payerBank, registrantName: receipt.registrantName, seatLabel: receipt.seatLabel, receiptKey: receipt.slipKey, reviewRequired: !!receipt.reviewRequired, source: 'system' as const })),
+      ].sort((a, b) => a.paidAt - b.paidAt),
     };
   });
   return { rows, total, page, pageSize, pageCount: Math.max(1, Math.ceil(total / pageSize)) };

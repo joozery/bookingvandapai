@@ -97,8 +97,20 @@ export default function InsuranceTab({ trips, onRefresh }: Props) {
   };
 
   // Export to CSV
-  const handleExport = () => {
-    if (passengers.length === 0) {
+  const handleExport = async () => {
+    let exportPassengers = passengers;
+    try {
+      const params = new URLSearchParams({ export: '1', tripId: selectedTripId, q: search });
+      const res = await fetch(`/api/admin/bookings?${params.toString()}`, { cache: 'no-store' });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error || 'โหลดข้อมูลส่งออกไม่สำเร็จ');
+      exportPassengers = (json.bookings || []) as Booking[];
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'โหลดข้อมูลส่งออกไม่สำเร็จ');
+      return;
+    }
+
+    if (exportPassengers.length === 0) {
       alert('ไม่มีข้อมูลลูกทริปสำหรับการส่งออก');
       return;
     }
@@ -112,7 +124,7 @@ export default function InsuranceTab({ trips, onRefresh }: Props) {
     const csvRows: string[] = [];
     csvRows.push(headers.join(','));
     
-    passengers.forEach((p, idx) => {
+    exportPassengers.forEach((p, idx) => {
       const nid = p.nationalId || p.profile?.nationalId || '';
       const dob = p.birthDate || p.profile?.birthDate || '';
       

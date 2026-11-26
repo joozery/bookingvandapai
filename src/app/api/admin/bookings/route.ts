@@ -14,7 +14,9 @@ export async function GET(request: Request) {
     const params = new URL(request.url).searchParams;
     const page = Math.max(1, Number(params.get('page') || 1));
     const pageSize = Math.min(30, Math.max(1, Number(params.get('pageSize') || 30)));
-    const paged = params.has('page');
+    // Export requests intentionally load the complete filtered set instead
+    // of only the current 30-row UI page.
+    const paged = params.has('page') && params.get('export') !== '1';
     const tripId = params.get('tripId');
     const q = (params.get('q') || '').trim().replace(/[%(),]/g, ' ');
     let bookingsQuery = dataStore.from('bookings').select('*', paged ? { count: 'exact' } : undefined).order('createdAt', { ascending: false });
@@ -45,7 +47,7 @@ export async function GET(request: Request) {
     // Insurance details belong to the LINE customer, not only to one booking.
     // A newer booking can be missing fields that were already recorded before.
     const insuranceHistory = bookingUserIds.length
-      ? await dataStore.from('bookings').select('lineUserId, nationalId, birthDate, createdAt').in('lineUserId', bookingUserIds).order('createdAt', { ascending: false })
+      ? await dataStore.from('bookings').select('lineUserId, nationalId, birthDate, emergencyName, emergencyPhone, allergies, medicalConditions, createdAt').in('lineUserId', bookingUserIds).order('createdAt', { ascending: false })
       : { data: [] as any[] };
     let profilesQuery = dataStore.from('profiles').select('*');
     if (bookingUserIds.length) profilesQuery = profilesQuery.in('lineUserId', bookingUserIds);
@@ -53,12 +55,23 @@ export async function GET(request: Request) {
     const { data: profiles, error: profilesError } = await profilesQuery;
     if (profilesError) console.error('Admin profiles fetch error:', profilesError);
 
-    const insuranceMap = new Map<string, { nationalId?: string | null; birthDate?: string | null }>();
+    const insuranceMap = new Map<string, {
+      nationalId?: string | null;
+      birthDate?: string | null;
+      emergencyName?: string | null;
+      emergencyPhone?: string | null;
+      allergies?: string | null;
+      medicalConditions?: string | null;
+    }>();
     for (const record of insuranceHistory.data || []) {
       if (!record.lineUserId) continue;
       const current = insuranceMap.get(record.lineUserId) || {};
       if (!current.nationalId && record.nationalId) current.nationalId = record.nationalId;
       if (!current.birthDate && record.birthDate) current.birthDate = record.birthDate;
+      if (!current.emergencyName && record.emergencyName) current.emergencyName = record.emergencyName;
+      if (!current.emergencyPhone && record.emergencyPhone) current.emergencyPhone = record.emergencyPhone;
+      if (!current.allergies && record.allergies) current.allergies = record.allergies;
+      if (!current.medicalConditions && record.medicalConditions) current.medicalConditions = record.medicalConditions;
       insuranceMap.set(record.lineUserId, current);
     }
     const [{ data: trips }, { data: vans }] = await Promise.all([
@@ -80,17 +93,18 @@ export async function GET(request: Request) {
 
     const mergedBookings = (bookings || []).map((booking: any) => {
       const profile = profileMap.get(booking.lineUserId);
+      const insurance = insuranceMap.get(booking.lineUserId);
       return {
         ...booking,
         fullName: profile?.fullName || booking.fullName,
         tripName: tripMap.get(booking.tripId) || 'Unknown Trip',
         vanNumber: vanMap.get(booking.vanId) || 1,
-        nationalId: booking.nationalId || profile?.nationalId || insuranceMap.get(booking.lineUserId)?.nationalId || null,
-        birthDate: booking.birthDate || profile?.birthDate || insuranceMap.get(booking.lineUserId)?.birthDate || null,
-        emergencyName: booking.emergencyName || profile?.emergencyName || null,
-        emergencyPhone: booking.emergencyPhone || profile?.emergencyPhone || null,
-        allergies: booking.allergies || profile?.allergies || null,
-        medicalConditions: booking.medicalConditions || profile?.medicalConditions || null,
+        nationalId: booking.nationalId || profile?.nationalId || insurance?.nationalId || null,
+        birthDate: booking.birthDate || profile?.birthDate || insurance?.birthDate || null,
+        emergencyName: booking.emergencyName || profile?.emergencyName || insurance?.emergencyName || null,
+        emergencyPhone: booking.emergencyPhone || profile?.emergencyPhone || insurance?.emergencyPhone || null,
+        allergies: booking.allergies || profile?.allergies || insurance?.allergies || null,
+        medicalConditions: booking.medicalConditions || profile?.medicalConditions || insurance?.medicalConditions || null,
         profile: profile || null
       };
     });
