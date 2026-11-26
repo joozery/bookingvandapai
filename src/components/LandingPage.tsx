@@ -463,7 +463,10 @@ export default function LandingPage({ onLoginClick, trips = [], isLoggedIn = fal
 
 
 
-      <BookingLeaderboard title={!settings.leaderboard_title || settings.leaderboard_title === 'สถิติเวทคนปากดี' ? 'สถิติคนมีปาก' : settings.leaderboard_title} />
+      <BookingLeaderboard
+        title={!settings.leaderboard_title || settings.leaderboard_title === 'สถิติเวทคนปากดี' ? 'สถิติคนมีปาก' : settings.leaderboard_title}
+        totalTrips={destinations.length}
+      />
       </div>
       {/* Footer Section */}
       <footer className="theme-deep bg-slate-900 text-purple-200 py-12 border-t border-slate-800 text-xs sm:text-sm font-bold">

@@ -160,7 +160,7 @@ export default function AdminPage() {
       const tstamp = Date.now();
       const [tr, vr, br, ur, sr, pr, ar] = await Promise.all([
         fetch(['trips', 'draft-trips', 'completed-trips'].includes(activeTab)
-          ? `/api/trips?page=1&pageSize=20&status=${activeTab === 'completed-trips' ? 'completed' : activeTab === 'draft-trips' ? 'draft' : 'active'}&_t=${tstamp}`
+          ? `/api/trips?status=${activeTab === 'completed-trips' ? 'completed' : activeTab === 'draft-trips' ? 'draft' : 'active'}&_t=${tstamp}`
           : `/api/trips?_t=${tstamp}`),
         fetch(activeTab === 'vans'
           ? `/api/vans?page=1&pageSize=1&_t=${tstamp}`
