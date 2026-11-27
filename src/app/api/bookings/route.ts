@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { dataStore } from '@/lib/dataStore';
 import { isTripReviewOpen } from '@/lib/tripReview';
 import { paymentUser, checkPaymentOrigin, paymentError } from '@/lib/paymentAuth';
-import { bookPaidSeat, expireOverdueDepositBookings } from '@/lib/paymentStore';
+import { bookPaidSeat } from '@/lib/paymentStore';
 import { bookingPayments } from '@/lib/bookingPayments';
 import { requireAdmin, requireOwnerOrAdmin } from '@/lib/adminAuth';
 import { getMongoDb } from '@/lib/mongodb';
@@ -25,7 +25,6 @@ export async function GET(request: Request) {
     // A customer may list only their own bookings; anything else is staff-only.
     const access = lineUserId ? await requireOwnerOrAdmin(lineUserId, []) : await requireAdmin([]);
     if (access instanceof Response) return access;
-    await expireOverdueDepositBookings();
     let tripScope: string[] | null = null;
     if (tripStatus === 'active' || tripStatus === 'completed') {
       let tripQuery = dataStore.from('trips').select('id');

@@ -307,35 +307,7 @@ async function ensureBookingPaymentOrders(userId: string) {
   }
 }
 
-/** Automatically releases seats for deposit orders that missed the 7-day balance deadline. */
-export async function expireOverdueDepositBookings(now = Date.now()) {
-  const db = await paymentDb();
-  const candidates = await db.collection<PaymentOrder>('paymentOrders').find({ status: 'deposit_paid', legacyPayment: { $ne: true }, balanceDueAt: { $lte: now }, autoCancelledAt: { $exists: false } }).toArray();
-  for (const candidate of candidates) {
-    if (candidate.paidSatang >= candidate.totalSatang) continue;
-    const order = await db.collection<PaymentOrder>('paymentOrders').findOneAndUpdate(
-      { id: candidate.id, status: 'deposit_paid', autoCancelledAt: { $exists: false } },
-      { $set: { autoCancelledAt: now, autoCancelReason: 'ไม่ชำระยอดคงเหลือภายใน 7 วันก่อนเดินทาง' } },
-      { returnDocument: 'after' },
-    );
-    if (!order) continue;
-    if (order.bookingId) {
-      const { data: booking } = await dataStore.from('bookings').select('id, vanId, seatId, status').eq('id', order.bookingId).maybeSingle();
-      if (booking && ['pending', 'approved', 'cancel_pending'].includes(booking.status)) {
-        await dataStore.from('bookings').update({ status: 'rejected', cancelReason: 'ไม่ชำระยอดคงเหลือภายใน 7 วันก่อนเดินทาง' }).eq('id', booking.id);
-        const { data: van } = await dataStore.from('vans').select('seats').eq('id', booking.vanId).maybeSingle();
-        if (van?.seats) {
-          const seats = van.seats.map((seat: any) => seat.id === booking.seatId ? { ...seat, status: 'available', bookingId: null } : seat);
-          await dataStore.from('vans').update({ seats }).eq('id', booking.vanId);
-        }
-      }
-    }
-    await releaseHold(order);
-  }
-}
-
 export async function recoverPaymentOrders(userId: string) {
-  await expireOverdueDepositBookings();
   await ensureBookingPaymentOrders(userId);
   const db = await paymentDb();
   // Repair initial order writes interrupted after their capacity CAS.
@@ -354,7 +326,6 @@ export async function recoverPaymentOrders(userId: string) {
 
 type PaidBookingInput = { tripId: string; vanId: string; seatId: string; nickname: string; fullName: string; phone: string; note?: string };
 export async function bookPaidSeat(userId: string, input: PaidBookingInput, user: { name?: string | null; image?: string | null }) {
-  await expireOverdueDepositBookings();
   const db = await paymentDb(), orders = db.collection<PaymentOrder>('paymentOrders');
   const candidates = await orders.find({ userId, tripId: input.tripId }).sort({ createdAt: -1 }).toArray();
   let order: PaymentOrder | null = null;

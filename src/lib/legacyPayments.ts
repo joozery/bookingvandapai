@@ -89,6 +89,34 @@ export async function setLegacyBookingPaymentExempt(bookingId: string, exempt: b
   if (error) throw new Error(error.message);
 }
 
+export async function adjustLegacyBookingBalanceDue(bookingId: string, dueDate: unknown) {
+  const date = typeof dueDate === 'string' ? dueDate.trim() : '';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('กรุณาระบุวันครบกำหนดให้ถูกต้อง');
+  const dueAt = Date.parse(`${date}T23:59:59.999+07:00`);
+  if (!Number.isFinite(dueAt)) throw new Error('วันครบกำหนดไม่ถูกต้อง');
+  const { data: booking, error: bookingError } = await dataStore.from('bookings').select('id, tripId').eq('id', bookingId).single();
+  if (bookingError || !booking) throw new Error('ไม่พบรายการจอง');
+  const trip = await (await paymentDb()).collection('trips').findOne({ id: String(booking.tripId) }, { projection: { _id: 0, departureDate: 1, departureTime: 1 } });
+  const departureAt = trip?.departureDate && trip?.departureTime
+    ? Date.parse(`${String(trip.departureDate).slice(0, 10)}T${String(trip.departureTime)}:00+07:00`)
+    : NaN;
+  if (!Number.isFinite(departureAt) || dueAt >= departureAt) throw new Error('วันครบกำหนดต้องอยู่ก่อนวันเดินทาง');
+  const { error } = await dataStore.from('bookings').update({ balanceDueAt: dueAt }).eq('id', bookingId);
+  if (error) throw new Error(error.message);
+  return dueAt;
+}
+
+export async function adjustLegacyBookingTotal(bookingId: string, totalBaht: unknown) {
+  const totalSatang = toSatang(totalBaht);
+  const { data: booking, error: bookingError } = await dataStore.from('bookings').select('id').eq('id', bookingId).single();
+  if (bookingError || !booking) throw new Error('ไม่พบรายการจอง');
+  const paidSatang = (await (await paymentDb()).collection<LegacyPayment>('legacyPayments').find({ bookingId }, { projection: { _id: 0, amountSatang: 1 } }).toArray()).reduce((sum, payment) => sum + safeNumber(payment.amountSatang), 0);
+  if (totalSatang < paidSatang) throw new Error(`ยอดใหม่ต้องไม่น้อยกว่ายอดที่ชำระแล้ว ฿${(paidSatang / 100).toLocaleString('th-TH')}`);
+  const { error } = await dataStore.from('bookings').update({ paymentTotalSatang: totalSatang }).eq('id', bookingId);
+  if (error) throw new Error(error.message);
+  return { totalSatang, paidSatang };
+}
+
 export async function listLegacyBookingCandidates(options: { q?: string; tripId?: string; bookingId?: string; tripStatus?: 'active' | 'completed' | 'all'; page?: number; pageSize?: number } = {}) {
   await ensureIndexes();
   const db = await paymentDb();
@@ -109,7 +137,7 @@ export async function listLegacyBookingCandidates(options: { q?: string; tripId?
   }
   const bookingsCollection = db.collection('bookings');
   const [bookings, total] = await Promise.all([
-    bookingsCollection.find(filter, { projection: { _id: 0, id: 1, tripId: 1, vanId: 1, seatLabel: 1, fullName: 1, nickname: 1, phone: 1, lineUserId: 1, lineUserName: 1, paymentOrderId: 1, paymentExempt: 1 } }).sort({ createdAt: -1 }).skip((page - 1) * pageSize).limit(pageSize).toArray(),
+    bookingsCollection.find(filter, { projection: { _id: 0, id: 1, tripId: 1, vanId: 1, seatLabel: 1, fullName: 1, nickname: 1, phone: 1, lineUserId: 1, lineUserName: 1, paymentOrderId: 1, paymentExempt: 1, balanceDueAt: 1, paymentTotalSatang: 1 } }).sort({ createdAt: -1 }).skip((page - 1) * pageSize).limit(pageSize).toArray(),
     bookingsCollection.countDocuments(filter),
   ]);
   const bookingIds = bookings.map(booking => String(booking.id));
@@ -139,8 +167,8 @@ export async function listLegacyBookingCandidates(options: { q?: string; tripId?
     const departureAt = trip?.departureDate && trip?.departureTime
       ? Date.parse(`${String(trip.departureDate).slice(0, 10)}T${String(trip.departureTime)}:00+07:00`)
       : NaN;
-    const balanceDueAt = order?.balanceDueAt || (Number.isFinite(departureAt) ? departureAt - 7 * 86_400_000 : undefined);
-    const totalSatang = paymentExempt ? 0 : safeNumber(order?.totalSatang) || toSatang(trip?.cost);
+    const balanceDueAt = safeNumber(booking.balanceDueAt) || order?.balanceDueAt || (Number.isFinite(departureAt) ? departureAt - 7 * 86_400_000 : undefined);
+    const totalSatang = paymentExempt ? 0 : safeNumber(order?.totalSatang) || safeNumber(booking.paymentTotalSatang) || toSatang(trip?.cost);
     const manualPaidSatang = (legacyByBooking.get(String(booking.id)) || []).reduce((sum, payment) => sum + safeNumber(payment.amountSatang), 0);
     const systemPaidSatang = Math.max(0, safeNumber(orderById.get(String(booking.paymentOrderId || ''))?.paidSatang) - manualPaidSatang);
     const paidSatang = manualPaidSatang + systemPaidSatang;

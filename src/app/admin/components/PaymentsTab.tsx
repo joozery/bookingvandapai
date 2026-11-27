@@ -89,7 +89,13 @@ export default function PaymentsTab({ trips }: { trips: Trip[] }) {
   const [remoteTotal, setRemoteTotal] = useState(0);
   const [summary, setSummary] = useState<{ total: number; paid: number; balance: number } | null>(null);
   const [summaryRefresh, setSummaryRefresh] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
   const [page, setPage] = useState(() => typeof window === 'undefined' ? 1 : Math.max(1, Number(new URLSearchParams(window.location.search).get('page')) || 1));
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const apply = useCallback((result: { rows?: AdminPaymentRow[]; total?: number; canEdit?: boolean; error?: string }) => {
     if (result.rows) setRows(result.rows);
@@ -218,6 +224,7 @@ export default function PaymentsTab({ trips }: { trips: Trip[] }) {
                 {visibleRows.map((row, index) => {
                   const open = expanded === row.id;
                   const rowNumber = (currentPage - 1) * 20 + index + 1;
+                  const overdueBalance = row.balanceSatang > 0 && row.balanceDueAt > 0 && now >= row.balanceDueAt && ['partial', 'paid'].includes(row.state);
                   return (
                     <React.Fragment key={row.id}>
                       <tr className={cn('cursor-pointer hover:bg-violet-50/40', open && 'bg-violet-50/40')} onClick={() => setExpanded(open ? null : row.id)}>
@@ -226,6 +233,7 @@ export default function PaymentsTab({ trips }: { trips: Trip[] }) {
                         <td className="px-3 py-3">
                           <p className="font-bold text-slate-800">{row.booking?.fullName || row.receipts.find(r => r.registrantName)?.registrantName || row.userName || '-'}</p>
                           <p className="text-xs text-slate-500">{[row.booking?.nickname, row.booking?.phone, row.userName && `LINE: ${row.userName}`].filter(Boolean).join(' · ')}</p>
+                          {overdueBalance && <p className="mt-1 rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-black leading-4 text-rose-700">เกินกำหนดชำระ · ต้องชำระก่อน 7 วันเดินทาง</p>}
                         </td>
                         <td className="px-3 py-3">
                           <p className="font-semibold text-slate-700">{row.tripName}</p>
@@ -526,10 +534,13 @@ function LegacyPaymentDialog({ trips, initialBookingId, initialTripStatus, onClo
   }, [selected]);
 
   const saveTotalDue = async () => {
-    if (!selected?.paymentOrderId) return;
+    if (!selected) return;
     setSaving(true); setError('');
     try {
-      const response = await fetch(`/api/admin/payments/${encodeURIComponent(selected.paymentOrderId)}`, {
+      const endpoint = selected.paymentOrderId
+        ? `/api/admin/payments/${encodeURIComponent(selected.paymentOrderId)}`
+        : `/api/admin/payments/legacy/booking/${encodeURIComponent(selected.bookingId)}`;
+      const response = await fetch(endpoint, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ totalBaht: Number(totalDue), note: totalDueNote.trim() || 'แก้ไขยอดที่ต้องชำระจากหน้าแอดมิน' }),
       });
@@ -545,10 +556,13 @@ function LegacyPaymentDialog({ trips, initialBookingId, initialTripStatus, onClo
   };
 
   const saveDueDate = async () => {
-    if (!selected?.paymentOrderId || !dueDate) return;
+    if (!selected || !dueDate) return;
     setSaving(true); setError('');
     try {
-      const response = await fetch(`/api/admin/payments/${encodeURIComponent(selected.paymentOrderId)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dueDate, note: totalDueNote.trim() || 'แก้ไขวันครบกำหนดจากหน้าแอดมิน' }) });
+      const endpoint = selected.paymentOrderId
+        ? `/api/admin/payments/${encodeURIComponent(selected.paymentOrderId)}`
+        : `/api/admin/payments/legacy/booking/${encodeURIComponent(selected.bookingId)}`;
+      const response = await fetch(endpoint, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dueDate, note: totalDueNote.trim() || 'แก้ไขวันครบกำหนดจากหน้าแอดมิน' }) });
       const data = await response.json();
       if (!data.success) throw new Error(data.error || 'บันทึกวันครบกำหนดไม่สำเร็จ');
       setSelected(previous => previous ? { ...previous, balanceDueAt: Number(data.balanceDueAt) } : previous);
@@ -626,7 +640,7 @@ function LegacyPaymentDialog({ trips, initialBookingId, initialTripStatus, onClo
       </> : <div className="space-y-4"><button type="button" onClick={() => setSelected(null)} className="text-xs font-bold text-violet-600">← เลือกลูกค้าคนอื่น</button><div className="rounded-xl bg-slate-50 p-4 text-sm"><p className="font-black">{selected.fullName} <span className="font-normal text-slate-500">({selected.lineUserName || 'ไม่มี LINE Name'})</span></p><p className="mt-1 text-xs text-slate-500">{selected.tripName} · รถ {selected.vanNumber ?? '-'} · ที่นั่ง {selected.seatLabel || '-'}</p><p className="mt-2 text-xs">ราคาทริป {money(selected.totalSatang)} · จ่ายรวมแล้ว {money(Math.max(0, selected.totalSatang - selected.balanceSatang))} · คงเหลือ {money(selected.balanceSatang)}{selected.overpaidSatang > 0 && <span className="font-bold text-orange-600"> · ชำระเกิน {money(selected.overpaidSatang)}</span>}</p></div><div className="grid gap-3 sm:grid-cols-2"><label className="text-xs font-bold">ยอดที่ชำระครั้งนี้<Input type="number" min="0.01" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} className="mt-1 h-10" /></label><label className="text-xs font-bold">วันที่ชำระ<Input type="date" value={paidAt} onChange={e => setPaidAt(e.target.value)} className="mt-1 h-10" /></label><label className="text-xs font-bold">วิธีชำระ<select value={method} onChange={e => setMethod(e.target.value)} className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3"><option value="bank_transfer">โอนธนาคาร</option><option value="cash">เงินสด</option><option value="other">อื่น ๆ</option></select></label><label className="text-xs font-bold">แนบสลิป (ถ้ามี)<span className="mt-1 flex h-10 items-center gap-2 rounded-lg border border-slate-200 px-3 font-normal"><Upload className="h-4 w-4" /><input type="file" accept="image/jpeg,image/png,image/webp" onChange={e => setSlip(e.target.files?.[0] || null)} className="min-w-0 text-xs" /></span></label></div><label className="block text-xs font-bold">หมายเหตุ<Input value={note} onChange={e => setNote(e.target.value)} placeholder="เช่น โอนก่อนเริ่มใช้ระบบ" className="mt-1 h-10" /></label>{error && <p className="rounded-lg bg-rose-50 p-3 text-xs font-bold text-rose-700">{error}</p>}<button type="button" disabled={saving || !amount || Number(amount) <= 0} onClick={() => void save()} className="h-10 w-full rounded-xl bg-violet-600 text-sm font-bold text-white disabled:opacity-40">{saving ? 'กำลังบันทึก...' : 'บันทึกยอดชำระเดิม'}</button></div>}
       {selected && selected.payments.length > 0 && <div className="mt-3 space-y-2 rounded-xl border border-slate-100 p-3"><p className="text-xs font-black text-slate-700">รายการชำระเดิม</p>{selected.payments.map(payment => <div key={payment.id} className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs"><div><p className="font-bold">{money(payment.amountSatang)} · {new Date(payment.paidAt).toLocaleDateString('th-TH')}</p><p className="text-slate-500">{payment.note || payment.method}</p></div><div className="flex gap-1"><button type="button" onClick={() => editPayment(payment)} className="rounded-md border px-2 py-1 font-bold"><Edit2 className="mr-1 inline h-3 w-3" />แก้ไข</button><button type="button" onClick={() => void deletePayment(payment.id)} className="rounded-md border border-rose-200 px-2 py-1 font-bold text-rose-600">ลบ</button></div></div>)}</div>}
       {selected && <label className="mt-3 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-bold text-amber-800"><input type="checkbox" disabled={savingExempt} checked={selected.paymentExempt === true} onChange={e => void setStaffExempt(e.target.checked)} />กำหนดที่นั่งนี้เป็น Staff / ยกเว้นค่าใช้จ่าย</label>}
-    {selected?.paymentOrderId && <TotalDueEditor totalDue={totalDue} setTotalDue={setTotalDue} totalDueNote={totalDueNote} setTotalDueNote={setTotalDueNote} currentTotalSatang={selected.totalSatang} paidSatang={selected.totalSatang - selected.balanceSatang} saving={saving} onSave={() => void saveTotalDue()} dueDate={dueDate} setDueDate={setDueDate} onSaveDueDate={() => void saveDueDate()} />}
+    {selected && <TotalDueEditor totalDue={totalDue} setTotalDue={setTotalDue} totalDueNote={totalDueNote} setTotalDueNote={setTotalDueNote} currentTotalSatang={selected.totalSatang} paidSatang={selected.totalSatang - selected.balanceSatang} saving={saving} onSave={() => void saveTotalDue()} dueDate={dueDate} setDueDate={setDueDate} onSaveDueDate={() => void saveDueDate()} />}
     </div>
   </div>;
 }
