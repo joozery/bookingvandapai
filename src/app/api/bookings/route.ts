@@ -290,7 +290,10 @@ export async function POST(request: Request) {
       emergencyPhone: profile?.emergencyPhone || null,
       allergies: profile?.allergies || null,
       medicalConditions: profile?.medicalConditions || null,
-      ...(manualBooking ? { bookingType: 'manual', paymentStatus: 'waived', paymentNote: 'ยกเว้นชำระเงินผ่านลิงก์ Manual' } : {}),
+      // Manual links reserve the seat first; payment is created lazily when
+      // the customer opens /payments. Exemption is an explicit admin choice
+      // via paymentExempt, not an automatic property of manual bookings.
+      ...(manualBooking ? { bookingType: 'manual' } : {}),
       ...(partnerAdminId ? { adminPartnerId: partnerAdminId } : {}),
     };
 

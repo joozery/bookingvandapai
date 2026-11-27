@@ -96,7 +96,7 @@ export async function listLegacyBookingCandidates(options: { q?: string; tripId?
   const pageSize = Math.min(50, Math.max(1, Math.floor(options.pageSize || 20)));
   const tripStatus = options.tripStatus || 'active';
   const tripFilter = tripStatus === 'all' ? { status: { $in: ['active', 'completed'] }, cost: { $gt: 0 } } : { status: tripStatus, cost: { $gt: 0 } };
-  const availableTrips = await db.collection('trips').find(tripFilter, { projection: { _id: 0, id: 1, name: 1, cost: 1, departureDate: 1 } }).toArray();
+  const availableTrips = await db.collection('trips').find(tripFilter, { projection: { _id: 0, id: 1, name: 1, cost: 1, departureDate: 1, departureTime: 1 } }).toArray();
   const tripMap = new Map(availableTrips.map(trip => [String(trip.id), trip]));
   const tripIds = availableTrips.map(trip => String(trip.id)).filter(id => !options.tripId || options.tripId === 'all' || id === options.tripId);
   if (!tripIds.length) return { rows: [] as LegacyBookingCandidate[], total: 0, page, pageSize, pageCount: 1 };
@@ -135,7 +135,12 @@ export async function listLegacyBookingCandidates(options: { q?: string; tripId?
     const van = vanById.get(String(booking.vanId));
     const seatType = (van?.seats?.find(seat => seat.id === booking.seatId)?.type || 'unknown') as LegacyBookingCandidate['seatType'];
     const paymentExempt = booking.paymentExempt === true || seatType === 'staff' || seatType === 'driver';
-    const totalSatang = paymentExempt ? 0 : safeNumber(orderById.get(String(booking.paymentOrderId || ''))?.totalSatang) || toSatang(trip?.cost);
+    const order = orderById.get(String(booking.paymentOrderId || ''));
+    const departureAt = trip?.departureDate && trip?.departureTime
+      ? Date.parse(`${String(trip.departureDate).slice(0, 10)}T${String(trip.departureTime)}:00+07:00`)
+      : NaN;
+    const balanceDueAt = order?.balanceDueAt || (Number.isFinite(departureAt) ? departureAt - 7 * 86_400_000 : undefined);
+    const totalSatang = paymentExempt ? 0 : safeNumber(order?.totalSatang) || toSatang(trip?.cost);
     const manualPaidSatang = (legacyByBooking.get(String(booking.id)) || []).reduce((sum, payment) => sum + safeNumber(payment.amountSatang), 0);
     const systemPaidSatang = Math.max(0, safeNumber(orderById.get(String(booking.paymentOrderId || ''))?.paidSatang) - manualPaidSatang);
     const paidSatang = manualPaidSatang + systemPaidSatang;
@@ -143,8 +148,8 @@ export async function listLegacyBookingCandidates(options: { q?: string; tripId?
       bookingId: String(booking.id), tripId: String(booking.tripId), tripName: String(trip?.name || ''), departureDate: String(trip?.departureDate || ''),
       fullName: String(booking.fullName || ''), nickname: String(booking.nickname || ''), phone: String(booking.phone || ''), lineUserId: String(booking.lineUserId || ''), lineUserName: String(booking.lineUserName || ''),
       seatLabel: String(booking.seatLabel || ''), seatType, vanNumber: van?.vanNumber ?? null, totalSatang, manualPaidSatang, systemPaidSatang,
-      balanceSatang: Math.max(0, totalSatang - paidSatang), overpaidSatang: Math.max(0, paidSatang - totalSatang), adjustments: orderById.get(String(booking.paymentOrderId || ''))?.adjustments || [], paymentOrderId: booking.paymentOrderId ? String(booking.paymentOrderId) : undefined, paymentExempt,
-      balanceDueAt: orderById.get(String(booking.paymentOrderId || ''))?.balanceDueAt,
+      balanceSatang: Math.max(0, totalSatang - paidSatang), overpaidSatang: Math.max(0, paidSatang - totalSatang), adjustments: order?.adjustments || [], paymentOrderId: booking.paymentOrderId ? String(booking.paymentOrderId) : undefined, paymentExempt,
+      balanceDueAt,
       payments: [
         ...(legacyByBooking.get(String(booking.id)) || []).map(payment => ({ id: payment.id, amountSatang: payment.amountSatang, paidAt: payment.paidAt, method: payment.method, note: payment.note, receiptKey: payment.receiptKey, source: 'manual' as const })),
         ...(receiptsByOrder.get(String(booking.paymentOrderId || '')) || []).map(receipt => ({ id: String(receipt.id), amountSatang: receipt.amountSatang, paidAt: receipt.paidAt, recordedAt: receipt.recordedAt, transRef: receipt.transRef, payerName: receipt.payerName, payerBank: receipt.payerBank, registrantName: receipt.registrantName, seatLabel: receipt.seatLabel, receiptKey: receipt.slipKey, reviewRequired: !!receipt.reviewRequired, source: 'system' as const })),

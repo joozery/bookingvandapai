@@ -249,6 +249,64 @@ export async function recoverPaymentOrder(userId: string, id: string) {
   return order;
 }
 
+/**
+ * Repairs bookings created by an admin/older flow before payment orders were
+ * attached. The customer must still use the normal payment portal, so create
+ * a pending full-payment order and attach it to the existing booking without
+ * creating another booking or taking another seat hold.
+ */
+async function ensureBookingPaymentOrders(userId: string) {
+  const db = await paymentDb();
+  const orders = db.collection<PaymentOrder>('paymentOrders');
+  const bookings = await db.collection('bookings').find({
+    lineUserId: userId,
+    status: { $in: ['approved', 'pending', 'cancel_pending'] },
+    paymentOrderId: { $exists: false },
+    paymentExempt: { $ne: true },
+    paymentStatus: { $ne: 'waived' },
+  }).toArray();
+
+  for (const booking of bookings) {
+    const trip = await db.collection('trips').findOne({ id: booking.tripId, status: 'active', cost: { $gt: 0 } });
+    if (!trip) continue;
+    const van = await db.collection('vans').findOne({ id: booking.vanId, tripId: booking.tripId }, { projection: { vanNumber: 1, seats: 1 } });
+    const seat = (van?.seats as { id?: string; label?: string; type?: string }[] | undefined)?.find(item => item.id === booking.seatId);
+    if (seat?.type === 'staff' || seat?.type === 'driver') continue;
+
+    const existingForBooking = await orders.findOne({ bookingId: String(booking.id), userId });
+    if (existingForBooking) {
+      await db.collection('bookings').updateOne({ id: booking.id, paymentOrderId: { $exists: false } }, { $set: { paymentOrderId: existingForBooking.id } });
+      continue;
+    }
+
+    const existingForTrip = await orders.findOne({ userId, tripId: String(booking.tripId), autoCancelledAt: { $exists: false }, status: { $in: ['pending', 'deposit_paid', 'paid'] } });
+    const now = Date.now();
+    const quote = paymentQuote({ cost: trip.cost, depositAmount: trip.depositAmount, flashSalePrice: trip.flashSalePrice, departureDate: String(trip.departureDate), departureTime: String(trip.departureTime || '00:00') }, 'full', now);
+    const order = existingForTrip || {
+      id: `booking-repair-${String(booking.id)}`,
+      userId,
+      tripId: String(booking.tripId),
+      tripName: String(trip.name || ''),
+      userName: String(booking.lineUserName || ''),
+      plan: 'full' as const,
+      totalSatang: quote.totalSatang,
+      paidSatang: 0,
+      amountSatang: quote.amountSatang,
+      balanceDueAt: quote.balanceDueAt,
+      departureAt: quote.departureAt,
+      createdAt: now,
+      expiresAt: quote.departureAt,
+      checkoutCreatedAt: now,
+      status: 'pending' as const,
+      bookingId: String(booking.id),
+      seat: { vanId: String(booking.vanId), seatId: String(booking.seatId), seatLabel: String(booking.seatLabel || seat?.label || ''), ...(typeof van?.vanNumber === 'number' ? { vanNumber: van.vanNumber } : {}) },
+    } satisfies PaymentOrder;
+
+    if (!existingForTrip) await persistOrder(order);
+    await db.collection('bookings').updateOne({ id: booking.id, paymentOrderId: { $exists: false } }, { $set: { paymentOrderId: order.id } });
+  }
+}
+
 /** Automatically releases seats for deposit orders that missed the 7-day balance deadline. */
 export async function expireOverdueDepositBookings(now = Date.now()) {
   const db = await paymentDb();
@@ -278,6 +336,7 @@ export async function expireOverdueDepositBookings(now = Date.now()) {
 
 export async function recoverPaymentOrders(userId: string) {
   await expireOverdueDepositBookings();
+  await ensureBookingPaymentOrders(userId);
   const db = await paymentDb();
   // Repair initial order writes interrupted after their capacity CAS.
   const capacities = await db.collection<Capacity>('paymentCapacity').find({ 'holds.userId': userId }).toArray();

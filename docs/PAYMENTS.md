@@ -38,7 +38,7 @@ The UI and routes are implemented, but live QR creation/verification requires th
 
 ## Rules
 
-- A new order reserves one unit of capacity for 30 minutes; a seat is chosen after successful payment. Concurrent checkouts use the trip capacity document revision; physical seat updates remain conditional. Pending capacity retains an initial order snapshot so an interrupted first order write can be recreated.
+- A new order reserves one unit of capacity for 1 hour; a seat is chosen after successful payment. Concurrent checkouts use the trip capacity document revision; physical seat updates remain conditional. Pending capacity retains an initial order snapshot so an interrupted first order write can be recreated.
 - A paid order without a selected seat retains its capacity. Returning to `/payments` allows seat selection without paying again.
 - Deposit is the trip's `depositAmount` (baht, set per trip in **Admin → จัดการทริป**). When blank/zero, or not below the price, it is 50% rounded up to the nearest satang. Remaining balance is the order's total minus verified payments. Changing a trip's price or deposit affects new orders only.
 - Balance is due **24 hours before the configured Bangkok departure time**. This interpretation is pending the owner's confirmation. Inside the final 24 hours only full payment is offered for new orders. Late balances remain payable before departure and display an overdue notice; the system does not silently cancel a paid booking or issue refunds.

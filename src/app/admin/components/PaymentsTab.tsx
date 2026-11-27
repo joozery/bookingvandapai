@@ -239,7 +239,7 @@ export default function PaymentsTab({ trips }: { trips: Trip[] }) {
                         <td className={cn('whitespace-nowrap px-5 py-3 text-right font-bold tabular-nums', row.balanceSatang ? 'text-amber-600' : 'text-slate-400')}>{money(row.balanceSatang)}</td>
                         <td className="px-3 py-3">
                           <span className={cn('inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-bold', STATE_STYLE[row.state])}>{row.stateLabel}</span>
-                          {row.balanceSatang > 0 && row.paidSatang > 0 && <p className="mt-1 text-[11px] text-slate-400">ครบกำหนด {when(row.balanceDueAt)}</p>}
+                          {row.balanceSatang > 0 && row.balanceDueAt > 0 && <p className="mt-1 text-[11px] text-slate-400">ครบกำหนด {when(row.balanceDueAt)}</p>}
                         </td>
                         <td className="px-3 py-3 text-right" onClick={e => e.stopPropagation()}>
                           {canEdit && (

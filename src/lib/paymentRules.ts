@@ -1,4 +1,4 @@
-export const HOLD_MS = 30 * 60 * 1000;
+export const HOLD_MS = 60 * 60 * 1000;
 export const DAY_MS = 24 * 60 * 60 * 1000;
 export const BALANCE_DUE_DAYS = 7;
 export const BALANCE_DUE_MS = BALANCE_DUE_DAYS * DAY_MS;
