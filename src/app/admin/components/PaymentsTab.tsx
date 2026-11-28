@@ -224,7 +224,13 @@ export default function PaymentsTab({ trips }: { trips: Trip[] }) {
                 {visibleRows.map((row, index) => {
                   const open = expanded === row.id;
                   const rowNumber = (currentPage - 1) * 20 + index + 1;
-                  const overdueBalance = row.balanceSatang > 0 && row.balanceDueAt > 0 && now >= row.balanceDueAt && ['partial', 'paid'].includes(row.state);
+                  // An unpaid booking is also overdue once the balance due date
+                  // has passed. The old check only included partial/paid rows,
+                  // so customers who had never paid were missing the warning.
+                  const overdueBalance = row.balanceSatang > 0
+                    && row.balanceDueAt > 0
+                    && now >= row.balanceDueAt
+                    && ['unpaid', 'partial', 'lapsed', 'review'].includes(row.state);
                   return (
                     <React.Fragment key={row.id}>
                       <tr className={cn('cursor-pointer hover:bg-violet-50/40', open && 'bg-violet-50/40')} onClick={() => setExpanded(open ? null : row.id)}>

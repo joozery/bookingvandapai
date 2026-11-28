@@ -7,6 +7,14 @@ import { requireAdmin, requireOwnerOrAdmin } from '@/lib/adminAuth';
 // It bypasses RLS because the DataStore client uses the service role key.
 export const dynamic = 'force-dynamic';
 
+function firstValue(...values: unknown[]) {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim()) return value;
+    if (value !== null && value !== undefined && typeof value !== 'string') return value;
+  }
+  return null;
+}
+
 export async function GET(request: Request) {
   const admin = await requireAdmin(['insurance', 'bookings']);
   if (admin instanceof Response) return admin;
@@ -99,12 +107,12 @@ export async function GET(request: Request) {
         fullName: profile?.fullName || booking.fullName,
         tripName: tripMap.get(booking.tripId) || 'Unknown Trip',
         vanNumber: vanMap.get(booking.vanId) || 1,
-        nationalId: booking.nationalId || profile?.nationalId || insurance?.nationalId || null,
-        birthDate: booking.birthDate || profile?.birthDate || insurance?.birthDate || null,
-        emergencyName: booking.emergencyName || profile?.emergencyName || insurance?.emergencyName || null,
-        emergencyPhone: booking.emergencyPhone || profile?.emergencyPhone || insurance?.emergencyPhone || null,
-        allergies: booking.allergies || profile?.allergies || insurance?.allergies || null,
-        medicalConditions: booking.medicalConditions || profile?.medicalConditions || insurance?.medicalConditions || null,
+        nationalId: firstValue(booking.nationalId, profile?.nationalId, insurance?.nationalId),
+        birthDate: firstValue(booking.birthDate, profile?.birthDate, insurance?.birthDate),
+        emergencyName: firstValue(booking.emergencyName, profile?.emergencyName, insurance?.emergencyName),
+        emergencyPhone: firstValue(booking.emergencyPhone, profile?.emergencyPhone, insurance?.emergencyPhone),
+        allergies: firstValue(booking.allergies, profile?.allergies, insurance?.allergies),
+        medicalConditions: firstValue(booking.medicalConditions, profile?.medicalConditions, insurance?.medicalConditions),
         profile: profile || null
       };
     });

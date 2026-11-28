@@ -116,6 +116,10 @@ export default function InsuranceTab({ trips, onRefresh }: Props) {
     }
     
     const BOM = '\uFEFF';
+    const csvCell = (value: unknown) => {
+      const text = value == null ? '' : String(value);
+      return `"${text.replace(/"/g, '""')}"`;
+    };
     const headers = [
       'ลำดับ', 'ชื่อลูกทริป', 'ชื่อเล่น', 'เบอร์โทรศัพท์', 'ทริป', 'รถคันที่', 'ที่นั่ง',
       'เลขบัตรประชาชน', 'วันเดือนปีเกิด', 'ผู้ติดต่อฉุกเฉิน', 'เบอร์โทรฉุกเฉิน',
@@ -140,19 +144,19 @@ export default function InsuranceTab({ trips, onRefresh }: Props) {
 
       const row = [
         `"${idx + 1}"`,
-        `"${p.fullName || ''}"`,
-        `"${p.profile?.nickname || p.nickname || ''}"`,
+        csvCell(p.fullName),
+        csvCell(p.profile?.nickname || p.nickname),
         p.phone ? `="${p.phone}"` : '""',
-        `"${p.tripName || ''}"`,
-        `"${p.vanNumber || 1}"`,
-        `"${p.seatLabel || ''}"`,
+        csvCell(p.tripName),
+        csvCell(p.vanNumber || 1),
+        csvCell(p.seatLabel),
         // ใช้ format ="เลขบัตร" เพื่อบังคับให้ Excel มองเป็นข้อความและไม่ปัดเป็นเลขยกกำลัง
         nid ? `="${nid}"` : '""',
-        `"${formatThaiDateString(dob)}"`,
-        `"${p.emergencyName || p.profile?.emergencyName || ''}"`,
+        csvCell(formatThaiDateString(dob)),
+        csvCell(p.emergencyName || p.profile?.emergencyName),
         (p.emergencyPhone || p.profile?.emergencyPhone) ? `="${p.emergencyPhone || p.profile?.emergencyPhone}"` : '""',
-        `"${p.allergies || p.profile?.allergies || ''}"`,
-        `"${p.medicalConditions || p.profile?.medicalConditions || ''}"`
+        csvCell(p.allergies || p.profile?.allergies),
+        csvCell(p.medicalConditions || p.profile?.medicalConditions)
       ];
       csvRows.push(row.join(','));
     });
@@ -556,13 +560,13 @@ export default function InsuranceTab({ trips, onRefresh }: Props) {
                   <div>
                     <span className="block text-[10px] text-slate-400">ชื่อผู้ติดต่อฉุกเฉิน</span>
                     <span className="text-xs font-bold text-slate-700 block mt-0.5">
-                      {selectedProfileBooking.profile?.emergencyName || '-'}
+                      {selectedProfileBooking.emergencyName || selectedProfileBooking.profile?.emergencyName || '-'}
                     </span>
                   </div>
                   <div>
                     <span className="block text-[10px] text-slate-400">เบอร์โทรฉุกเฉิน</span>
                     <span className="text-xs font-bold text-slate-700 block mt-0.5">
-                      {selectedProfileBooking.profile?.emergencyPhone || '-'}
+                      {selectedProfileBooking.emergencyPhone || selectedProfileBooking.profile?.emergencyPhone || '-'}
                     </span>
                   </div>
                 </div>
@@ -574,13 +578,13 @@ export default function InsuranceTab({ trips, onRefresh }: Props) {
                   <div>
                     <span className="block text-[10px] text-slate-400">การแพ้อาหาร</span>
                     <span className="text-xs font-bold text-slate-700 block mt-0.5">
-                      {selectedProfileBooking.profile?.allergies || 'ไม่มี'}
+                      {selectedProfileBooking.allergies || selectedProfileBooking.profile?.allergies || 'ไม่มี'}
                     </span>
                   </div>
                   <div>
                     <span className="block text-[10px] text-slate-400">โรคประจำตัว</span>
                     <span className="text-xs font-bold text-slate-700 block mt-0.5">
-                      {selectedProfileBooking.profile?.medicalConditions || 'ไม่มี'}
+                      {selectedProfileBooking.medicalConditions || selectedProfileBooking.profile?.medicalConditions || 'ไม่มี'}
                     </span>
                   </div>
                 </div>
